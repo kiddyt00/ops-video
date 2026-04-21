@@ -4,7 +4,7 @@ FastAPI application entry point
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .api.routes import projects, tasks, files, variants, generators
+from .api.routes import projects, tasks, files, variants, generators, workflow
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -44,3 +44,4 @@ app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])
 app.include_router(variants.router, prefix="/api/v1/variants", tags=["variants"])
 app.include_router(generators.router, prefix="/api/v1/generators", tags=["generators"])
+app.include_router(workflow.router, prefix="/api/v1/workflow", tags=["workflow"])
