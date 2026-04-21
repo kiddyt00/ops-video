@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: ops-video-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ops_video
+      POSTGRES_USER: ops
+      POSTGRES_PASSWORD: ops_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ops-video-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ops:ops_password@db:5432/ops_video
+      COMFYUI_HOST: host.docker.internal
+      COMFYUI_PORT: 8188
+      STORAGE_PATH: /app/storage
+      FRONTEND_URL: http://localhost:3000
+    volumes:
+      - ./backend:/app
+      - ./storage:/app/storage
+    ports:
+      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ops-video-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    command: npm run dev
+
+volumes:
+  postgres_data:
