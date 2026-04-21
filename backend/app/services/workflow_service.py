@@ -14,6 +14,7 @@ from ..db.task_crud import task_crud
 from ..db.file_crud import file_crud, variant_group_crud
 from ..db.project_crud import project_crud
 from ..schemas.task import TaskCreate, TaskStatusUpdate
+from ..schemas.file import VariantGroupCreate
 
 
 class WorkflowError(Exception):
@@ -185,12 +186,12 @@ class WorkflowService:
         # Create variant group
         variant_group_crud.create(
             self.db,
-            obj_in={
-                "project_id": project_id,
-                "task_id": task.id,
-                "stage": target_stage.value,
-                "parameters": parameters or {},
-            },
+            obj_in=VariantGroupCreate(
+                project_id=project_id,
+                task_id=task.id,
+                stage=target_stage.value,
+                parameters=parameters or {},
+            ),
         )
 
         return task
@@ -246,7 +247,7 @@ class WorkflowService:
             stage=target_stage,
             generator_type=latest_task.generator_type,
             parameters=latest_task.parameters,
-            parent_task_ids=latest_task.parent_task_id,
+            parent_task_ids=[latest_task.parent_task_id] if latest_task.parent_task_id else [],
         )
 
         task = task_crud.create(self.db, obj_in=task_create)

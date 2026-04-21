@@ -72,7 +72,7 @@ class File(BaseModel):
 
     # Relationships
     project = relationship("Project", back_populates="files")
-    variant_group = relationship("VariantGroup", back_populates="files")
+    variant_group = relationship("VariantGroup", back_populates="files", foreign_keys=[variant_group_id])
     task = relationship("Task", backref="files")
     parent_file = relationship(
         "File",
@@ -115,7 +115,7 @@ class VariantGroup(BaseModel):
     # Relationships
     project = relationship("Project", back_populates="variant_groups")
     task = relationship("Task", back_populates="variant_groups")
-    files = relationship("File", back_populates="variant_group")
+    files = relationship("File", back_populates="variant_group", foreign_keys="File.variant_group_id")
     selected_file = relationship(
         "File",
         foreign_keys=[selected_file_id],
