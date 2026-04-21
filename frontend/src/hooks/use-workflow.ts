@@ -26,6 +26,9 @@ export function useAdvanceWorkflow() {
       qc.invalidateQueries({ queryKey: ['workflow', vars.projectId] })
       qc.invalidateQueries({ queryKey: ['tasks', vars.projectId] })
     },
+    onError: (error: Error) => {
+      console.error('Failed to advance workflow:', error.message)
+    },
   })
 }
 
@@ -37,6 +40,9 @@ export function useRollbackWorkflow() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['workflow', vars.projectId] })
       qc.invalidateQueries({ queryKey: ['tasks', vars.projectId] })
+    },
+    onError: (error: Error) => {
+      console.error('Failed to rollback workflow:', error.message)
     },
   })
 }

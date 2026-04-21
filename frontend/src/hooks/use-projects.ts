@@ -22,6 +22,9 @@ export function useCreateProject() {
   return useMutation({
     mutationFn: projectApi.create,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onError: (error: Error) => {
+      console.error('Failed to create project:', error.message)
+    },
   })
 }
 
@@ -33,6 +36,9 @@ export function useUpdateProject(id: string) {
       qc.invalidateQueries({ queryKey: ['projects'] })
       qc.invalidateQueries({ queryKey: ['projects', id] })
     },
+    onError: (error: Error) => {
+      console.error('Failed to update project:', error.message)
+    },
   })
 }
 
@@ -41,5 +47,8 @@ export function useDeleteProject() {
   return useMutation({
     mutationFn: projectApi.remove,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onError: (error: Error) => {
+      console.error('Failed to delete project:', error.message)
+    },
   })
 }

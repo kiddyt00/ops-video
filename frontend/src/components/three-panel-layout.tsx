@@ -19,7 +19,7 @@ interface ThreePanelLayoutProps {
   panel?: {
     stage?: TaskStage | null
     parameters?: Record<string, unknown>
-    onGenerate?: () => void
+    onGenerate?: (params: Record<string, unknown>) => void
     onAdvance?: () => void
     onRollback?: () => void
     canGenerate?: boolean
