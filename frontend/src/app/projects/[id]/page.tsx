@@ -151,6 +151,7 @@ export default function ProjectPage() {
     <ThreePanelLayout
       header={{
         projectName: project.name,
+        showBack: true,
         workflowStatus,
       }}
       sidebar={{

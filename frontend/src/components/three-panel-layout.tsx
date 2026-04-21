@@ -6,6 +6,7 @@ import { ParameterPanel } from '@/components/parameter-panel'
 interface ThreePanelLayoutProps {
   header?: {
     projectName?: string
+    showBack?: boolean
     workflowStatus?: {
       current_stage: string | null
       stages: { stage: string; status: string }[]
@@ -31,7 +32,7 @@ interface ThreePanelLayoutProps {
 export function ThreePanelLayout({ header, sidebar, panel, children }: ThreePanelLayoutProps) {
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
-      <AppHeader projectName={header?.projectName} workflowStatus={header?.workflowStatus} />
+      <AppHeader projectName={header?.projectName} showBack={header?.showBack} workflowStatus={header?.workflowStatus} />
       <div className="flex flex-1 overflow-hidden">
         {sidebar && (
           <StageSidebar
