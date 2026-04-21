@@ -545,7 +545,7 @@ class TestGeneratorAPI:
     def test_list_generators(self):
         resp = client.get("/api/v1/generators")
         assert resp.status_code == 200
-        assert len(resp.json()) == 3  # script, storyboard, image
+        assert len(resp.json()) == 6  # script, storyboard, image, tts, bgm, video_composer
 
     def test_get_generator(self):
         resp = client.get("/api/v1/generators/script")

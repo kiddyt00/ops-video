@@ -54,6 +54,36 @@ GENERATORS = {
             "height": {"type": "integer", "required": False, "default": 768},
         },
     ),
+    "tts": GeneratorInfo(
+        name="TTS Generator",
+        type="tts",
+        description="Generate narration audio using edge-tts",
+        parameters={
+            "text": {"type": "string", "required": True, "description": "Text to synthesize"},
+            "voice": {"type": "string", "required": False, "default": "zh-CN-XiaoxiaoNeural"},
+            "rate": {"type": "string", "required": False, "default": "+0%"},
+        },
+    ),
+    "bgm": GeneratorInfo(
+        name="BGM Generator",
+        type="bgm",
+        description="Generate background music",
+        parameters={
+            "duration": {"type": "number", "required": False, "default": 30.0},
+            "bpm": {"type": "integer", "required": False, "default": 80},
+            "mood": {"type": "string", "required": False, "default": "ambient"},
+        },
+    ),
+    "video_composer": GeneratorInfo(
+        name="Video Composer",
+        type="video",
+        description="Compose final video from images, audio, and storyboard timing",
+        parameters={
+            "panels": {"type": "array", "required": True, "description": "Panel data with image paths, audio, and durations"},
+            "resolution": {"type": "array", "required": False, "default": [1080, 1920]},
+            "fps": {"type": "integer", "required": False, "default": 24},
+        },
+    ),
 }
 
 

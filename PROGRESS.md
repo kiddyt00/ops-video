@@ -45,11 +45,14 @@
 
 ## 待完成
 
-### Phase 6: 音频与视频合成 (P1)
-- [ ] TTS 集成（edge-tts 或本地模型）
-- [ ] 背景音乐生成
-- [ ] 音效生成
-- [ ] 视频合成（图片+音频+分镜）
+### Phase 6: 音频与视频合成 ✅
+- TTS 服务（edge-tts，支持多声音/速率/面板批量合成）
+- BGM 服务（numpy/scipy 合成，支持 ambient/dramatic/cheerful/sad 情绪）
+- SFX 服务（numpy/scipy 合成，支持 whoosh/impact/sparkle/wind/rain/thunder）
+- 视频合成服务（FFmpeg：图片→视频片段→拼接→音频混合→最终输出）
+- Generators API 注册 tts/bgm/video_composer
+- 41 个测试覆盖所有新服务
+- **Commit**: 本次
 
 ---
 
@@ -86,5 +89,6 @@ npm run dev
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: `e390c70`
-- **下一阶段**: Phase 6 音频与视频合成
+- **最新 Commit**: Phase 6
+- **总测试数**: 101 passed
+- **下一阶段**: 将 Phase 6 服务集成到 workflow engine 的 advance_stage 中
