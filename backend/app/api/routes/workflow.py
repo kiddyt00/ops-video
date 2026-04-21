@@ -22,11 +22,26 @@ def get_workflow_status(
 ):
     """Get workflow status for a project"""
     workflow = WorkflowService(db)
-    stages = workflow.get_project_stages(project_id)
+    stages_dict = workflow.get_project_stages(project_id)
+
+    # Transform dict {stage_name: {details}} → list [{stage, status, ...}] for frontend
+    stages_list = []
+    for stage_name, stage_data in stages_dict.items():
+        has_completed = stage_data["completed_tasks"] > 0
+        has_running = not has_completed and stage_data["total_tasks"] > 0
+        status = "completed" if has_completed else ("running" if has_running else "pending")
+        stages_list.append({
+            "stage": stage_name,
+            "status": status,
+            "total_tasks": stage_data["total_tasks"],
+            "completed_tasks": stage_data["completed_tasks"],
+            "selected_files": stage_data["selected_files"],
+            "can_proceed": stage_data["can_proceed"],
+        })
 
     return {
         "project_id": str(project_id),
-        "stages": stages,
+        "stages": stages_list,
         "current_stage": workflow.get_current_stage(project_id).value if workflow.get_current_stage(project_id) else None,
     }
 
