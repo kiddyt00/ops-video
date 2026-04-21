@@ -1,22 +1,6 @@
 """
 Database session management
 """
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from .config import settings
+from ..models.declarative import engine, SessionLocal, Base, get_db
 
-engine = create_engine(settings.DATABASE_URL)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
-
-
-def get_db():
-    """Dependency for getting database session"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+__all__ = ["engine", "SessionLocal", "Base", "get_db"]

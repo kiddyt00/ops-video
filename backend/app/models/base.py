@@ -4,7 +4,7 @@ Base model with common fields
 from datetime import datetime
 from sqlalchemy import Column, DateTime
 from sqlalchemy.orm import declared_attr
-from .session import Base
+from .declarative import Base
 
 
 class CommonMixin:

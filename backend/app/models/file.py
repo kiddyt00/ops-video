@@ -54,8 +54,8 @@ class File(BaseModel):
     # Generation parameters (prompt, seed, model, etc.)
     generation_params = Column(JSON, nullable=False, default=dict)
 
-    # Additional metadata
-    metadata = Column(JSON, nullable=False, default=dict)
+    # Additional metadata (renamed from 'metadata' to avoid SQLAlchemy reservation)
+    extra_info = Column(JSON, nullable=False, default=dict)
 
     # Version control
     version = Column(String(50), nullable=False, default="1.0.0")

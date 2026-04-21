@@ -5,11 +5,11 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Optional
-from ..db.session import get_db
-from ..models.project import Project
-from ..models.task import Task
-from ..models.file import File
-from ..models.variant import VariantGroup
+from ...db.session import get_db
+from ...models.project import Project
+from ...models.task import Task
+from ...models.file import File
+from ...models.variant import VariantGroup
 
 
 def get_project(project_id: UUID, db: Session = Depends(get_db)) -> Project:

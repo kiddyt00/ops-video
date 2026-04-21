@@ -21,7 +21,14 @@ class FileBase(BaseModel):
     """Base file schema"""
     file_type: FileType
     generation_params: Dict[str, Any] = {}
-    metadata: Dict[str, Any] = {}
+    extra_info: Dict[str, Any] = {}
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+    # Alias for backward compatibility
+    metadata: Dict[str, Any] = Field(default={}, alias="extra_info")
 
 
 class FileCreate(FileBase):
@@ -37,7 +44,7 @@ class FileCreate(FileBase):
 class FileUpdate(BaseModel):
     """Schema for updating a file"""
     generation_params: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+    extra_info: Optional[Dict[str, Any]] = None
     is_selected: Optional[bool] = None
 
 
