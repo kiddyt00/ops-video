@@ -39,11 +39,7 @@
   - 边界条件与错误处理测试
 - 修复 workflow_service 中 variant_group_crud 类型错误
 - 修复 File/VariantGroup 模型外键歧义
-- **Commit**: 本次
-
----
-
-## 待完成
+- **Commit**: `773d08e`
 
 ### Phase 6: 音频与视频合成 ✅
 - TTS 服务（edge-tts，支持多声音/速率/面板批量合成）
@@ -52,27 +48,94 @@
 - 视频合成服务（FFmpeg：图片→视频片段→拼接→音频混合→最终输出）
 - Generators API 注册 tts/bgm/video_composer
 - 41 个测试覆盖所有新服务
+- **Commit**: `3a260af`
+
+### Phase 7: 前端集成测试和端到端联调 ✅
+- 前端测试框架（vitest + testing-library）
+- API 集成测试（覆盖所有 frontend hooks）
+- E2E 工作流测试脚本（backend/tests/test_e2e_workflow.py）
+- 测试脚本支持跳过视频合成、保存结果等功能
+- **Commit**: `bfa869c`
+
+### Phase 8: 前端 UI 完善和功能集成 ✅
+- **变体选择器组件** (`VariantPicker`): 多结果对比和选择
+- **工作流进度可视化** (`WorkflowProgress`): 阶段状态可视化
+- **深色模式优化**:
+  - 紫色主题色 (#6366f1)
+  - 成功/警告颜色变量
+  - 自定义滚动条样式
+  - 更好的对比度和可读性
+- **后端 API 集成**:
+  - use-generators hook（所有生成器类型）
+  - useGenerateScript/Storyboard/Image
+  - useGenerateTTS/BGM, useComposeVideo
+- **Commit**: `4290df5`
+
+### Phase 9: 部署配置优化 ✅
+- **Docker 多阶段构建**:
+  - 后端：builder + runtime 两阶段，减小镜像体积
+  - 前端：deps + builder + runner 三阶段，独立用户运行
+  - 开发 Dockerfile 支持热重载
+- **环境变量管理**:
+  - backend/.env.example：完整的后端配置模板
+  - frontend/.env.example：前端配置模板
+  - 密钥管理：生产环境密码通过环境变量注入
+- **生产环境配置**:
+  - Next.js standalone output + 独立用户运行
+  - Uvicorn 4 workers 并发
+  - docker-compose.prod.yml：生产配置（健康检查、重启策略）
+  - docker-compose.yml：开发配置（热重载、debug 日志）
+- **健康检查**:
+  - 后端：/health 端点检查
+  - 前端：wget 检查
+  - PostgreSQL: pg_isready 检查
 - **Commit**: 本次
 
 ---
 
-## 快速恢复开发
+## 待完成
+
+### Phase 10: 性能优化与监控
+- 前端性能优化（代码分割、懒加载）
+- 后端缓存策略（Redis）
+- 日志系统（结构化日志、日志轮转）
+- 健康检查和监控端点
+
+---
+
+## 快速开始
+
+### 开发模式
 
 ```bash
 # 克隆项目
 git clone git@github.com:kiddyt00/ops-video.git
 cd ops-video
 
-# 后端 setup
+# 使用 Docker Compose 启动开发环境
+docker-compose up -d
+
+# 后端（本地开发）
 cd backend
 uv venv .venv && source .venv/bin/activate
 uv pip install -r requirements.txt pytest
 python -m pytest tests/ -v
+uvicorn app.main:app --reload
 
-# 前端 setup
+# 前端（本地开发）
 cd ../frontend
 npm install
 npm run dev
+```
+
+### 生产部署
+
+```bash
+# 使用生产配置启动
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# 查看日志
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
 ---
@@ -80,7 +143,7 @@ npm run dev
 ## 开发规范
 
 1. **每个子任务完成后立即 commit + push**
-2. **验证先于提交**: `python -m pytest tests/ -v`
+2. **验证先于提交**: `python -m pytest tests/ -v` 或 `npm run test`
 3. **Superpowers 工作流**: brainstorming → plan → execute → verify
 4. **项目目录**: `~/claude-projects/ops-video/`
 
@@ -89,6 +152,6 @@ npm run dev
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: Phase 6
-- **总测试数**: 101 passed
-- **下一阶段**: 将 Phase 6 服务集成到 workflow engine 的 advance_stage 中
+- **最新 Commit**: Phase 9
+- **总测试数**: 123 passed
+- **下一阶段**: Phase 10 - 性能优化与监控

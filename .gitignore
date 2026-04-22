@@ -34,11 +34,10 @@ yarn-error.log*
 .next/
 out/
 
-# Environment
+# Environment (keep .env.example)
 .env
 .env.local
 .env.*.local
-.env.example
 
 # IDE
 .idea/
