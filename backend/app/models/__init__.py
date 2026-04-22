@@ -5,6 +5,7 @@ from .base import Base, BaseModel
 from .project import Project
 from .task import Task, TaskStatus, TaskStage, TaskStatusLog
 from .file import File, FileType, VariantGroup
+from .user import User, UserRole, RefreshToken
 
 __all__ = [
     "Base",
@@ -17,4 +18,7 @@ __all__ = [
     "File",
     "FileType",
     "VariantGroup",
+    "User",
+    "UserRole",
+    "RefreshToken",
 ]

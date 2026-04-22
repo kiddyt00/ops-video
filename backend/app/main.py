@@ -3,14 +3,16 @@ FastAPI application entry point
 """
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import time
 import uuid
 
 from .config import settings
-from .api.routes import projects, tasks, files, variants, generators, workflow
+from .api.routes import projects, tasks, files, variants, generators, workflow, auth
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
+from .middleware.security import setup_security, XSSProtectionMiddleware
+from .middleware.rate_limit import setup_rate_limiting
 
 # Setup logging on startup
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
@@ -28,7 +30,7 @@ async def lifespan(app: FastAPI):
     if redis_connected:
         logger.info("Redis connection established")
     else:
-        logger.warning("Redis not available, caching disabled")
+        logger.warning("Redis not available, caching and rate limiting disabled")
 
     yield
 
@@ -45,14 +47,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Security middleware (CORS + Security Headers)
+setup_security(app, allowed_origins=settings.cors_origins)
+
+# XSS Protection
+app.add_middleware(XSSProtectionMiddleware)
+
+# Rate Limiting (requires Redis)
+setup_rate_limiting(app, requests_per_minute=60, burst=100)
 
 
 @app.middleware("http")
@@ -197,7 +199,6 @@ async def ready():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
     except Exception:
-        from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=503,
             content={"status": "not_ready", "reason": "Database connection failed"}
@@ -207,6 +208,7 @@ async def ready():
 
 
 # Include routers
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["projects"])
 app.include_router(tasks.router, prefix="/api/v1/tasks", tags=["tasks"])
 app.include_router(files.router, prefix="/api/v1/files", tags=["files"])

@@ -66,6 +66,15 @@ class Settings(BaseSettings):
     def log_path(self) -> Path:
         return Path(self.LOG_DIR).resolve()
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = Field(
+        default="change-this-secret-key-in-production",
+        description="Secret key for JWT token signing"
+    )
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
     class Config:
         env_file = ".env"
         case_sensitive = True
