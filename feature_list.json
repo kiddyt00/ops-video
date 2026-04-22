@@ -1,0 +1,44 @@
+{
+  "features": [
+    {
+      "category": "image-generation",
+      "description": "多提供商图片生成架构：支持 ComfyUI、通义万相 (DashScope)、SiliconFlow 动态路由，含 29 个单元测试",
+      "steps": [
+        "实现 WanxProvider (通义万相 wanx-v1/v2)",
+        "实现 SiliconFlowProvider (兼容 OpenAI /images/generations)",
+        "config.py 增加 Provider 选择和 API Key 配置",
+        "ImageGeneratorService 动态路由到选定 Provider",
+        "编写单元测试验证 Provider 切换和路由逻辑",
+        "修复 workflow_service.py 方法命名冲突 bug"
+      ],
+      "passes": true,
+      "priority": 3
+    },
+    {
+      "category": "workflow",
+      "description": "将 TTS/BGM/SFX/视频合成服务集成到 workflow engine 的 advance_stage 中，使 audio/video 阶段能真正调用 Phase 6 服务",
+      "steps": [
+        "分析 workflow_service.py 中 advance_stage 的当前逻辑",
+        "为 audio_script 阶段集成 tts_service",
+        "为 bgm 阶段集成 bgm_service",
+        "为 sfx 阶段集成 sfx_service",
+        "为 video_composer 阶段集成 video_synthesis_service",
+        "添加集成测试覆盖新的工作流路径",
+        "运行全部测试验证"
+      ],
+      "passes": false,
+      "priority": 1
+    },
+    {
+      "category": "frontend",
+      "description": "前端集成 audio/video 阶段的参数面板和状态显示",
+      "steps": [
+        "添加 audio_script/bgm/sfx/video_composer 阶段参数表单",
+        "更新 stage-sidebar 显示 audio/video 阶段状态",
+        "测试完整工作流 UI"
+      ],
+      "passes": false,
+      "priority": 2
+    }
+  ]
+}
