@@ -41,17 +41,13 @@ class TestTTSService:
         """Test that empty text raises ValueError"""
         svc = TTSService()
         with pytest.raises(ValueError, match="Text cannot be empty"):
-            asyncio.get_event_loop().run_until_complete(
-                svc.synthesize("")
-            )
+            asyncio.run(svc.synthesize(""))
 
     def test_synthesize_empty_text_whitespace(self):
         """Test that whitespace-only text raises ValueError"""
         svc = TTSService()
         with pytest.raises(ValueError):
-            asyncio.get_event_loop().run_until_complete(
-                svc.synthesize("   ")
-            )
+            asyncio.run(svc.synthesize("   "))
 
     @patch("app.services.tts_service.edge_tts.Communicate")
     def test_synthesize_creates_file(self, mock_communicate):
@@ -66,8 +62,7 @@ class TestTTSService:
             test_dir = Path(tmpdir)
             svc.AUDIO_DIR = test_dir
 
-            loop = asyncio.get_event_loop()
-            result = loop.run_until_complete(
+            result = asyncio.run(
                 svc.synthesize("Hello world", output_filename="test.mp3")
             )
 
@@ -84,9 +79,8 @@ class TestTTSService:
         """Test list_voices returns list of dicts"""
         svc = TTSService()
         # This calls the actual edge-tts API, just verify structure
-        loop = asyncio.get_event_loop()
         try:
-            voices = loop.run_until_complete(svc.list_voices())
+            voices = asyncio.run(svc.list_voices())
             assert isinstance(voices, list)
             if voices:
                 assert isinstance(voices[0], dict)
@@ -96,8 +90,7 @@ class TestTTSService:
     def test_synthesize_panels_empty(self):
         """Test synthesize_panels with empty list"""
         svc = TTSService()
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(svc.synthesize_panels([]))
+        result = asyncio.run(svc.synthesize_panels([]))
         assert result == []
 
     def test_synthesize_panels_skips_empty_text(self):
@@ -108,8 +101,7 @@ class TestTTSService:
             with tempfile.TemporaryDirectory() as tmpdir:
                 svc.AUDIO_DIR = Path(tmpdir)
                 panels = [{"index": 0, "text": "Hello"}, {"index": 1, "text": ""}]
-                loop = asyncio.get_event_loop()
-                result = loop.run_until_complete(svc.synthesize_panels(panels))
+                result = asyncio.run(svc.synthesize_panels(panels))
                 # Should only create audio for the panel with text
                 assert len(result) == 1
 

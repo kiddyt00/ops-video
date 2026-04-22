@@ -137,7 +137,7 @@ async def health():
     - Redis connection (if configured)
     """
     from .db.session import engine
-    from sqlmodel import text
+    from sqlalchemy import text
 
     health_status = {
         "status": "healthy",
@@ -192,7 +192,7 @@ async def ready():
     Returns 200 only if all critical services are healthy
     """
     from .db.session import engine
-    from sqlmodel import text
+    from sqlalchemy import text
 
     # Check database
     try:

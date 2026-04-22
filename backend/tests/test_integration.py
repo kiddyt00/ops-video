@@ -84,14 +84,17 @@ def clear_test_db():
 from app.main import app
 from app.db.session import get_db
 
-app.dependency_overrides[get_db] = override_get_db
-
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    # Set dependency override in fixture to avoid cross-module pollution
+    app.dependency_overrides[get_db] = override_get_db
     """Clear database before each test"""
     clear_test_db()
     yield
+    # Clean up override after test
+    if get_db in app.dependency_overrides:
+        del app.dependency_overrides[get_db]
 
 
 client = TestClient(app)
@@ -565,7 +568,11 @@ class TestHealthAndRoot:
     def test_health(self):
         resp = client.get("/health")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "healthy"}
+        data = resp.json()
+        assert data["status"] == "healthy"
+        assert "version" in data
+        assert "checks" in data
+        assert data["checks"]["database"]["status"] == "healthy"
 
     def test_root(self):
         resp = client.get("/")

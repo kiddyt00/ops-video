@@ -66,6 +66,7 @@ async def advance_workflow(
     project_id: UUID,
     parameters: Optional[Dict[str, Any]] = None,
     generator_type: Optional[str] = None,
+    execute: bool = False,
     db: Session = Depends(get_db)
 ):
     """
@@ -74,7 +75,8 @@ async def advance_workflow(
     This will:
     1. Validate prerequisites are met
     2. Create task for next stage
-    3. Return task info (status: pending)
+    3. If execute=True, run the generation immediately
+    4. Return task info
     """
     workflow = WorkflowService(db)
 
@@ -83,6 +85,7 @@ async def advance_workflow(
             project_id=project_id,
             generator_type=generator_type,
             parameters=parameters,
+            execute=execute,
         )
         return task
     except Exception as e:
@@ -97,6 +100,7 @@ async def advance_to_stage(
     project_id: UUID,
     target_stage: str,
     parameters: Optional[Dict[str, Any]] = None,
+    execute: bool = False,
     db: Session = Depends(get_db)
 ):
     """
@@ -127,6 +131,7 @@ async def advance_to_stage(
             project_id=project_id,
             target_stage=stage_map[target_stage],
             parameters=parameters,
+            execute=execute,
         )
         return task
     except Exception as e:

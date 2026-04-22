@@ -114,11 +114,11 @@ export function VariantPicker({
               {/* Generation params summary */}
               <div className="space-y-1">
                 <CardDescription className="text-xs">
-                  {variant.generation_params?.seed && (
-                    <span className="mr-2">Seed: {variant.generation_params.seed}</span>
+                  {(variant.generation_params?.seed as number | undefined) && (
+                    <span className="mr-2">Seed: {String(variant.generation_params.seed)}</span>
                   )}
-                  {variant.generation_params?.steps && (
-                    <span>Steps: {variant.generation_params.steps}</span>
+                  {(variant.generation_params?.steps as number | undefined) && (
+                    <span>Steps: {String(variant.generation_params.steps)}</span>
                   )}
                 </CardDescription>
               </div>

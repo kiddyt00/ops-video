@@ -20,10 +20,10 @@ class Settings(BaseSettings):
         description="PostgreSQL connection URL"
     )
 
-    # LLM (optional)
-    LLM_API_KEY: str = ""
-    LLM_API_BASE_URL: str = "http://localhost:11434/v1"
-    LLM_MODEL: str = "qwen:7b"
+    # LLM (DashScope Qwen API, OpenAI-compatible)
+    LLM_API_KEY: str = "sk-b8bd0f8077764c59b948c503cf1ee5f7"
+    LLM_API_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    LLM_MODEL: str = "qwen-plus"
 
     # Storage
     STORAGE_PATH: str = "./storage"

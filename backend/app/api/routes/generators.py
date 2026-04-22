@@ -110,7 +110,7 @@ async def generate(
     request: GenerateRequest,
     db: Session = Depends(get_db),
 ):
-    """Execute generation"""
+    """Execute generation — creates task and runs the corresponding service."""
     if generator_type not in GENERATORS:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -145,24 +145,185 @@ async def generate(
         ),
     )
 
-    # Create variant group
-    variant_group = variant_group_crud.create(
-        db,
-        obj_in={
-            "project_id": UUID(request.project_id),
-            "task_id": task.id,
-            "stage": generator_type,
-            "parameters": request.parameters,
-        },
-    )
-
-    # Start generation in background
-    # The actual generation will be implemented with a task queue
-    # For now, we'll return the task ID and variant group ID
+    # Execute generation based on type
+    result = await _dispatch_generation(db, generator_type, task, request.parameters)
 
     return GenerateResponse(
         task_id=str(task.id),
-        variant_group_id=str(variant_group.id),
-        status="pending",
-        message=f"Generation started for {generator_type}",
+        variant_group_id=result.get("variant_group_id", ""),
+        status="completed" if result.get("success") else "failed",
+        message=f"Generation {'completed' if result.get('success') else 'failed'} for {generator_type}",
     )
+
+
+async def _dispatch_generation(
+    db: Session,
+    generator_type: str,
+    task,
+    parameters: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Dispatch to the appropriate generator service and return result."""
+    try:
+        if generator_type == "script":
+            return await _generate_script(db, task, parameters)
+        elif generator_type == "storyboard":
+            return await _generate_storyboard(db, task, parameters)
+        elif generator_type == "image":
+            return await _generate_image(db, task, parameters)
+        elif generator_type == "tts":
+            return await _generate_tts(db, task, parameters)
+        elif generator_type == "bgm":
+            return _generate_bgm(db, task, parameters)
+        elif generator_type == "video_composer":
+            return _generate_video(db, task, parameters)
+        return {"success": False, "error": "Unknown generator type"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+async def _generate_script(db, task, params):
+    from ...services.generator_services.script_generator_service import ScriptGeneratorService
+    service = ScriptGeneratorService(db)
+    success = await service.generate(
+        project_id=task.project_id,
+        task_id=task.id,
+        topic=params.get("topic", ""),
+        style=params.get("style", "comic"),
+        duration=params.get("duration", "1-3 minutes"),
+        variant_count=int(params.get("variant_count", 4)),
+    )
+    return {"success": success}
+
+
+async def _generate_storyboard(db, task, params):
+    from ...services.generator_services.storyboard_generator_service import StoryboardGeneratorService
+    from ...providers.llm_provider import llm_provider
+    script_file_id = params.get("script_file_id")
+    if not script_file_id:
+        return {"success": False, "error": "script_file_id required"}
+    service = StoryboardGeneratorService(db)
+    success = await service.generate(
+        project_id=task.project_id,
+        task_id=task.id,
+        script_file_id=UUID(script_file_id),
+        panel_count=int(params.get("panel_count", 6)),
+        variant_count=int(params.get("variant_count", 4)),
+    )
+    return {"success": success}
+
+
+async def _generate_image(db, task, params):
+    from ...services.generator_services.image_generator_service import ImageGeneratorService
+    storyboard_file_id = params.get("storyboard_file_id")
+    prompt = params.get("prompt", "")
+    if not storyboard_file_id or not prompt:
+        return {"success": False, "error": "storyboard_file_id and prompt required"}
+    service = ImageGeneratorService(db)
+    success = await service.generate(
+        project_id=task.project_id,
+        task_id=task.id,
+        storyboard_file_id=UUID(storyboard_file_id),
+        prompt=prompt,
+        negative_prompt=params.get("negative_prompt", ""),
+        variant_count=int(params.get("variant_count", 4)),
+        seed=int(params.get("seed", -1)),
+        steps=int(params.get("steps", 20)),
+        cfg_scale=float(params.get("cfg_scale", 7.0)),
+        width=int(params.get("width", 512)),
+        height=int(params.get("height", 768)),
+    )
+    return {"success": success}
+
+
+async def _generate_tts(db, task, params):
+    from ...services.tts_service import tts_service
+    from ...schemas.file import FileCreate
+    from ...models.file import FileType
+    from ...config import settings
+    from ...db.file_crud import file_crud
+
+    text = params.get("text", "")
+    if not text:
+        return {"success": False, "error": "text required"}
+
+    voice = params.get("voice", "zh-CN-XiaoxiaoNeural")
+    audio_path = await tts_service.synthesize(text, voice=voice)
+    rel_path = str(audio_path.relative_to(settings.storage_path)) if audio_path.is_absolute() else str(audio_path)
+    file_record = file_crud.create(
+        db,
+        obj_in=FileCreate(
+            project_id=task.project_id,
+            task_id=task.id,
+            file_path=rel_path,
+            file_type=FileType.AUDIO,
+            generation_params={"type": "tts", "voice": voice},
+        ),
+    )
+    task.output_file_ids = [str(file_record.id)]
+    db.add(task)
+    db.commit()
+    return {"success": True}
+
+
+def _generate_bgm(db, task, params):
+    from ...services.bgm_service import bgm_service
+    from ...schemas.file import FileCreate
+    from ...models.file import FileType
+    from ...config import settings, STORAGE_DIRS
+    from ...db.file_crud import file_crud
+
+    duration = float(params.get("duration", 30.0))
+    mood = params.get("mood", "ambient")
+    bpm = int(params.get("bpm", 80))
+    audio_path = bgm_service.generate(duration=duration, mood=mood, bpm=bpm)
+    rel_path = str(audio_path.relative_to(settings.storage_path)) if audio_path.is_absolute() else str(audio_path)
+    file_record = file_crud.create(
+        db,
+        obj_in=FileCreate(
+            project_id=task.project_id,
+            task_id=task.id,
+            file_path=rel_path,
+            file_type=FileType.AUDIO,
+            generation_params={"type": "bgm", "mood": mood, "duration": duration, "bpm": bpm},
+        ),
+    )
+    task.output_file_ids = [str(file_record.id)]
+    db.add(task)
+    db.commit()
+    return {"success": True}
+
+
+def _generate_video(db, task, params):
+    from ...services.video_synthesis_service import video_synthesis_service
+    from ...schemas.file import FileCreate
+    from ...models.file import FileType
+    from ...config import settings, STORAGE_DIRS
+    from ...db.file_crud import file_crud
+
+    panels = params.get("panels", [])
+    if not panels:
+        return {"success": False, "error": "panels required"}
+
+    resolution = tuple(params.get("resolution", [1080, 1920]))
+    fps = int(params.get("fps", 24))
+
+    video_path = video_synthesis_service.compose(
+        panels=panels,
+        resolution=resolution,
+        fps=fps,
+    )
+    rel_path = str(video_path.relative_to(settings.storage_path)) if video_path.is_absolute() else str(video_path)
+    file_record = file_crud.create(
+        db,
+        obj_in=FileCreate(
+            project_id=task.project_id,
+            task_id=task.id,
+            file_path=rel_path,
+            file_type=FileType.VIDEO,
+            generation_params={"panels": len(panels), "resolution": resolution, "fps": fps},
+        ),
+    )
+    task.output_file_ids = [str(file_record.id)]
+    db.add(task)
+    db.commit()
+    return {"success": True}

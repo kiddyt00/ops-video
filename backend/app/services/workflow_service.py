@@ -181,10 +181,13 @@ class WorkflowService:
         if generator_type is None:
             generator_type = self.STAGE_GENERATOR_MAP.get(target_stage, target_stage.value)
 
+        # Normalize parameters
+        parameters = parameters or {}
+
         # For audio/video stages, prepare parameters from previous stage data
         if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
             parameters = await self._prepare_stage_parameters(
-                project_id, target_stage, parameters or {}
+                project_id, target_stage, parameters
             )
 
         # Create task for new stage
@@ -209,9 +212,16 @@ class WorkflowService:
             ),
         )
 
-        # Execute generation immediately for audio/video stages if requested
-        if execute and target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
-            await self._execute_generation(target_stage, task, parameters)
+        # Execute generation for all stages if requested
+        if execute:
+            if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
+                await self._execute_generation(target_stage, task, parameters)
+            elif target_stage == TaskStage.SCRIPT:
+                await self._execute_script_generation(task, parameters)
+            elif target_stage == TaskStage.STORYBOARD:
+                await self._execute_storyboard_generation(task, parameters)
+            elif target_stage == TaskStage.IMAGE:
+                await self._execute_image_generation(task, parameters)
 
         return task
 
@@ -297,14 +307,21 @@ class WorkflowService:
 
             # Build panels array for video composition
             num_panels = min(len(image_paths), len(storyboard_data.get("panels", [])))
+
+            # Load SFX paths from audio task if available
+            sfx_path_map = self._get_sfx_path_map(project_id)
+
             for i in range(num_panels):
                 panel_data = storyboard_data["panels"][i] if i < len(storyboard_data.get("panels", [])) else {}
-                panels.append({
+                panel = {
                     "image_path": image_paths[i] if i < len(image_paths) else None,
                     "audio_path": tts_paths[i] if i < len(tts_paths) else None,
                     "duration": panel_data.get("duration", 3.0),
                     "text": panel_data.get("text", ""),
-                })
+                }
+                if i in sfx_path_map:
+                    panel["sfx_path"] = sfx_path_map[i]
+                panels.append(panel)
 
             return {
                 "panels": panels,
@@ -332,6 +349,17 @@ class WorkflowService:
             input_files.extend(stage_data["selected_files"])
 
         return input_files
+
+    def _get_sfx_path_map(self, project_id: UUID) -> Dict[int, str]:
+        """Load SFX file paths from the completed audio task."""
+        tasks = task_crud.get_all(self.db, project_id=project_id)
+        audio_tasks = [t for t in tasks if t.stage == TaskStage.AUDIO and t.status == TaskStatus.COMPLETED]
+        if not audio_tasks:
+            return {}
+
+        audio_task = max(audio_tasks, key=lambda t: t.created_at)
+        params = audio_task.parameters or {}
+        return {int(k): v for k, v in params.get("sfx_paths", {}).items()}
 
     async def _execute_generation(
         self,
@@ -361,6 +389,8 @@ class WorkflowService:
                 task_id=task.id,
                 obj_in=TaskStatusUpdate(status=TaskStatus.COMPLETED),
             )
+            # Auto-select first generated file
+            self._auto_select_first_file(task.id)
 
         except Exception as e:
             # Update task status to failed
@@ -379,9 +409,10 @@ class WorkflowService:
         task: Task,
         parameters: Dict[str, Any],
     ):
-        """Execute audio generation (TTS + BGM)."""
+        """Execute audio generation (TTS + BGM + SFX)."""
         from .tts_service import tts_service
         from .bgm_service import bgm_service
+        from .sfx_service import sfx_service
         from ..schemas.file import FileCreate
 
         texts = parameters.get("texts", [])
@@ -390,7 +421,18 @@ class WorkflowService:
         generate_bgm = parameters.get("generate_bgm", True)
         bgm_mood = parameters.get("bgm_mood", "ambient")
 
+        # SFX: default to one whoosh per panel, or explicit types from parameters
+        sfx_types = parameters.get("sfx_types", None)
+        if sfx_types is None:
+            sfx_types = ["whoosh"] * len(panels) if panels else []
+
+        # Find variant group for this task
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
+
         file_ids = []
+        sfx_path_map = {}  # panel_index -> sfx_path
 
         # Generate TTS for each text
         for i, text in enumerate(texts):
@@ -402,6 +444,7 @@ class WorkflowService:
                     obj_in=FileCreate(
                         project_id=task.project_id,
                         task_id=task.id,
+                        variant_group_id=variant_group.id if variant_group else None,
                         file_path=rel_path,
                         file_type=FileType.AUDIO,
                         generation_params={"type": "tts", "panel_index": i, "voice": voice},
@@ -422,12 +465,47 @@ class WorkflowService:
                 obj_in=FileCreate(
                     project_id=task.project_id,
                     task_id=task.id,
+                    variant_group_id=variant_group.id if variant_group else None,
                     file_path=rel_path,
                     file_type=FileType.AUDIO,
                     generation_params={"type": "bgm", "mood": bgm_mood, "duration": total_duration},
                 ),
             )
             file_ids.append(str(file_record.id))
+
+        # Generate SFX for each panel
+        for i, sfx_type in enumerate(sfx_types):
+            if not sfx_type:
+                continue
+            panel_duration = panels[i].get("duration", 3.0) if i < len(panels) else 1.0
+            sfx_path = sfx_service.generate(
+                sfx_type=sfx_type,
+                duration=panel_duration,
+                output_filename=f"sfx_panel_{i}_{sfx_type}_{task.id}.wav",
+            )
+            rel_path = str(sfx_path.relative_to(settings.storage_path)) if sfx_path.is_absolute() else str(sfx_path)
+            file_record = file_crud.create(
+                self.db,
+                obj_in=FileCreate(
+                    project_id=task.project_id,
+                    task_id=task.id,
+                    variant_group_id=variant_group.id if variant_group else None,
+                    file_path=rel_path,
+                    file_type=FileType.AUDIO,
+                    generation_params={"type": "sfx", "sfx_type": sfx_type, "panel_index": i},
+                ),
+            )
+            sfx_path_map[i] = str(sfx_path)
+            file_ids.append(str(file_record.id))
+
+        # Attach SFX paths to panel data for video_composer
+        for i, panel in enumerate(panels):
+            if i in sfx_path_map:
+                panel["sfx_path"] = sfx_path_map[i]
+
+        # Save SFX paths to task parameters for video stage to retrieve
+        task.parameters = {**task.parameters, "sfx_paths": {str(k): v for k, v in sfx_path_map.items()}}
+        self.db.add(task)
 
         task.output_file_ids = file_ids
 
@@ -440,6 +518,11 @@ class WorkflowService:
         from .video_synthesis_service import video_synthesis_service
         from .bgm_service import bgm_service
         from ..schemas.file import FileCreate
+
+        # Find variant group for this task
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
 
         panels = parameters.get("panels", [])
         resolution = tuple(parameters.get("resolution", [1080, 1920]))
@@ -470,12 +553,161 @@ class WorkflowService:
             obj_in=FileCreate(
                 project_id=task.project_id,
                 task_id=task.id,
+                variant_group_id=variant_group.id if variant_group else None,
                 file_path=rel_path,
                 file_type=FileType.VIDEO,
                 generation_params={"panels": len(panels), "resolution": resolution, "fps": fps},
             ),
         )
         task.output_file_ids = [str(file_record.id)]
+
+    def _auto_select_first_file(self, task_id: UUID):
+        """Auto-select the first generated file in a task's variant group."""
+        variant_groups = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task_id
+        ).all()
+
+        for vg in variant_groups:
+            if vg.selected_file_id is None:
+                files = self.db.query(File).filter(
+                    File.variant_group_id == vg.id
+                ).all()
+                if files:
+                    vg.selected_file_id = files[0].id
+                    files[0].is_selected = True
+                    files[0].selected_at = datetime.utcnow()
+                    self.db.add(vg)
+                    self.db.add(files[0])
+
+        self.db.flush()
+
+    async def _execute_script_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute script generation using ScriptGeneratorService."""
+        from .generator_services.script_generator_service import ScriptGeneratorService
+
+        topic = parameters.get("topic")
+        if not topic:
+            raise WorkflowError("Script generation requires 'topic' parameter")
+
+        style = parameters.get("style", "comic")
+        duration = parameters.get("duration", "1-3 minutes")
+        variant_count = int(parameters.get("variant_count", 4))
+
+        service = ScriptGeneratorService(self.db)
+        success = await service.generate(
+            project_id=task.project_id,
+            task_id=task.id,
+            topic=topic,
+            style=style,
+            duration=duration,
+            variant_count=variant_count,
+        )
+        if not success:
+            raise WorkflowError("Script generation failed")
+
+        # Auto-select first generated file so next stage can proceed
+        self._auto_select_first_file(task.id)
+
+    async def _execute_storyboard_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute storyboard generation using StoryboardGeneratorService."""
+        from .generator_services.storyboard_generator_service import StoryboardGeneratorService
+
+        stages_status = self.get_project_stages(task.project_id)
+        script_files = stages_status.get("script", {}).get("selected_files", [])
+        if not script_files:
+            raise WorkflowError(
+                "Storyboard generation requires a completed script stage with a selected file"
+            )
+
+        script_file_id = UUID(script_files[0]["file_id"])
+        panel_count = int(parameters.get("panel_count", 6))
+        variant_count = int(parameters.get("variant_count", 4))
+
+        service = StoryboardGeneratorService(self.db)
+        success = await service.generate(
+            project_id=task.project_id,
+            task_id=task.id,
+            script_file_id=script_file_id,
+            panel_count=panel_count,
+            variant_count=variant_count,
+        )
+        if not success:
+            raise WorkflowError("Storyboard generation failed")
+
+        self._auto_select_first_file(task.id)
+
+    async def _execute_image_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute image generation using ImageGeneratorService."""
+        from .generator_services.image_generator_service import ImageGeneratorService
+
+        stages_status = self.get_project_stages(task.project_id)
+        storyboard_files = stages_status.get("storyboard", {}).get("selected_files", [])
+        if not storyboard_files:
+            raise WorkflowError(
+                "Image generation requires a completed storyboard stage with a selected file"
+            )
+
+        storyboard_file_id = UUID(storyboard_files[0]["file_id"])
+        prompt = parameters.get("prompt", "")
+        if not prompt:
+            # Try to infer prompt from storyboard content
+            file_record = file_crud.get(self.db, file_id=storyboard_file_id)
+            if file_record:
+                storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                if storyboard_path.exists():
+                    import json
+                    storyboard_data = json.loads(storyboard_path.read_text())
+                    panels = storyboard_data.get("panels", [])
+                    # Build prompt from first panel description
+                    if panels:
+                        first_panel = panels[0]
+                        prompt = first_panel.get("scene_description", first_panel.get("description", ""))
+                    if not prompt:
+                        prompt = str(storyboard_path.read_text()[:500])
+
+        if not prompt:
+            raise WorkflowError(
+                "Image generation requires 'prompt' parameter or valid storyboard content"
+            )
+
+        negative_prompt = parameters.get("negative_prompt", "")
+        variant_count = int(parameters.get("variant_count", 4))
+        width = int(parameters.get("width", 512))
+        height = int(parameters.get("height", 768))
+        steps = int(parameters.get("steps", 20))
+        cfg_scale = float(parameters.get("cfg_scale", 7.0))
+        seed = int(parameters.get("seed", -1))
+
+        service = ImageGeneratorService(self.db)
+        success = await service.generate(
+            project_id=task.project_id,
+            task_id=task.id,
+            storyboard_file_id=storyboard_file_id,
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            variant_count=variant_count,
+            seed=seed,
+            steps=steps,
+            cfg_scale=cfg_scale,
+            width=width,
+            height=height,
+        )
+        if not success:
+            raise WorkflowError("Image generation failed")
+
+        self._auto_select_first_file(task.id)
 
     async def rollback_stage(
         self,
