@@ -51,6 +51,21 @@ class Settings(BaseSettings):
             "http://127.0.0.1:3000",
         ]
 
+    # Redis (optional)
+    REDIS_URL: str = Field(
+        default="",
+        description="Redis connection URL (redis://localhost:6379/0)"
+    )
+
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"  # json or text
+    LOG_DIR: str = "./logs"
+
+    @property
+    def log_path(self) -> Path:
+        return Path(self.LOG_DIR).resolve()
+
     class Config:
         env_file = ".env"
         case_sensitive = True

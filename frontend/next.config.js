@@ -2,6 +2,14 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  compiler: {
+    // Enable removal of console logs in production
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  experimental: {
+    // Enable large page optimization
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog'],
+  },
   images: {
     remotePatterns: [
       {
