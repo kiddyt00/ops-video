@@ -10,3 +10,8 @@ python-multipart==0.0.6
 httpx==0.26.0
 aiofiles==23.2.1
 uuid7==0.1.0
+
+# Phase 6: Audio/Video
+edge-tts==6.1.14
+numpy==1.26.3
+scipy==1.12.0

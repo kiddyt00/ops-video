@@ -107,6 +107,26 @@ class TestGeneratorServices:
         from app.services.generator_services import ImageGeneratorService
         assert ImageGeneratorService is not None
 
+    def test_tts_service_import(self):
+        """Test TTSService can be imported"""
+        from app.services.tts_service import TTSService
+        assert TTSService is not None
+
+    def test_bgm_service_import(self):
+        """Test BGMService can be imported"""
+        from app.services.bgm_service import bgm_service
+        assert bgm_service is not None
+
+    def test_sfx_service_import(self):
+        """Test SFXService can be imported"""
+        from app.services.sfx_service import sfx_service
+        assert sfx_service is not None
+
+    def test_video_synthesis_service_import(self):
+        """Test VideoSynthesisService can be imported"""
+        from app.services.video_synthesis_service import VideoSynthesisService
+        assert VideoSynthesisService is not None
+
 
 class TestModels:
     """Test models are correctly defined"""
