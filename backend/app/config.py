@@ -57,6 +57,18 @@ class Settings(BaseSettings):
         description="Redis connection URL (redis://localhost:6379/0)"
     )
 
+    # Image Generation Provider
+    # Options: COMFYUI (local), DASHSCOPE (通义万相), SILICONFLOW (FLUX.1)
+    IMAGE_PROVIDER: str = "COMFYUI"
+
+    # DashScope (通义万相) API
+    DASHSCOPE_API_KEY: str = ""
+    DASHSCOPE_MODEL: str = "wanx-v1"  # wanx-v1 or wanx-v2
+
+    # SiliconFlow API (OpenAI-compatible /images/generations)
+    SILICONFLOW_API_KEY: str = ""
+    SILICONFLOW_MODEL: str = "black-forest-labs/FLUX.1-schnell"
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
