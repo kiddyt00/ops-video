@@ -20,14 +20,6 @@ class Settings(BaseSettings):
         description="PostgreSQL connection URL"
     )
 
-    # ComfyUI
-    COMFYUI_HOST: str = "localhost"
-    COMFYUI_PORT: int = 8188
-
-    @property
-    def comfyui_url(self) -> str:
-        return f"http://{self.COMFYUI_HOST}:{self.COMFYUI_PORT}"
-
     # LLM (optional)
     LLM_API_KEY: str = ""
     LLM_API_BASE_URL: str = "http://localhost:11434/v1"
@@ -58,11 +50,11 @@ class Settings(BaseSettings):
     )
 
     # Image Generation Provider
-    # Options: COMFYUI (local), DASHSCOPE (通义万相), SILICONFLOW (FLUX.1)
-    IMAGE_PROVIDER: str = "COMFYUI"
+    # Options: DASHSCOPE (通义万相), SILICONFLOW (FLUX.1)
+    IMAGE_PROVIDER: str = "DASHSCOPE"
 
     # DashScope (通义万相) API
-    DASHSCOPE_API_KEY: str = ""
+    DASHSCOPE_API_KEY: str = "sk-b8bd0f8077764c59b948c503cf1ee5f7"
     DASHSCOPE_MODEL: str = "wanx-v1"  # wanx-v1 or wanx-v2
 
     # SiliconFlow API (OpenAI-compatible /images/generations)

@@ -40,8 +40,8 @@ GENERATORS = {
     ),
     "image": GeneratorInfo(
         name="Image Generator",
-        type="comfyui",
-        description="Generate manga-style images using ComfyUI",
+        type="wanx",
+        description="Generate manga-style images using 通义万相 (DashScope Wanx)",
         parameters={
             "prompt": {"type": "string", "required": True, "description": "Image prompt"},
             "negative_prompt": {"type": "string", "required": False, "default": ""},
@@ -122,6 +122,9 @@ async def generate(
         "script": TaskStage.SCRIPT,
         "storyboard": TaskStage.STORYBOARD,
         "image": TaskStage.IMAGE,
+        "tts": TaskStage.AUDIO,
+        "bgm": TaskStage.AUDIO,
+        "video_composer": TaskStage.VIDEO,
     }
 
     stage = stage_map.get(generator_type)

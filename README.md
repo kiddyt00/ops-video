@@ -6,7 +6,7 @@
 
 - **文生脚本**: 根据主题自动生成剧本
 - **文生分镜**: 根据脚本生成分镜描述
-- **文生图**: 根据分镜生成漫画风格图片（支持 ComfyUI）
+- **文生图**: 根据分镜生成漫画风格图片（支持通义万相 / SiliconFlow）
 - **多结果选择**: 每步骤生成多个变体，用户可选择最佳结果
 - **追溯系统**: 记录所有生成参数、版本、任务历史
 
@@ -16,7 +16,7 @@
 - FastAPI (Python)
 - PostgreSQL + SQLAlchemy
 - Alembic (数据库迁移)
-- ComfyUI (图片生成)
+- 通义万相 DashScope (图片生成)
 
 ### 前端
 - Next.js 14 (React)
@@ -36,7 +36,7 @@
 - Docker & Docker Compose
 - Node.js 20+ (本地开发)
 - Python 3.11+ (本地开发)
-- ComfyUI (可选，用于图片生成)
+- 通义万相 DashScope (图片生成，可选)
 
 ### 使用 Docker Compose 启动
 
@@ -138,7 +138,7 @@ ops-video/
 ### Phase 2: 核心功能
 - [ ] 文生脚本 (LLM)
 - [ ] 文生分镜 (LLM)
-- [ ] 文生图 (ComfyUI)
+- [ ] 文生图 (通义万相)
 - [ ] 变体选择机制
 
 ### Phase 3: 工作流

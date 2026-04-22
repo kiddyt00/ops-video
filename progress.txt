@@ -6,3 +6,4 @@
 [2024-01-15 15:00] Phase 6 - 音频与视频合成 ✅
 [2026-04-22 10:00] Phase 12 - 多提供商图片生成 (ComfyUI/DashScope/SiliconFlow) ✅
 [2026-04-22 09:00] Phase 7 - 集成 Phase 6 服务到 workflow engine - 待开始
+[2026-04-23 10:00] Phase 13 - 移除 ComfyUI，切换通义万相为默认图片 Provider，完善 workflow stage_map ✅

@@ -3,7 +3,7 @@ Workflow Service - Core workflow engine
 
 Integrates all generation services:
 - Script/Storyboard (LLM)
-- Image (ComfyUI)
+- Image (通义万相 Wanx)
 - Audio (TTS via edge-tts, BGM via scipy)
 - Video (FFmpeg composition)
 """
@@ -21,7 +21,7 @@ from ..db.file_crud import file_crud, variant_group_crud
 from ..db.project_crud import project_crud
 from ..schemas.task import TaskCreate, TaskStatusUpdate
 from ..schemas.file import VariantGroupCreate
-from ..config import STORAGE_DIRS
+from ..config import STORAGE_DIRS, settings
 
 
 class WorkflowError(Exception):
@@ -382,6 +382,7 @@ class WorkflowService:
         """Execute audio generation (TTS + BGM)."""
         from .tts_service import tts_service
         from .bgm_service import bgm_service
+        from ..schemas.file import FileCreate
 
         texts = parameters.get("texts", [])
         panels = parameters.get("panels", [])
@@ -389,17 +390,24 @@ class WorkflowService:
         generate_bgm = parameters.get("generate_bgm", True)
         bgm_mood = parameters.get("bgm_mood", "ambient")
 
-        audio_files = []
+        file_ids = []
 
         # Generate TTS for each text
         for i, text in enumerate(texts):
             if text:
                 tts_path = await tts_service.synthesize(text, voice=voice)
-                audio_files.append({
-                    "type": "tts",
-                    "panel_index": i,
-                    "path": str(tts_path),
-                })
+                rel_path = str(tts_path.relative_to(settings.storage_path)) if tts_path.is_absolute() else str(tts_path)
+                file_record = file_crud.create(
+                    self.db,
+                    obj_in=FileCreate(
+                        project_id=task.project_id,
+                        task_id=task.id,
+                        file_path=rel_path,
+                        file_type=FileType.AUDIO,
+                        generation_params={"type": "tts", "panel_index": i, "voice": voice},
+                    ),
+                )
+                file_ids.append(str(file_record.id))
 
         # Generate BGM
         if generate_bgm:
@@ -408,13 +416,20 @@ class WorkflowService:
                 duration=total_duration,
                 mood=bgm_mood,
             )
-            audio_files.append({
-                "type": "bgm",
-                "path": str(bgm_path),
-            })
+            rel_path = str(bgm_path.relative_to(settings.storage_path)) if bgm_path.is_absolute() else str(bgm_path)
+            file_record = file_crud.create(
+                self.db,
+                obj_in=FileCreate(
+                    project_id=task.project_id,
+                    task_id=task.id,
+                    file_path=rel_path,
+                    file_type=FileType.AUDIO,
+                    generation_params={"type": "bgm", "mood": bgm_mood, "duration": total_duration},
+                ),
+            )
+            file_ids.append(str(file_record.id))
 
-        # Store audio file paths in task
-        task.output_file_ids = [str(f["path"]) for f in audio_files]
+        task.output_file_ids = file_ids
 
     async def _execute_video_generation(
         self,
@@ -424,6 +439,7 @@ class WorkflowService:
         """Execute video composition."""
         from .video_synthesis_service import video_synthesis_service
         from .bgm_service import bgm_service
+        from ..schemas.file import FileCreate
 
         panels = parameters.get("panels", [])
         resolution = tuple(parameters.get("resolution", [1080, 1920]))
@@ -448,8 +464,18 @@ class WorkflowService:
             fps=fps,
         )
 
-        # Store video file path in task
-        task.output_file_ids = [str(video_path)]
+        rel_path = str(video_path.relative_to(settings.storage_path)) if video_path.is_absolute() else str(video_path)
+        file_record = file_crud.create(
+            self.db,
+            obj_in=FileCreate(
+                project_id=task.project_id,
+                task_id=task.id,
+                file_path=rel_path,
+                file_type=FileType.VIDEO,
+                generation_params={"panels": len(panels), "resolution": resolution, "fps": fps},
+            ),
+        )
+        task.output_file_ids = [str(file_record.id)]
 
     async def rollback_stage(
         self,

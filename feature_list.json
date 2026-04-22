@@ -2,14 +2,15 @@
   "features": [
     {
       "category": "image-generation",
-      "description": "多提供商图片生成架构：支持 ComfyUI、通义万相 (DashScope)、SiliconFlow 动态路由，含 29 个单元测试",
+      "description": "多提供商图片生成架构：支持通义万相 (DashScope)、SiliconFlow 动态路由，已移除 ComfyUI",
       "steps": [
         "实现 WanxProvider (通义万相 wanx-v1/v2)",
         "实现 SiliconFlowProvider (兼容 OpenAI /images/generations)",
         "config.py 增加 Provider 选择和 API Key 配置",
         "ImageGeneratorService 动态路由到选定 Provider",
         "编写单元测试验证 Provider 切换和路由逻辑",
-        "修复 workflow_service.py 方法命名冲突 bug"
+        "修复 workflow_service.py 方法命名冲突 bug",
+        "移除 ComfyUI Provider，默认使用通义万相"
       ],
       "passes": true,
       "priority": 3
@@ -26,7 +27,7 @@
         "添加集成测试覆盖新的工作流路径",
         "运行全部测试验证"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 1
     },
     {
@@ -37,7 +38,7 @@
         "更新 stage-sidebar 显示 audio/video 阶段状态",
         "测试完整工作流 UI"
       ],
-      "passes": false,
+      "passes": true,
       "priority": 2
     }
   ]

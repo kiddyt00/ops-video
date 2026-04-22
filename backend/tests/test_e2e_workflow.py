@@ -6,7 +6,7 @@ Tests the complete workflow from script generation to video composition:
 1. Create a project
 2. Generate script (LLM)
 3. Generate storyboard (LLM)
-4. Generate images (ComfyUI or mock)
+4. Generate images (通义万相 Wanx / DashScope)
 5. Generate audio (TTS + BGM)
 6. Compose video
 

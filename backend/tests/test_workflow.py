@@ -64,7 +64,7 @@ class TestAPIRoutes:
         assert "image" in GENERATORS
 
         assert GENERATORS["script"].name == "Script Generator"
-        assert GENERATORS["image"].type == "comfyui"
+        assert GENERATORS["image"].type == "wanx"
 
 
 class TestProviders:
@@ -75,12 +75,6 @@ class TestProviders:
         from app.providers.llm_provider import llm_provider, LLMProvider
         assert llm_provider is not None
         assert LLMProvider is not None
-
-    def test_comfyui_provider_import(self):
-        """Test ComfyUIProvider can be imported"""
-        from app.providers.stable_diffusion_provider import comfyui_provider, ComfyUIProvider
-        assert comfyui_provider is not None
-        assert ComfyUIProvider is not None
 
     def test_base_provider_import(self):
         """Test BaseProvider can be imported"""

@@ -13,37 +13,12 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.providers.base_provider import BaseProvider, GenerationResult
-from app.providers.stable_diffusion_provider import ComfyUIProvider
 from app.providers.wanx_provider import WanxProvider
 from app.providers.siliconflow_provider import SiliconFlowProvider
 from app.services.generator_services.image_generator_service import get_image_provider
 
 
 # ─── Provider Base Tests ─────────────────────────────────────────────
-
-class TestComfyUIProvider:
-    """Test ComfyUI provider interface."""
-
-    def test_name(self):
-        p = ComfyUIProvider()
-        assert p.name == "ComfyUI"
-
-    def test_description(self):
-        p = ComfyUIProvider()
-        assert "ComfyUI" in p.description
-
-    def test_validate_parameters_missing_prompt(self):
-        p = ComfyUIProvider()
-        assert p.validate_parameters({}) is False
-
-    def test_validate_parameters_with_prompt(self):
-        p = ComfyUIProvider()
-        assert p.validate_parameters({"prompt": "a cat"}) is True
-
-    def test_base_url_from_host_port(self):
-        p = ComfyUIProvider(host="myhost", port=9000)
-        assert p.base_url == "http://myhost:9000"
-
 
 class TestWanxProvider:
     """Test DashScope Wanx provider interface."""
@@ -126,12 +101,6 @@ class TestProviderRouting:
     """Test dynamic provider routing based on config."""
 
     @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_comfyui(self, mock_settings):
-        mock_settings.IMAGE_PROVIDER = "COMFYUI"
-        provider = get_image_provider()
-        assert isinstance(provider, ComfyUIProvider)
-
-    @patch("app.services.generator_services.image_generator_service.settings")
     def test_get_image_provider_dashscope(self, mock_settings):
         mock_settings.IMAGE_PROVIDER = "DASHSCOPE"
         provider = get_image_provider()
@@ -144,16 +113,16 @@ class TestProviderRouting:
         assert isinstance(provider, SiliconFlowProvider)
 
     @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_unknown_defaults_to_comfyui(self, mock_settings):
+    def test_get_image_provider_unknown_defaults_to_dashscope(self, mock_settings):
         mock_settings.IMAGE_PROVIDER = "UNKNOWN"
         provider = get_image_provider()
-        assert isinstance(provider, ComfyUIProvider)
+        assert isinstance(provider, WanxProvider)
 
     @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_empty_defaults_to_comfyui(self, mock_settings):
+    def test_get_image_provider_empty_defaults_to_dashscope(self, mock_settings):
         mock_settings.IMAGE_PROVIDER = ""
         provider = get_image_provider()
-        assert isinstance(provider, ComfyUIProvider)
+        assert isinstance(provider, WanxProvider)
 
 
 # ─── GenerationResult Tests ──────────────────────────────────────────

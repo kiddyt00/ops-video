@@ -1,6 +1,6 @@
 """
 Image Generator Service
-Routes to the configured provider: COMFYUI, DASHSCOPE, or SILICONFLOW.
+Routes to the configured provider: DASHSCOPE or SILICONFLOW.
 """
 from uuid import UUID
 from typing import Optional, List, Any
@@ -11,7 +11,6 @@ from ...db.task_crud import task_crud
 from ...db.file_crud import file_crud, variant_group_crud
 from ...db.project_crud import project_crud
 from ...providers.base_provider import BaseProvider, GenerationResult
-from ...providers.stable_diffusion_provider import ComfyUIProvider, comfyui_provider
 from ...providers.wanx_provider import WanxProvider, wanx_provider
 from ...providers.siliconflow_provider import SiliconFlowProvider, siliconflow_provider
 from ...schemas.task import TaskStatusUpdate, TaskStatus
@@ -22,11 +21,10 @@ from ...config import settings
 def get_image_provider() -> BaseProvider:
     """Return the configured image generation provider."""
     provider_map = {
-        "COMFYUI": comfyui_provider,
         "DASHSCOPE": wanx_provider,
         "SILICONFLOW": siliconflow_provider,
     }
-    return provider_map.get(settings.IMAGE_PROVIDER, comfyui_provider)
+    return provider_map.get(settings.IMAGE_PROVIDER, wanx_provider)
 
 
 class ImageGeneratorService:
