@@ -98,7 +98,7 @@ class ScriptGeneratorService:
                                 "seed": seed,
                                 "variant_index": i,
                             },
-                            extra_info=result.metadata,
+                            extra_info=result.metadata if result.metadata else {},
                         ),
                     )
                     file_ids.append(str(file_record.id))

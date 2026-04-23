@@ -129,7 +129,7 @@ class ImageGeneratorService:
                                     "height": height,
                                     "variant_index": i,
                                 },
-                                metadata=result.metadata,
+                                extra_info=result.metadata if hasattr(result, 'metadata') else {},
                             ),
                         )
                         file_ids.append(str(file_record.id))

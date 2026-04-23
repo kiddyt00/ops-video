@@ -61,12 +61,26 @@ def get_workflow_history(
     }
 
 
+from ...schemas.task import TaskResponse
+from pydantic import BaseModel
+from typing import Any, Dict, Optional
+
+
+class WorkflowAdvanceRequest(BaseModel):
+    generator_type: Optional[str] = None
+    parameters: Optional[Dict[str, Any]] = None
+    execute: bool = True
+
+
+class WorkflowAdvanceToStageRequest(BaseModel):
+    parameters: Optional[Dict[str, Any]] = None
+    execute: bool = True
+
+
 @router.post("/{project_id}/advance", response_model=TaskResponse)
 async def advance_workflow(
     project_id: UUID,
-    parameters: Optional[Dict[str, Any]] = None,
-    generator_type: Optional[str] = None,
-    execute: bool = False,
+    request: WorkflowAdvanceRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -83,9 +97,9 @@ async def advance_workflow(
     try:
         task = await workflow.advance_stage(
             project_id=project_id,
-            generator_type=generator_type,
-            parameters=parameters,
-            execute=execute,
+            generator_type=request.generator_type,
+            parameters=request.parameters,
+            execute=request.execute,
         )
         return task
     except Exception as e:
@@ -99,9 +113,8 @@ async def advance_workflow(
 async def advance_to_stage(
     project_id: UUID,
     target_stage: str,
-    parameters: Optional[Dict[str, Any]] = None,
-    execute: bool = False,
-    db: Session = Depends(get_db)
+    request: WorkflowAdvanceToStageRequest,
+    db: Session = Depends(get_db),
 ):
     """
     Advance workflow to a specific stage
@@ -130,8 +143,8 @@ async def advance_to_stage(
         task = await workflow.advance_stage(
             project_id=project_id,
             target_stage=stage_map[target_stage],
-            parameters=parameters,
-            execute=execute,
+            parameters=request.parameters,
+            execute=request.execute,
         )
         return task
     except Exception as e:
