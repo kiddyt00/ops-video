@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ParameterPanel } from '@/components/parameter-panel'
 import { MediaPreviews } from '@/components/media-previews'
+import { ArtifactViewer } from '@/components/artifact-viewer'
 import { type TaskStage, type Task } from '@/types/task'
 import type { FileRecord } from '@/lib/api/files'
 
@@ -214,6 +215,11 @@ export function WorkflowWaterfall({
                         />
                       </CardContent>
                     </Card>
+
+                    {/* Artifacts */}
+                    {files && files.length > 0 && (
+                      <ArtifactViewer stage={key} files={files} />
+                    )}
                   </div>
                 )}
 
