@@ -21,6 +21,8 @@ class WanxProvider(BaseProvider):
     MODEL_MAPPING = {
         "wanx-v1": "wanx-v1",
         "wanx-v2": "wanx-v2",
+        "wanx2.1-t2i-turbo": "wanx2.1-t2i-turbo",
+        "wanx2.1-t2i-plus": "wanx2.1-t2i-plus",
     }
 
     def __init__(

@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # DashScope (通义万相) API
     DASHSCOPE_API_KEY: str = "sk-b8bd0f8077764c59b948c503cf1ee5f7"
-    DASHSCOPE_MODEL: str = "wanx-v1"  # wanx-v1 or wanx-v2
+    DASHSCOPE_MODEL: str = "wanx2.1-t2i-turbo"  # wanx-v1 or wanx-v2
 
     # SiliconFlow API (OpenAI-compatible /images/generations)
     SILICONFLOW_API_KEY: str = ""
