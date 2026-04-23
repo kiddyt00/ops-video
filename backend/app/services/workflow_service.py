@@ -52,6 +52,11 @@ class WorkflowService:
         TaskStage.VIDEO: "video_composer",
     }
 
+    # Reverse map: generator_type -> TaskStage
+    _GENERATOR_TO_STAGE: Dict[str, TaskStage] = {
+        v: k for k, v in STAGE_GENERATOR_MAP.items()
+    }
+
     def __init__(self, db: Session):
         self.db = db
 
@@ -158,14 +163,23 @@ class WorkflowService:
 
         # Determine target stage
         if target_stage is None:
-            current_stage = self.get_current_stage(project_id)
-            if current_stage is None:
-                target_stage = TaskStage.SCRIPT
+            # If generator_type is provided, derive target_stage from it
+            if generator_type:
+                target_stage = self._GENERATOR_TO_STAGE.get(generator_type)
+                if target_stage is None:
+                    raise WorkflowError(
+                        f"Unknown generator_type: {generator_type}. "
+                        f"Valid types: {list(self._GENERATOR_TO_STAGE.keys())}"
+                    )
             else:
-                target_stage = self.get_next_stage(current_stage)
+                current_stage = self.get_current_stage(project_id)
+                if current_stage is None:
+                    target_stage = TaskStage.SCRIPT
+                else:
+                    target_stage = self.get_next_stage(current_stage)
 
-            if target_stage is None:
-                raise WorkflowError("Workflow already at final stage")
+                if target_stage is None:
+                    raise WorkflowError("Workflow already at final stage")
 
         # Validate prerequisites
         if not self.can_advance_to(project_id, target_stage):
@@ -214,14 +228,26 @@ class WorkflowService:
 
         # Execute generation for all stages if requested
         if execute:
-            if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
-                await self._execute_generation(target_stage, task, parameters)
-            elif target_stage == TaskStage.SCRIPT:
-                await self._execute_script_generation(task, parameters)
-            elif target_stage == TaskStage.STORYBOARD:
-                await self._execute_storyboard_generation(task, parameters)
-            elif target_stage == TaskStage.IMAGE:
-                await self._execute_image_generation(task, parameters)
+            try:
+                if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
+                    await self._execute_generation(target_stage, task, parameters)
+                elif target_stage == TaskStage.SCRIPT:
+                    await self._execute_script_generation(task, parameters)
+                elif target_stage == TaskStage.STORYBOARD:
+                    await self._execute_storyboard_generation(task, parameters)
+                elif target_stage == TaskStage.IMAGE:
+                    await self._execute_image_generation(task, parameters)
+            except Exception as e:
+                task_crud.update_status(
+                    self.db,
+                    task_id=task.id,
+                    obj_in=TaskStatusUpdate(
+                        status=TaskStatus.FAILED,
+                        reason=str(e),
+                    ),
+                )
+                self.db.commit()
+                raise
 
         return task
 
