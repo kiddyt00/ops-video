@@ -3,10 +3,13 @@ VariantGroup and File CRUD operations
 """
 from uuid import UUID
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy.orm import Session
 from ..models.file import File, FileType, VariantGroup
 from ..schemas.file import FileCreate, VariantGroupCreate, VariantSelect
+
+if TYPE_CHECKING:
+    from ..services.video_analyzer import VideoAnalyzer
 
 
 class VariantGroupCRUD:
@@ -119,7 +122,30 @@ class FileCRUD:
         db.add(file)
         db.commit()
         db.refresh(file)
+
+        # Auto-analyze video files
+        if file.file_type == FileType.VIDEO:
+            self._analyze_video_async(db, file)
+
         return file
+
+    def _analyze_video_async(self, db: Session, file: File):
+        """Analyze video file in background"""
+        # Lazy import to avoid circular dependency
+        from ..config import settings
+        from pathlib import Path
+        from ..services.video_analyzer import VideoAnalyzer
+
+        file_path = settings.storage_path / file.file_path
+
+        if file_path.exists():
+            video_info = VideoAnalyzer.analyze(str(file_path))
+            if video_info:
+                extra_info = file.extra_info or {}
+                extra_info["video_stats"] = video_info.to_dict()
+                file.extra_info = extra_info
+                db.add(file)
+                db.commit()
 
     def update(self, db: Session, *, file_id: UUID, obj_in: dict) -> Optional[File]:
         """Update file"""

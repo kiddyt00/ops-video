@@ -89,17 +89,101 @@
   - 后端：/health 端点检查
   - 前端：wget 检查
   - PostgreSQL: pg_isready 检查
+- **Commit**: `853e409`
+
+### Phase 10: 性能优化与监控 ✅
+- **Redis 缓存集成**:
+  - Redis 客户端封装（app/core/redis.py）
+  - 缓存装饰器用于函数结果缓存
+  - 启动/关闭生命周期管理
+- **结构化日志系统**:
+  - JSON 格式日志（python-json-logger）
+  - 自定义 Formatter（时间戳、位置信息）
+  - Request 中间件（X-Request-ID、X-Process-Time）
+  - 日志轮转（10MB，5 个备份）
+- **健康检查增强**:
+  - /health: 综合状态检查（数据库、Redis）
+  - /ready: 就绪探针（k8s 适用）
+  - 降级状态支持
+- **前端代码分割**:
+  - Dynamic import 工具（lib/dynamic-import.ts）
+  - Next.js 配置：removeConsole、optimizePackageImports
+- **Commit**: 本次
+
+### Phase 11: 安全与权限管理 ✅
+- **JWT 认证系统**:
+  - User 模型（email/username/password/role）
+  - RefreshToken 模型用于 Token 轮换
+  - JWT 工具：Token 生成/解码、密码哈希
+  - 认证路由：/register, /login, /refresh, /me, /logout
+- **路由权限保护**:
+  - get_current_user 依赖注入
+  - get_current_admin_user 管理员专属
+  - require_role 装饰器工厂
+  - 可选用户认证支持
+- **API Rate Limiting**:
+  - 基于 Redis 的滑动窗口限流
+  - 每用户或每 IP 维度限制
+  - 60 请求/分钟默认，100 爆发
+  - X-RateLimit-* 响应头
+- **安全中间件**:
+  - 安全 Headers（CSP, HSTS, X-Frame-Options）
+  - XSS 防护中间件
+  - 严格 CORS 配置
+  - SQL 注入模式检测
+- **数据库迁移**:
+  - 002_add_users.py: users, refresh_tokens 表
+- **Commit**: `c75fef7`
+
+### Phase 12: 多 provider 图片生成 ✅
+- 支持 ComfyUI/DashScope/SiliconFlow 三provider
+- 通义万相（DashScope）集成
+- FLUX.1 (SiliconFlow) 集成
+- **Commit**: `18ad73c`
+
+### Phase 13: 移除 ComfyUI，默认 DashScope ✅
+- 移除 ComfyUI provider 依赖
+- 默认使用 DashScope Wanx
+- 简化配置
+- **Commit**: `e50fe68`
+
+### Phase 14: 数据分析与报告 ✅
+- **视频分析服务** (`backend/app/services/video_analyzer.py`):
+  - 使用 mutagen 库分析视频元数据
+  - 提取时长、帧率、分辨率、编码格式
+  - 自动计算帧数
+  - 文件创建时自动分析
+- **分析 API 路由** (`backend/app/api/routes/analytics.py`):
+  - `GET /api/v1/analytics/projects/{id}/stats` - 项目统计
+  - `GET /api/v1/analytics/projects/{id}/dashboard` - 仪表盘数据
+  - `GET /api/v1/analytics/projects/{id}/report` - JSON 报告导出
+  - `GET /api/v1/analytics/projects/{id}/videos` - 视频详情
+  - `POST /api/v1/analytics/files/{id}/analyze` - 手动分析视频
+- **前端仪表盘** (`frontend/src/components/dashboard.tsx`):
+  - 项目概览卡片（任务总数、完成率、文件数、存储）
+  - 视频统计卡片（总时长、总帧数、帧率、分辨率）
+  - 阶段进度条（各阶段成功率）
+  - 文件类型分布图
+  - 最近任务列表
+- **导出功能**:
+  - JSON 格式报告下载
+  - MP4 视频下载（已有端点）
+- **前端 Hook** (`frontend/src/hooks/use-analytics.ts`):
+  - useProjectStats
+  - useDashboardData
+  - useExportReport
+  - useAnalyzeVideo
 - **Commit**: 本次
 
 ---
 
 ## 待完成
 
-### Phase 10: 性能优化与监控
-- 前端性能优化（代码分割、懒加载）
-- 后端缓存策略（Redis）
-- 日志系统（结构化日志、日志轮转）
-- 健康检查和监控端点
+### Phase 12: 功能完善与优化
+- 用户项目管理（我的项目列表）
+- 项目分享与协作
+- 生成参数预设模板
+- 历史记录与回收站
 
 ---
 
@@ -152,6 +236,6 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: Phase 9
+- **最新 Commit**: Phase 14 完成
 - **总测试数**: 123 passed
-- **下一阶段**: Phase 10 - 性能优化与监控
+- **下一阶段**: Phase 15 - 功能完善与优化

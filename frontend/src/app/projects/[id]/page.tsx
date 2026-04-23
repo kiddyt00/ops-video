@@ -12,8 +12,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Play, Loader2, ArrowLeft, AlertCircle, RefreshCw, Image as ImageIcon, Music, Film } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Play, Loader2, ArrowLeft, AlertCircle, RefreshCw, Image as ImageIcon, Music, Film, BarChart3 } from 'lucide-react'
 import { WorkflowProgress } from '@/components/workflow-progress'
+import { Dashboard } from '@/components/dashboard'
+import { useDashboardData, useExportReport } from '@/hooks/use-analytics'
 import { type TaskStage, type TaskStatus } from '@/types/task'
 import type { FileType } from '@/types/file'
 
@@ -157,11 +160,8 @@ function ImageCard({ file }: { file: { id: string; file_path: string; created_at
     try {
       const resp = await fetch(fileDownloadUrl(file.id))
       const data = await resp.json()
-      // The URL endpoint returns { url: "/api/v1/files/{id}/download", ... }
-      // Build a direct download URL
       setUrl(`${API_BASE_URL}/files/${file.id}/download`)
     } catch {
-      // Fallback: try direct download
       setUrl(`${API_BASE_URL}/files/${file.id}/download`)
     }
   }
@@ -175,7 +175,6 @@ function ImageCard({ file }: { file: { id: string; file_path: string; created_at
             alt={file.file_path.split('/').pop()}
             className="w-full h-full object-cover"
             onError={(e) => {
-              // If image fails, show placeholder
               (e.target as HTMLImageElement).style.display = 'none'
               const parent = (e.target as HTMLImageElement).parentElement
               if (parent) {
@@ -261,11 +260,14 @@ export default function ProjectPage() {
   const router = useRouter()
   const projectId = params.id as string
   const [activeStage, setActiveStage] = useState<TaskStage | null>(null)
+  const [activeTab, setActiveTab] = useState<'tasks' | 'dashboard'>('tasks')
   const [apiError, setApiError] = useState<string | null>(null)
 
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
   const { data: tasks, isLoading: loadingTasks, error: tasksError } = useTasks(projectId)
   const { data: workflowStatus, isLoading: loadingWorkflow, error: workflowError } = useWorkflowStatus(projectId)
+  const { data: dashboardData, isLoading: loadingDashboard } = useDashboardData(projectId)
+  const exportReport = useExportReport()
   const advanceWorkflow = useAdvanceWorkflow()
 
   const currentStage = workflowStatus?.current_stage as TaskStage | null
@@ -301,11 +303,9 @@ export default function ProjectPage() {
 
   const handleRetry = () => {
     setApiError(null)
-    // Refetch all data
     window.location.reload()
   }
 
-  // Show error if any core query failed
   const queryError = projectError || tasksError || workflowError
   if (queryError) {
     return (
@@ -401,55 +401,92 @@ export default function ProjectPage() {
               <span>{apiError}</span>
             </div>
           )}
-          {loadingTasks ? (
-            <div className="space-y-4">
-              <Skeleton className="h-8 w-48" />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            </div>
-          ) : tasks && tasks.length > 0 ? (
-            <div>
-              <h2 className="text-xl font-semibold mb-4">任务列表</h2>
-              <div className="grid gap-3 md:grid-cols-2">
-                {tasks.map(task => {
-                  const status = STATUS_CONFIG[task.status]
-                  return (
-                    <Card key={task.id}>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm flex items-center justify-between">
-                          {STAGE_LABELS[task.stage] || task.stage}
-                          <span className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${status?.color}`} />
-                            <span className="text-xs text-muted-foreground">{status?.label}</span>
-                          </span>
-                        </CardTitle>
-                        <CardDescription className="text-xs">
-                          类型: {task.generator_type}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        {task.error_message && (
-                          <p className="text-xs text-destructive mb-2">{task.error_message}</p>
-                        )}
-                        <div className="flex gap-2 text-xs text-muted-foreground">
-                          {task.started_at && <span>开始: {new Date(task.started_at).toLocaleString('zh-CN')}</span>}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-              <MediaPreviews projectId={projectId} />
-            </div>
-          ) : (
-            <div className="text-center py-20">
-              <Play className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-2">该项目还没有任务</p>
-              <p className="text-sm text-muted-foreground mb-4">点击右侧面板的「推进到下一阶段」开始工作流</p>
-            </div>
-          )}
+
+          {/* Tabs for Tasks and Dashboard */}
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'tasks' | 'dashboard')} className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="tasks" className="gap-1">
+                <Film className="w-4 h-4" />
+                任务
+              </TabsTrigger>
+              <TabsTrigger value="dashboard" className="gap-1">
+                <BarChart3 className="w-4 h-4" />
+                仪表盘
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Tasks Tab */}
+            <TabsContent value="tasks" className="mt-0">
+              {loadingTasks ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-48" />
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-32 w-full" />
+                  </div>
+                </div>
+              ) : tasks && tasks.length > 0 ? (
+                <div>
+                  <h2 className="text-xl font-semibold mb-4">任务列表</h2>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {tasks.map(task => {
+                      const status = STATUS_CONFIG[task.status]
+                      return (
+                        <Card key={task.id}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm flex items-center justify-between">
+                              {STAGE_LABELS[task.stage] || task.stage}
+                              <span className="flex items-center gap-1.5">
+                                <span className={`w-2 h-2 rounded-full ${status?.color}`} />
+                                <span className="text-xs text-muted-foreground">{status?.label}</span>
+                              </span>
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                              类型：{task.generator_type}
+                            </CardDescription>
+                          </CardHeader>
+                          <CardContent>
+                            {task.error_message && (
+                              <p className="text-xs text-destructive mb-2">{task.error_message}</p>
+                            )}
+                            <div className="flex gap-2 text-xs text-muted-foreground">
+                              {task.started_at && <span>开始：{new Date(task.started_at).toLocaleString('zh-CN')}</span>}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                  <MediaPreviews projectId={projectId} />
+                </div>
+              ) : (
+                <div className="text-center py-20">
+                  <Play className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-2">该项目还没有任务</p>
+                  <p className="text-sm text-muted-foreground mb-4">点击右侧面板的「推进到下一阶段」开始工作流</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Dashboard Tab */}
+            <TabsContent value="dashboard" className="mt-0">
+              {loadingDashboard ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-8 w-48" />
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-24 w-full" />
+                    ))}
+                  </div>
+                </div>
+              ) : dashboardData ? (
+                <Dashboard
+                  data={dashboardData}
+                  onExportReport={() => exportReport.mutate(projectId)}
+                />
+              ) : null}
+            </TabsContent>
+          </Tabs>
         </div>
       </ScrollArea>
     </ThreePanelLayout>
