@@ -61,6 +61,9 @@ class Settings(BaseSettings):
     SILICONFLOW_API_KEY: str = ""
     SILICONFLOW_MODEL: str = "black-forest-labs/FLUX.1-schnell"
 
+    # Mock Mode — skip real API calls, return fake data
+    MOCK_MODE: bool = True
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text

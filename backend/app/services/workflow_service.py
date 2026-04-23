@@ -56,6 +56,8 @@ class WorkflowService:
     _GENERATOR_TO_STAGE: Dict[str, TaskStage] = {
         v: k for k, v in STAGE_GENERATOR_MAP.items()
     }
+    # Alias audio to tts
+    _GENERATOR_TO_STAGE["audio"] = TaskStage.AUDIO
 
     def __init__(self, db: Session):
         self.db = db
@@ -606,6 +608,7 @@ class WorkflowService:
                     self.db.add(files[0])
 
         self.db.flush()
+        self.db.commit()
 
     async def _execute_script_generation(
         self,

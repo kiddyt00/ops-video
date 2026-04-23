@@ -16,6 +16,7 @@ from ...providers.siliconflow_provider import SiliconFlowProvider, siliconflow_p
 from ...schemas.task import TaskStatusUpdate, TaskStatus
 from ...schemas.file import FileCreate, FileType, VariantGroupCreate
 from ...config import settings
+from .mock_helpers import mock_image_result
 
 
 def get_image_provider() -> BaseProvider:
@@ -93,17 +94,20 @@ class ImageGeneratorService:
             for i in range(variant_count):
                 variant_seed = base_seed + i if seed == -1 else seed + i
 
-                result = await self.provider.generate({
-                    "prompt": prompt,
-                    "negative_prompt": negative_prompt,
-                    "seed": variant_seed,
-                    "steps": steps,
-                    "cfg_scale": cfg_scale,
-                    "sampler": sampler,
-                    "width": width,
-                    "height": height,
-                    "workflow_id": workflow_id,
-                })
+                if settings.MOCK_MODE:
+                    result = mock_image_result(prompt=prompt, variant_index=i)
+                else:
+                    result = await self.provider.generate({
+                        "prompt": prompt,
+                        "negative_prompt": negative_prompt,
+                        "seed": variant_seed,
+                        "steps": steps,
+                        "cfg_scale": cfg_scale,
+                        "sampler": sampler,
+                        "width": width,
+                        "height": height,
+                        "workflow_id": workflow_id,
+                    })
 
                 if result.success and result.file_paths:
                     for file_path in result.file_paths:

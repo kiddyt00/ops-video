@@ -14,6 +14,7 @@ from ...providers.llm_provider import llm_provider, LLMProvider
 from ...schemas.task import TaskStatusUpdate, TaskStatus
 from ...schemas.file import FileCreate, FileType, VariantGroupCreate
 from ...config import settings
+from .mock_helpers import mock_script_result
 
 
 class ScriptGeneratorService:
@@ -69,15 +70,17 @@ class ScriptGeneratorService:
             # Generate variants
             file_ids = []
             for i in range(variant_count):
-                # Add seed variation for each variant
                 seed = task.parameters.get("seed", 42) + i if task.parameters.get("seed") else None
 
-                result = await self.llm.generate_script(
-                    topic=topic,
-                    style=style,
-                    duration=duration,
-                    additional_context=additional_context,
-                )
+                if settings.MOCK_MODE:
+                    result = mock_script_result(topic=topic, style=style, duration=duration)
+                else:
+                    result = await self.llm.generate_script(
+                        topic=topic,
+                        style=style,
+                        duration=duration,
+                        additional_context=additional_context,
+                    )
 
                 if result.success and result.file_paths:
                     file_path = result.file_paths[0]

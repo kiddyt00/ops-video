@@ -14,6 +14,7 @@ from ...providers.llm_provider import llm_provider, LLMProvider
 from ...schemas.task import TaskStatusUpdate, TaskStatus
 from ...schemas.file import FileCreate, FileType, VariantGroupCreate
 from ...config import settings
+from .mock_helpers import mock_storyboard_result
 
 
 class StoryboardGeneratorService:
@@ -75,10 +76,13 @@ class StoryboardGeneratorService:
             # Generate variants
             file_ids = []
             for i in range(variant_count):
-                result = await self.llm.generate_storyboard(
-                    script=script_content,
-                    panel_count=panel_count,
-                )
+                if settings.MOCK_MODE:
+                    result = mock_storyboard_result(panel_count=panel_count)
+                else:
+                    result = await self.llm.generate_storyboard(
+                        script=script_content,
+                        panel_count=panel_count,
+                    )
 
                 if result.success and result.file_paths:
                     file_path = result.file_paths[0]
@@ -98,7 +102,7 @@ class StoryboardGeneratorService:
                                 **result.parameters,
                                 "variant_index": i,
                             },
-                            extra_info=result.metadata,
+                            extra_info=result.metadata if result.metadata else {},
                         ),
                     )
                     file_ids.append(str(file_record.id))
