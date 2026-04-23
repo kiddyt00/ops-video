@@ -46,10 +46,10 @@ class GUID(TypeDecorator):
 
 # Patch models for SQLite compatibility
 from app.models.declarative import Base
-from app.models import project, task, file as file_model, user as user_model
+from app.models import project, task, file as file_model, user as user_model, project_share
 from app.models.guid_type import GUID as ModelGUID
 
-for model in [user_model.User, user_model.RefreshToken, project.Project, task.Task, task.TaskStatusLog, file_model.File, file_model.VariantGroup]:
+for model in [user_model.User, user_model.RefreshToken, project.Project, task.Task, task.TaskStatusLog, file_model.File, file_model.VariantGroup, project_share.ProjectShare]:
     for col in model.__table__.columns:
         if isinstance(col.type, (PG_UUID, ModelGUID)):
             col.type = GUID()
@@ -306,3 +306,259 @@ class TestProjectResponseSchema:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# ─── Project Sharing Tests ───────────────────────────────────────────
+
+class TestProjectSharing:
+    """Test project sharing and collaboration"""
+
+    def _setup_users(self):
+        """Register and login two users"""
+        register_user(email="alice@example.com", username="alice", password="password123")
+        register_user(email="bob@example.com", username="bob", password="password123")
+        register_user(email="charlie@example.com", username="charlie", password="password123")
+
+        alice = login_user(email="alice@example.com", password="password123")
+        bob = login_user(email="bob@example.com", password="password123")
+        charlie = login_user(email="charlie@example.com", password="password123")
+
+        alice_token = alice.json()["access_token"]
+        bob_token = bob.json()["access_token"]
+        charlie_token = charlie.json()["access_token"]
+
+        # Get user IDs from /me
+        alice_id = client.get("/api/v1/auth/me", headers=auth_header(alice_token)).json()["id"]
+        bob_id = client.get("/api/v1/auth/me", headers=auth_header(bob_token)).json()["id"]
+        charlie_id = client.get("/api/v1/auth/me", headers=auth_header(charlie_token)).json()["id"]
+
+        return alice_token, alice_id, bob_token, bob_id, charlie_token, charlie_id
+
+    def test_share_project(self):
+        """Owner can share project with another user"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        # Alice creates a project
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        # Alice shares with Bob
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["project_id"] == project_id
+        assert data["shared_with_user_id"] == bob_id
+        assert data["permission"] == "view"
+
+    def test_cannot_share_as_non_owner(self):
+        """Non-owner cannot share a project"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        # Alice creates a project
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        # Bob tries to share Alice's project
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(bob_token),
+        )
+        assert resp.status_code == 403
+
+    def test_cannot_share_with_self(self):
+        """Cannot share a project with yourself"""
+        alice_token, alice_id, _, _, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": alice_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 400
+
+    def test_cannot_share_twice(self):
+        """Cannot share the same project with the same user twice"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        # First share
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 201
+
+        # Second share with same user
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "edit"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 409
+
+    def test_list_project_shares(self):
+        """Owner can list shares for their project"""
+        alice_token, alice_id, bob_token, bob_id, charlie_token, charlie_id = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": charlie_id, "permission": "edit"},
+            headers=auth_header(alice_token),
+        )
+
+        resp = client.get(f"/api/v1/projects/{project_id}/shares", headers=auth_header(alice_token))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 2
+
+    def test_unshare_project(self):
+        """Owner can remove a share"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+
+        resp = client.delete(f"/api/v1/projects/{project_id}/share/{bob_id}", headers=auth_header(alice_token))
+        assert resp.status_code == 204
+
+        # Verify share is gone
+        resp = client.get(f"/api/v1/projects/{project_id}/shares", headers=auth_header(alice_token))
+        assert len(resp.json()) == 0
+
+    def test_update_share_permission(self):
+        """Owner can update share permission"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+
+        resp = client.put(
+            f"/api/v1/projects/{project_id}/share/{bob_id}",
+            json={"shared_with_user_id": bob_id, "permission": "edit"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["permission"] == "edit"
+
+    def test_share_with_nonexistent_user(self):
+        """Cannot share with a user that doesn't exist"""
+        alice_token, alice_id, _, _, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": str(uuid4()), "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+        assert resp.status_code == 404
+
+    def test_list_shared_with_me(self):
+        """User can see projects shared with them"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        # Alice creates and shares with Bob
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+
+        # Bob checks his shared projects
+        resp = client.get("/api/v1/projects/shared-with-me", headers=auth_header(bob_token))
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Alice Project"
+
+    def test_list_shared_with_me_empty(self):
+        """User with no shared projects gets empty list"""
+        _, _, bob_token, _, _, _ = self._setup_users()
+
+        resp = client.get("/api/v1/projects/shared-with-me", headers=auth_header(bob_token))
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_non_owner_cannot_list_shares(self):
+        """Non-owner cannot list project shares"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        resp = client.get(f"/api/v1/projects/{project_id}/shares", headers=auth_header(bob_token))
+        assert resp.status_code == 403
+
+    def test_non_owner_cannot_unshare(self):
+        """Non-owner cannot unshare a project"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        resp = client.delete(f"/api/v1/projects/{project_id}/share/{bob_id}", headers=auth_header(bob_token))
+        assert resp.status_code == 403
+
+    def test_non_owner_cannot_update_permission(self):
+        """Non-owner cannot update share permission"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        resp = client.put(
+            f"/api/v1/projects/{project_id}/share/{bob_id}",
+            json={"shared_with_user_id": bob_id, "permission": "edit"},
+            headers=auth_header(bob_token),
+        )
+        assert resp.status_code == 403
+
+    def test_delete_project_cascade_shares(self):
+        """Deleting a project removes associated shares"""
+        alice_token, alice_id, bob_token, bob_id, _, _ = self._setup_users()
+
+        resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice_token))
+        project_id = resp.json()["id"]
+
+        client.post(
+            f"/api/v1/projects/{project_id}/share",
+            json={"shared_with_user_id": bob_id, "permission": "view"},
+            headers=auth_header(alice_token),
+        )
+
+        resp = client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(alice_token))
+        assert resp.status_code == 204

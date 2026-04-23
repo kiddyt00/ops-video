@@ -33,6 +33,7 @@ class Project(BaseModel):
         "VariantGroup", back_populates="project", cascade="all, delete-orphan"
     )
     files = relationship("File", back_populates="project", cascade="all, delete-orphan")
+    shares = relationship("ProjectShare", back_populates="project", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Project(id={self.id}, name='{self.name}')>"
