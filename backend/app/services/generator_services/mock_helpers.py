@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from uuid import UUID
 
-from ..config import settings
-from .base_provider import GenerationResult
+from ...config import settings
+from ...providers.base_provider import GenerationResult
 
 
 class MockGenerationResult(GenerationResult):
@@ -56,8 +56,10 @@ def mock_storyboard_result(panel_count: int = 6, **_) -> MockGenerationResult:
     for i in range(panel_count):
         panels.append({
             "panel_index": i,
-            "scene_description": f"Scene {i+1} - A dramatic moment in the story",
+            "scene_number": i + 1,
+            "description": f"Scene {i+1} - A dramatic moment in the story",
             "text": f"Dialogue for scene {i+1}",
+            "image_prompt": f"A cinematic shot of scene {i+1}, dramatic lighting, manga style, detailed illustration",
             "duration": 3.0,
             "camera_angle": "medium",
             "emotion": "dramatic",
