@@ -15,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Play, Loader2, ArrowLeft, AlertCircle, RefreshCw, Image as ImageIcon, Music, Film, BarChart3 } from 'lucide-react'
 import { WorkflowProgress } from '@/components/workflow-progress'
+import { WorkflowStepper } from '@/components/workflow-stepper'
 import { Dashboard } from '@/components/dashboard'
 import { useDashboardData, useExportReport } from '@/hooks/use-analytics'
 import { type TaskStage, type TaskStatus, type Task } from '@/types/task'
@@ -403,6 +404,11 @@ export default function ProjectPage() {
               <span>{apiError}</span>
             </div>
           )}
+
+          <WorkflowStepper
+            stages={workflowStatus?.stages}
+            currentStage={currentStage}
+          />
 
           {/* Tabs for Tasks and Dashboard */}
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'tasks' | 'dashboard')} className="w-full">
