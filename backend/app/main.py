@@ -10,7 +10,7 @@ import uuid
 
 from .config import settings
 from .db.session import get_db
-from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics
+from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics, presets
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
 from .middleware.security import setup_security, XSSProtectionMiddleware
@@ -216,3 +216,4 @@ app.include_router(variants.router, prefix="/api/v1/variants", tags=["variants"]
 app.include_router(generators.router, prefix="/api/v1/generators", tags=["generators"])
 app.include_router(workflow.router, prefix="/api/v1/workflow", tags=["workflow"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["analytics"])
+app.include_router(presets.router, prefix="/api/v1/presets", tags=["presets"])
