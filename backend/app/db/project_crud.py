@@ -11,20 +11,24 @@ from ..schemas.project import ProjectCreate, ProjectUpdate
 class ProjectCRUD:
     """Project CRUD operations"""
 
-    def get_all(self, db: Session) -> List[Project]:
-        """Get all projects"""
-        return db.query(Project).all()
+    def get_all(self, db: Session, user_id: Optional[UUID] = None) -> List[Project]:
+        """Get all projects, optionally filtered by user"""
+        query = db.query(Project)
+        if user_id is not None:
+            query = query.filter(Project.user_id == user_id)
+        return query.all()
 
     def get(self, db: Session, project_id: UUID) -> Optional[Project]:
         """Get project by ID"""
         return db.query(Project).filter(Project.id == project_id).first()
 
-    def create(self, db: Session, *, obj_in: ProjectCreate) -> Project:
+    def create(self, db: Session, *, obj_in: ProjectCreate, user_id: Optional[UUID] = None) -> Project:
         """Create a new project"""
         project = Project(
             name=obj_in.name,
             description=obj_in.description,
-            settings=obj_in.settings or {}
+            settings=obj_in.settings or {},
+            user_id=user_id,
         )
         db.add(project)
         db.commit()
@@ -57,6 +61,10 @@ class ProjectCRUD:
         db.delete(project)
         db.commit()
         return True
+
+    def count_by_user(self, db: Session, user_id: UUID) -> int:
+        """Count projects owned by a user"""
+        return db.query(Project).filter(Project.user_id == user_id).count()
 
 
 project_crud = ProjectCRUD()

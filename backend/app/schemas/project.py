@@ -19,6 +19,11 @@ class ProjectCreate(ProjectBase):
     pass
 
 
+class ProjectCreateWithUser(ProjectCreate):
+    """Schema for creating a project with user context"""
+    pass
+
+
 class ProjectUpdate(BaseModel):
     """Schema for updating a project"""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
@@ -29,6 +34,7 @@ class ProjectUpdate(BaseModel):
 class ProjectResponse(ProjectBase):
     """Schema for project response"""
     id: UUID
+    user_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 

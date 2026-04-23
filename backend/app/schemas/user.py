@@ -4,7 +4,7 @@ User schemas
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from ..models.user import UserRole
 
 
@@ -42,6 +42,17 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def coerce_metadata(cls, v):
+        """SQLAlchemy Base.metadata collides with this field name.
+        Replace MetaData objects with empty dict."""
+        if v is None:
+            return {}
+        if not isinstance(v, dict):
+            return {}
+        return v
 
 
 class UserLogin(BaseModel):
