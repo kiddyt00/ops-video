@@ -2,7 +2,8 @@
 Project model
 """
 import uuid
-from sqlalchemy import Column, String, Text
+from datetime import datetime
+from sqlalchemy import Column, String, Text, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy import ForeignKey
 from .guid_type import GUID
@@ -25,6 +26,10 @@ class Project(BaseModel):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True)
     settings = Column(JSON, nullable=True, default=dict)
+
+    # Soft delete
+    is_deleted = Column(Boolean, default=False, nullable=False, index=True)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="projects")

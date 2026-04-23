@@ -562,3 +562,128 @@ class TestProjectSharing:
 
         resp = client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(alice_token))
         assert resp.status_code == 204
+
+
+# ─── Soft Delete / Recycle Bin Tests ──────────────────────────────────
+
+class TestSoftDelete:
+    """Test soft delete and recycle bin"""
+
+    def _login(self, email="test@example.com", username="testuser", password="password123"):
+        register_user(email=email, username=username, password=password)
+        resp = login_user(email=email, password=password)
+        return resp.json()["access_token"]
+
+    def test_soft_delete_project(self):
+        """DELETE /projects/{id} soft deletes instead of hard deleting"""
+        token = self._login()
+        resp = client.post("/api/v1/projects", json={"name": "To Delete"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        resp = client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(token))
+        assert resp.status_code == 204
+
+        # Project should not be visible in normal GET
+        resp = client.get(f"/api/v1/projects/{project_id}")
+        assert resp.status_code == 404
+
+    def test_deleted_project_in_recycle_bin(self):
+        """Soft-deleted projects appear in recycle bin"""
+        token = self._login()
+        resp = client.post("/api/v1/projects", json={"name": "Recycled"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(token))
+
+        resp = client.get("/api/v1/projects/recycle-bin", headers=auth_header(token))
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+        assert resp.json()[0]["name"] == "Recycled"
+        assert resp.json()[0]["is_deleted"] is True
+        assert resp.json()[0]["deleted_at"] is not None
+
+    def test_restore_project(self):
+        """Restore a soft-deleted project"""
+        token = self._login()
+        resp = client.post("/api/v1/projects", json={"name": "Restored"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        # Delete
+        client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(token))
+
+        # Restore
+        resp = client.post(f"/api/v1/projects/{project_id}/restore", headers=auth_header(token))
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Restored"
+        assert resp.json()["is_deleted"] is False
+        assert resp.json()["deleted_at"] is None
+
+        # Should be visible again
+        resp = client.get(f"/api/v1/projects/{project_id}")
+        assert resp.status_code == 200
+
+    def test_restore_nonexistent_or_not_deleted(self):
+        """Cannot restore a project that doesn't exist or isn't deleted"""
+        token = self._login()
+        resp = client.post("/api/v1/projects", json={"name": "Active"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        # Try to restore an active (not deleted) project
+        resp = client.post(f"/api/v1/projects/{project_id}/restore", headers=auth_header(token))
+        assert resp.status_code == 404
+
+    def test_permanent_delete(self):
+        """Permanently delete a soft-deleted project"""
+        token = self._login()
+        resp = client.post("/api/v1/projects", json={"name": "Gone Forever"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        # Soft delete
+        client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(token))
+
+        # Permanent delete
+        resp = client.delete(f"/api/v1/projects/{project_id}/permanent", headers=auth_header(token))
+        assert resp.status_code == 204
+
+        # Should not be in recycle bin
+        resp = client.get("/api/v1/projects/recycle-bin", headers=auth_header(token))
+        assert len(resp.json()) == 0
+
+        # Should not be restorable
+        resp = client.post(f"/api/v1/projects/{project_id}/restore", headers=auth_header(token))
+        assert resp.status_code == 404
+
+    def test_deleted_projects_not_in_list(self):
+        """Soft-deleted projects don't appear in normal list"""
+        token = self._login()
+        client.post("/api/v1/projects", json={"name": "Active Project"}, headers=auth_header(token))
+        resp = client.post("/api/v1/projects", json={"name": "Deleted Project"}, headers=auth_header(token))
+        project_id = resp.json()["id"]
+
+        client.delete(f"/api/v1/projects/{project_id}", headers=auth_header(token))
+
+        resp = client.get("/api/v1/projects", headers=auth_header(token))
+        assert len(resp.json()) == 1
+        assert resp.json()[0]["name"] == "Active Project"
+
+    def test_recycle_bin_user_isolation(self):
+        """Users only see their own deleted projects in recycle bin"""
+        alice = self._login(email="alice@example.com", username="alice")
+        bob = self._login(email="bob@example.com", username="bob")
+
+        alice_resp = client.post("/api/v1/projects", json={"name": "Alice Project"}, headers=auth_header(alice))
+        bob_resp = client.post("/api/v1/projects", json={"name": "Bob Project"}, headers=auth_header(bob))
+
+        # Both delete
+        client.delete(f"/api/v1/projects/{alice_resp.json()['id']}", headers=auth_header(alice))
+        client.delete(f"/api/v1/projects/{bob_resp.json()['id']}", headers=auth_header(bob))
+
+        # Alice only sees her deleted project
+        resp = client.get("/api/v1/projects/recycle-bin", headers=auth_header(alice))
+        assert len(resp.json()) == 1
+        assert resp.json()[0]["name"] == "Alice Project"
+
+    def test_recycle_bin_requires_auth(self):
+        """Recycle bin endpoint requires authentication"""
+        resp = client.get("/api/v1/projects/recycle-bin")
+        assert resp.status_code in (401, 403)

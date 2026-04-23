@@ -69,6 +69,18 @@ def create_project(
     return project
 
 
+# ─── Recycle Bin (must be before /{project_id} routes) ────────────────
+
+
+@router.get("/recycle-bin", response_model=List[ProjectResponse])
+def list_deleted_projects(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """List soft-deleted projects (recycle bin) for current user"""
+    return project_crud.get_deleted(db, user_id=current_user.id)
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: UUID,
@@ -105,8 +117,40 @@ def delete_project(
     project_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """Delete project"""
-    success = project_crud.delete(db, project_id=project_id)
+    """Soft delete project (move to recycle bin)"""
+    success = project_crud.soft_delete(db, project_id=project_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found"
+        )
+
+
+# ─── Project Sharing ─────────────────────────────────────────────────
+
+
+@router.post("/{project_id}/restore", response_model=ProjectResponse)
+def restore_project(
+    project_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """Restore a soft-deleted project from recycle bin"""
+    success = project_crud.restore(db, project_id=project_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Project {project_id} not found or not deleted"
+        )
+    return project_crud.get(db, project_id=project_id)
+
+
+@router.delete("/{project_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def permanently_delete_project(
+    project_id: UUID,
+    db: Session = Depends(get_db)
+):
+    """Permanently delete a soft-deleted project"""
+    success = project_crud.permanent_delete(db, project_id=project_id)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
