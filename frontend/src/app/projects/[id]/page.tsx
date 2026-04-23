@@ -17,10 +17,12 @@ import { Play, Loader2, ArrowLeft, AlertCircle, RefreshCw, Image as ImageIcon, M
 import { WorkflowProgress } from '@/components/workflow-progress'
 import { Dashboard } from '@/components/dashboard'
 import { useDashboardData, useExportReport } from '@/hooks/use-analytics'
-import { type TaskStage, type TaskStatus } from '@/types/task'
+import { type TaskStage, type TaskStatus, type Task } from '@/types/task'
 import type { FileType } from '@/types/file'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+
+const STAGE_ORDER: TaskStage[] = ['script', 'storyboard', 'image', 'audio', 'video']
 
 const STAGE_LABELS: Record<string, string> = {
   script: '脚本',
@@ -425,45 +427,59 @@ export default function ProjectPage() {
                     <Skeleton className="h-32 w-full" />
                   </div>
                 </div>
-              ) : tasks && tasks.length > 0 ? (
+              ) : (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">任务列表</h2>
                   <div className="grid gap-3 md:grid-cols-2">
-                    {tasks.map(task => {
-                      const status = STATUS_CONFIG[task.status]
+                    {STAGE_ORDER.map(stage => {
+                      const task = tasks?.find((t: Task) => t.stage === stage)
+                      if (task) {
+                        const status = STATUS_CONFIG[task.status]
+                        return (
+                          <Card key={task.id}>
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm flex items-center justify-between">
+                                {STAGE_LABELS[task.stage] || task.stage}
+                                <span className="flex items-center gap-1.5">
+                                  <span className={`w-2 h-2 rounded-full ${status?.color}`} />
+                                  <span className="text-xs text-muted-foreground">{status?.label}</span>
+                                </span>
+                              </CardTitle>
+                              <CardDescription className="text-xs">
+                                类型：{task.generator_type}
+                              </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                              {task.error_message && (
+                                <p className="text-xs text-destructive mb-2">{task.error_message}</p>
+                              )}
+                              <div className="flex gap-2 text-xs text-muted-foreground">
+                                {task.started_at && <span>开始：{new Date(task.started_at).toLocaleString('zh-CN')}</span>}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )
+                      }
                       return (
-                        <Card key={task.id}>
+                        <Card key={stage} className="opacity-60">
                           <CardHeader className="pb-2">
                             <CardTitle className="text-sm flex items-center justify-between">
-                              {STAGE_LABELS[task.stage] || task.stage}
+                              {STAGE_LABELS[stage]}
                               <span className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${status?.color}`} />
-                                <span className="text-xs text-muted-foreground">{status?.label}</span>
+                                <span className="w-2 h-2 rounded-full bg-gray-400" />
+                                <span className="text-xs text-muted-foreground">未开始</span>
                               </span>
                             </CardTitle>
                             <CardDescription className="text-xs">
-                              类型：{task.generator_type}
+                              完成上一阶段后自动推进
                             </CardDescription>
                           </CardHeader>
-                          <CardContent>
-                            {task.error_message && (
-                              <p className="text-xs text-destructive mb-2">{task.error_message}</p>
-                            )}
-                            <div className="flex gap-2 text-xs text-muted-foreground">
-                              {task.started_at && <span>开始：{new Date(task.started_at).toLocaleString('zh-CN')}</span>}
-                            </div>
-                          </CardContent>
+                          <CardContent />
                         </Card>
                       )
                     })}
                   </div>
                   <MediaPreviews projectId={projectId} />
-                </div>
-              ) : (
-                <div className="text-center py-20">
-                  <Play className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-2">该项目还没有任务</p>
-                  <p className="text-sm text-muted-foreground mb-4">点击右侧面板的「推进到下一阶段」开始工作流</p>
                 </div>
               )}
             </TabsContent>
