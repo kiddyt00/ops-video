@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 from sqlalchemy import Column, String, ForeignKey, Enum as SQLEnum, DateTime, Boolean, JSON
-from sqlalchemy.dialects.postgresql import UUID
+from .guid_type import GUID
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -21,7 +21,7 @@ class User(BaseModel):
 
     __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
@@ -52,9 +52,9 @@ class RefreshToken(BaseModel):
 
     __tablename__ = "refresh_tokens"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     user_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True

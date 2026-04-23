@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, String, ForeignKey, Enum as SQLEnum,
     DateTime, JSON, Boolean, Text
 )
-from sqlalchemy.dialects.postgresql import UUID
+from .guid_type import GUID
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -36,9 +36,9 @@ class Task(BaseModel):
 
     __tablename__ = "tasks"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     project_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True
@@ -51,7 +51,7 @@ class Task(BaseModel):
         index=True
     )
     parent_task_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("tasks.id", ondelete="SET NULL"),
         nullable=True
     )
@@ -92,9 +92,9 @@ class TaskStatusLog(BaseModel):
 
     __tablename__ = "task_status_logs"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     task_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
         index=True

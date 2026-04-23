@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, String, ForeignKey, Enum as SQLEnum,
     DateTime, JSON, Boolean, BigInteger, Text
 )
-from sqlalchemy.dialects.postgresql import UUID
+from .guid_type import GUID
 from sqlalchemy.orm import relationship
 from .base import BaseModel
 
@@ -28,21 +28,21 @@ class File(BaseModel):
 
     __tablename__ = "files"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     project_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
     variant_group_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("variant_groups.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
     task_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("tasks.id", ondelete="SET NULL"),
         nullable=True,
         index=True
@@ -60,7 +60,7 @@ class File(BaseModel):
     # Version control
     version = Column(String(50), nullable=False, default="1.0.0")
     parent_file_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("files.id", ondelete="SET NULL"),
         nullable=True,
         index=True
@@ -90,22 +90,22 @@ class VariantGroup(BaseModel):
 
     __tablename__ = "variant_groups"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     project_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("projects.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
     task_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("tasks.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
     stage = Column(String(50), nullable=False, index=True)
     selected_file_id = Column(
-        UUID(as_uuid=True),
+        GUID(),
         ForeignKey("files.id", ondelete="SET NULL"),
         nullable=True,
         index=True

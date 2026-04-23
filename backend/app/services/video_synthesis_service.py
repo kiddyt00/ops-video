@@ -6,6 +6,7 @@ into a final video using FFmpeg.
 """
 import asyncio
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -72,7 +73,7 @@ class VideoSynthesisService:
         if not panels:
             raise ValueError("No panels provided")
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(dir=os.path.expanduser("~")) as tmpdir:
             tmp = Path(tmpdir)
 
             # Step 1: Create individual panel video clips
@@ -122,6 +123,7 @@ class VideoSynthesisService:
         width, height = resolution
         cmd = [
             "ffmpeg", "-y",
+            "-hwaccel", "none",
             "-loop", "1",
             "-i", str(image_path),
             "-f", "lavfi",
@@ -153,6 +155,7 @@ class VideoSynthesisService:
 
         cmd = [
             "ffmpeg", "-y",
+            "-hwaccel", "none",
             "-f", "concat",
             "-safe", "0",
             "-i", str(concat_file),
@@ -192,6 +195,7 @@ class VideoSynthesisService:
             # Mix primary audio with BGM at lower volume
             cmd = [
                 "ffmpeg", "-y",
+                "-hwaccel", "none",
                 "-i", str(primary),
                 "-i", str(bgm_path),
                 "-filter_complex", "[0:a]volume=1.0[a0];[1:a]volume=0.15[a1];[a0][a1]amix=inputs=2:duration=longest",
@@ -202,6 +206,7 @@ class VideoSynthesisService:
         else:
             cmd = [
                 "ffmpeg", "-y",
+                "-hwaccel", "none",
                 "-i", str(primary),
                 "-t", str(total_duration),
                 str(output_path),
@@ -221,6 +226,7 @@ class VideoSynthesisService:
         if audio_path and audio_path.exists():
             cmd = [
                 "ffmpeg", "-y",
+                "-hwaccel", "none",
                 "-i", str(video_path),
                 "-i", str(audio_path),
                 "-c:v", "copy",
@@ -235,6 +241,7 @@ class VideoSynthesisService:
             # No audio, just copy video
             cmd = [
                 "ffmpeg", "-y",
+                "-hwaccel", "none",
                 "-i", str(video_path),
                 "-c:v", "copy",
                 str(output_path),
@@ -243,11 +250,23 @@ class VideoSynthesisService:
 
     def _run_ffmpeg(self, cmd: list[str]):
         """Run FFmpeg command and raise on failure."""
+        import os
+        env = os.environ.copy()
+        # Force software rendering to avoid GPU driver errors
+        env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+        # Remove DISPLAY to prevent SDL/ffplay display errors
+        env.pop("DISPLAY", None)
+        # snap ffmpeg can't write to /tmp, redirect to home dir
+        home = os.path.expanduser("~")
+        env["TMPDIR"] = home
+        env["TEMP"] = home
+        env["TMP"] = home
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             timeout=300,
+            env=env,
         )
         if result.returncode != 0:
             raise RuntimeError(f"FFmpeg failed: {result.stderr}")

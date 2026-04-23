@@ -5,6 +5,7 @@ Tests TTS service, BGM service, SFX service, and Video Synthesis service.
 """
 import sys
 import asyncio
+import os
 import tempfile
 import wave
 from pathlib import Path
@@ -16,6 +17,14 @@ from scipy.io import wavfile
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Snap ffmpeg can't access /tmp - use home directory for test temp dirs
+_TEST_TMPDIR = os.path.expanduser("~")
+
+
+def _test_tmpdir():
+    """Create a temp directory in home dir (snap ffmpeg can't access /tmp)."""
+    return tempfile.TemporaryDirectory(dir=_TEST_TMPDIR)
 
 from app.services.tts_service import TTSService
 from app.services.bgm_service import BGMService
@@ -57,7 +66,7 @@ class TestTTSService:
         mock_communicate.return_value = mock_instance
 
         svc = TTSService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             # Override audio dir for test
             test_dir = Path(tmpdir)
             svc.AUDIO_DIR = test_dir
@@ -98,7 +107,7 @@ class TestTTSService:
         mock_instance = AsyncMock()
         with patch("app.services.tts_service.edge_tts.Communicate", return_value=mock_instance):
             svc = TTSService()
-            with tempfile.TemporaryDirectory() as tmpdir:
+            with _test_tmpdir() as tmpdir:
                 svc.AUDIO_DIR = Path(tmpdir)
                 panels = [{"index": 0, "text": "Hello"}, {"index": 1, "text": ""}]
                 result = asyncio.run(svc.synthesize_panels(panels))
@@ -118,7 +127,7 @@ class TestBGMService:
     def test_generate_creates_file(self):
         """Test generate creates a WAV file"""
         svc = BGMService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             result = svc.generate(duration=1.0, output_filename="test_bgm.wav")
             assert result.exists()
@@ -127,7 +136,7 @@ class TestBGMService:
     def test_generate_valid_wav(self):
         """Test generated file is valid WAV"""
         svc = BGMService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             path = svc.generate(duration=1.0, output_filename="valid.wav")
             sr, data = wavfile.read(str(path))
@@ -137,7 +146,7 @@ class TestBGMService:
     def test_generate_duration_approximate(self):
         """Test generated audio duration matches requested"""
         svc = BGMService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             target_duration = 2.0
             path = svc.generate(duration=target_duration, output_filename="dur.wav")
@@ -148,7 +157,7 @@ class TestBGMService:
     def test_generate_different_moods(self):
         """Test different moods produce different audio"""
         svc = BGMService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             ambient_path = svc.generate(duration=1.0, mood="ambient", output_filename="ambient.wav")
             dramatic_path = svc.generate(duration=1.0, mood="dramatic", output_filename="dramatic.wav")
@@ -160,7 +169,7 @@ class TestBGMService:
     def test_generate_panel_bgm(self):
         """Test generate_panel_bgm creates files for each panel"""
         svc = BGMService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir) / "bgm"
             svc.AUDIO_DIR.mkdir(parents=True)
             panels = [
@@ -213,7 +222,7 @@ class TestSFXService:
     def test_generate_creates_file(self):
         """Test generate creates a WAV file"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             result = svc.generate(sfx_type="whoosh", duration=1.0, output_filename="test_sfx.wav")
             assert result.exists()
@@ -222,7 +231,7 @@ class TestSFXService:
     def test_generate_valid_wav(self):
         """Test generated file is valid WAV"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             path = svc.generate(sfx_type="impact", duration=1.0, output_filename="impact.wav")
             sr, data = wavfile.read(str(path))
@@ -232,7 +241,7 @@ class TestSFXService:
     def test_all_sfx_types_generate(self):
         """Test all SFX types can be generated"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             for sfx_type in SFXService.SFX_TYPES:
                 path = svc.generate(
@@ -247,7 +256,7 @@ class TestSFXService:
     def test_different_sfx_types_produce_different_audio(self):
         """Test different SFX types produce different audio"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             whoosh = svc.generate(sfx_type="whoosh", duration=1.0, output_filename="w.wav")
             impact = svc.generate(sfx_type="impact", duration=1.0, output_filename="i.wav")
@@ -258,7 +267,7 @@ class TestSFXService:
     def test_intensity_affects_output(self):
         """Test different intensity values affect the output"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             low = svc.generate(sfx_type="sparkle", duration=1.0, intensity=0.1, output_filename="low.wav")
             high = svc.generate(sfx_type="sparkle", duration=1.0, intensity=0.9, output_filename="high.wav")
@@ -269,7 +278,7 @@ class TestSFXService:
     def test_unknown_sfx_type_defaults_to_whoosh(self):
         """Test unknown SFX type falls back to whoosh"""
         svc = SFXService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             svc.AUDIO_DIR = Path(tmpdir)
             path = svc.generate(sfx_type="unknown", duration=0.5, output_filename="default.wav")
             assert path.exists()
@@ -306,7 +315,7 @@ class TestVideoSynthesisService:
         """Test _create_still_clip creates a valid MP4 from an image"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             # Create a test image (solid color)
             img_path = tmp / "test.png"
@@ -322,7 +331,7 @@ class TestVideoSynthesisService:
         """Test concatenating multiple clips"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             # Create test images and clips
             clip_paths = []
@@ -343,7 +352,7 @@ class TestVideoSynthesisService:
         """Test combining video with audio"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             # Create test image and clip
             img_path = tmp / "test.png"
@@ -366,7 +375,7 @@ class TestVideoSynthesisService:
         """Test mixing audio with BGM"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             # Create two test audio files
             audio1 = tmp / "audio1.wav"
@@ -385,7 +394,7 @@ class TestVideoSynthesisService:
         """Test mixing audio without BGM"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             audio = tmp / "audio.wav"
             sr = 44100
@@ -399,7 +408,7 @@ class TestVideoSynthesisService:
     def test_mix_audio_empty_returns_none(self):
         """Test mixing with no audio returns None"""
         svc = VideoSynthesisService()
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             result = svc._mix_audio([], None, 1.0, Path(tmpdir))
             assert result is None
 
@@ -407,7 +416,7 @@ class TestVideoSynthesisService:
         """Test complete video compose workflow"""
         svc = VideoSynthesisService()
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with _test_tmpdir() as tmpdir:
             tmp = Path(tmpdir)
             # Create test images and audio
             panels = []

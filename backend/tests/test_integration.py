@@ -47,14 +47,15 @@ class GUID(TypeDecorator):
         return value
 
 
-# Patch all PostgreSQL UUID columns to use GUID
+# Patch all PostgreSQL UUID columns and GUID columns to use test-compatible GUID
 from app.models.declarative import Base
-from app.models import project, task, file as file_model
+from app.models import project, task, file as file_model, user as user_model
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from app.models.guid_type import GUID as ModelGUID
 
-for model in [project.Project, task.Task, task.TaskStatusLog, file_model.File, file_model.VariantGroup]:
+for model in [user_model.User, user_model.RefreshToken, project.Project, task.Task, task.TaskStatusLog, file_model.File, file_model.VariantGroup]:
     for col in model.__table__.columns:
-        if isinstance(col.type, PG_UUID):
+        if isinstance(col.type, (PG_UUID, ModelGUID)):
             col.type = GUID()
 
 

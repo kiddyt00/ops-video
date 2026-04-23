@@ -2,12 +2,14 @@
 FastAPI application entry point
 """
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
 import time
 import uuid
 
 from .config import settings
+from .db.session import get_db
 from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
@@ -127,7 +129,7 @@ def root():
 
 
 @app.get("/health")
-async def health():
+async def health(db: Session = Depends(get_db)):
     """
     Comprehensive health check endpoint
 
@@ -136,7 +138,6 @@ async def health():
     - Database connection
     - Redis connection (if configured)
     """
-    from .db.session import engine
     from sqlalchemy import text
 
     health_status = {
@@ -147,8 +148,7 @@ async def health():
 
     # Check database
     try:
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = {
             "status": "healthy",
             "message": "Database connection OK"
