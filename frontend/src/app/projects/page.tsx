@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Film, Plus, Loader2, Trash2, AlertCircle } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { Film, Plus, Loader2, Trash2, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -21,10 +21,68 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useProjects, useCreateProject, useDeleteProject } from '@/hooks/use-projects'
+import { useTasks } from '@/hooks/use-tasks'
 import { ErrorBoundary } from '@/components/error-boundary'
+import type { Task } from '@/types/task'
+
+const STAGE_ORDER = ['script', 'storyboard', 'image', 'audio', 'video']
+
+function ProjectCard({ project }: { project: { id: string; name: string; description: string | null; created_at: string } }) {
+  const router = useRouter()
+  const deleteProject = useDeleteProject()
+  const { data: tasks } = useTasks(project.id)
+
+  const completedCount = (tasks ?? []).filter((t: Task) => t.status === 'completed').length
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm('确定删除此项目？删除后的项目可在回收站中恢复。')) {
+      try {
+        await deleteProject.mutateAsync(project.id)
+      } catch (e: unknown) {
+        alert(e instanceof Error ? e.message : '删除项目失败')
+      }
+    }
+  }
+
+  return (
+    <Card
+      className="cursor-pointer hover:border-primary transition-colors group relative"
+      onClick={() => router.push(`/projects/${project.id}`)}
+    >
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <span className="truncate">{project.name}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
+            onClick={handleDelete}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+          </Button>
+        </CardTitle>
+        <CardDescription>
+          {project.description || '暂无描述'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span>{formatRelativeTime(project.created_at)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" />
+            <span>已完成 {completedCount}/{STAGE_ORDER.length}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function ProjectsPage() {
   return (
@@ -38,7 +96,6 @@ function ProjectsContent() {
   const router = useRouter()
   const { data: projects, isLoading, error } = useProjects()
   const createProject = useCreateProject()
-  const deleteProject = useDeleteProject()
   const [showDialog, setShowDialog] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -72,17 +129,6 @@ function ProjectsContent() {
       setShowDialog(false)
     } catch (e: unknown) {
       setMutateError(e instanceof Error ? e.message : '创建项目失败')
-    }
-  }
-
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (confirm('确定删除此项目？此操作不可撤销。')) {
-      try {
-        await deleteProject.mutateAsync(id)
-      } catch (e: unknown) {
-        alert(e instanceof Error ? e.message : '删除项目失败')
-      }
     }
   }
 
@@ -127,35 +173,7 @@ function ProjectsContent() {
         ) : projects && projects.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map(project => (
-              <Card
-                key={project.id}
-                className="cursor-pointer hover:border-primary transition-colors group relative"
-                onClick={() => router.push(`/projects/${project.id}`)}
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="truncate">{project.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
-                      onClick={(e) => handleDelete(project.id, e)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    {project.description || '暂无描述'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {['script', 'storyboard', 'image', 'audio', 'video'].map(s => (
-                      <Badge key={s} variant="secondary" className="text-xs">{s}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <ProjectCard key={project.id} project={project} />
             ))}
           </div>
         ) : (

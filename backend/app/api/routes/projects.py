@@ -45,15 +45,18 @@ def get_shared_with_me(
 @router.get("", response_model=List[ProjectResponse])
 def list_projects(
     user_id: Optional[UUID] = None,
+    limit: int = 12,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
-    """List all projects, optionally filtered by user_id"""
+    """List all projects, optionally filtered by user_id. Ordered by created_at desc, limited to 12."""
     filter_user_id = user_id
     # If no user_id param and user is authenticated, show their projects
     if user_id is None and current_user is not None:
         filter_user_id = current_user.id
     projects = project_crud.get_all(db, user_id=filter_user_id)
+    # Sort by created_at descending and limit
+    projects = sorted(projects, key=lambda p: p.created_at, reverse=True)[:limit]
     return projects
 
 
