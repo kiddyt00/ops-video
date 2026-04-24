@@ -144,6 +144,7 @@ export default function ProjectPage() {
         onGenerate={handleGenerate}
         onAdvance={handleAdvance}
         isLoading={loadingTasks}
+        onFilesChange={() => window.location.reload()}
       />
     </AppShell>
   )

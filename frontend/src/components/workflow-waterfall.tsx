@@ -41,6 +41,7 @@ interface WorkflowWaterfallProps {
   onGenerate: (stage: TaskStage, params: Record<string, unknown>) => void
   onAdvance: () => void
   isLoading?: boolean
+  onFilesChange?: () => void
 }
 
 export function WorkflowWaterfall({
@@ -51,6 +52,7 @@ export function WorkflowWaterfall({
   onGenerate,
   onAdvance,
   isLoading,
+  onFilesChange,
 }: WorkflowWaterfallProps) {
   const [expandedStage, setExpandedStage] = useState<TaskStage | null>(null)
 
@@ -218,7 +220,7 @@ export function WorkflowWaterfall({
 
                     {/* Artifacts */}
                     {files && files.length > 0 && (
-                      <ArtifactViewer stage={key} files={files} />
+                      <ArtifactViewer stage={key} files={files} onFilesChange={onFilesChange} />
                     )}
                   </div>
                 )}
