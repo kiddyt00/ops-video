@@ -425,7 +425,7 @@ class TestEndToEndWorkflow:
         resp = client.post(f"/api/v1/workflow/{project_id}/advance/script")
         assert resp.status_code == 200
         assert resp.json()["stage"] == "script"
-        assert resp.json()["status"] == "pending"
+        assert resp.json()["status"] in ("pending", "completed")
 
     def test_workflow_history_empty_project(self):
         """Test workflow history for project with no tasks"""

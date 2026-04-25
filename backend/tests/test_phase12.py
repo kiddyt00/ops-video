@@ -41,7 +41,7 @@ class TestWanxProvider:
 
     def test_default_model(self):
         p = WanxProvider()
-        assert p.model == "wanx-v1"
+        assert p.model == "wanx2.1-t2i-turbo"
 
     def test_model_override(self):
         p = WanxProvider(model="wanx-v2")
