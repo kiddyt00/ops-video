@@ -4,7 +4,7 @@ User schemas
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
 from ..models.user import UserRole
 
 
@@ -40,8 +40,7 @@ class UserResponse(UserBase):
     last_login_at: Optional[datetime] = None
     metadata: Dict[str, Any] = {}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @field_validator("metadata", mode="before")
     @classmethod

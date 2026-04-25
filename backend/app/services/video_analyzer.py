@@ -11,6 +11,7 @@ Analyzes video files to extract metadata:
 
 Uses mutagen library for MP4/MKV/WebM analysis.
 """
+import logging
 import os
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -19,6 +20,8 @@ from datetime import timedelta
 
 from mutagen import File as MutagenFile
 from mutagen.mp4 import MP4
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -109,7 +112,7 @@ class VideoAnalyzer:
 
         except Exception as e:
             # Log error but don't fail
-            print(f"Video analysis failed for {file_path}: {e}")
+            logger.warning("Video analysis failed for %s: %s", file_path, e)
             return cls._get_basic_info(file_path, file_size)
 
     @classmethod

@@ -4,7 +4,7 @@ Analytics schemas for Phase 14: Data Analysis & Reporting
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class VideoStatistics(BaseModel):
@@ -19,8 +19,7 @@ class VideoStatistics(BaseModel):
     codec: str = "unknown"
     has_audio: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskStatistics(BaseModel):
@@ -32,8 +31,7 @@ class TaskStatistics(BaseModel):
     running_tasks: int = 0
     average_duration: float = 0.0  # in seconds
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class StageStatistics(BaseModel):
@@ -44,8 +42,7 @@ class StageStatistics(BaseModel):
     failed_tasks: int = 0
     success_rate: float = 0.0  # percentage
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FileStatistics(BaseModel):
@@ -55,8 +52,7 @@ class FileStatistics(BaseModel):
     total_size_formatted: str = "0 B"
     by_type: Dict[str, int] = {}  # file_type -> count
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProjectStatistics(BaseModel):
@@ -70,8 +66,7 @@ class ProjectStatistics(BaseModel):
     updated_at: datetime
     last_activity: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardMetric(BaseModel):
@@ -91,8 +86,7 @@ class DashboardResponse(BaseModel):
     recent_tasks: List[Dict[str, Any]] = []
     files_by_type: Dict[str, int] = {}
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExportReport(BaseModel):
@@ -106,5 +100,4 @@ class ExportReport(BaseModel):
     files: List[Dict[str, Any]] = []
     variants: List[Dict[str, Any]] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

@@ -2,13 +2,17 @@
 Redis client and cache utilities
 """
 import json
+import logging
 import asyncio
 from typing import Any, Optional
 from redis import asyncio as aioredis
+from redis.exceptions import ConnectionError as RedisConnectionError, TimeoutError as RedisTimeoutError
 from functools import wraps
 import hashlib
 
 from ..config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class RedisClient:
@@ -34,7 +38,8 @@ class RedisClient:
             await self._client.ping()
             self._enabled = True
             return True
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError, OSError) as e:
+            logger.warning("Redis connect failed: %s", e)
             self._enabled = False
             return False
 
@@ -60,7 +65,7 @@ class RedisClient:
             if value:
                 return json.loads(value)
             return None
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError):
             return None
 
     async def set(
@@ -80,7 +85,8 @@ class RedisClient:
             else:
                 await self._client.set(key, serialized)
             return True
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.warning("Redis set failed: %s", e)
             return False
 
     async def delete(self, key: str) -> bool:
@@ -91,7 +97,8 @@ class RedisClient:
         try:
             await self._client.delete(key)
             return True
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.warning("Redis delete failed: %s", e)
             return False
 
     async def exists(self, key: str) -> bool:
@@ -101,7 +108,8 @@ class RedisClient:
 
         try:
             return await self._client.exists(key)
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.warning("Redis exists check failed: %s", e)
             return False
 
     async def clear_pattern(self, pattern: str) -> int:
@@ -114,7 +122,8 @@ class RedisClient:
             if keys:
                 return await self._client.delete(*keys)
             return 0
-        except Exception:
+        except (RedisConnectionError, RedisTimeoutError) as e:
+            logger.warning("Redis clear_pattern failed: %s", e)
             return 0
 
 

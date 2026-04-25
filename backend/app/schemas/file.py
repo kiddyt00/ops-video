@@ -4,7 +4,7 @@ File schemas
 from uuid import UUID
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from enum import Enum
 
 
@@ -23,9 +23,7 @@ class FileBase(BaseModel):
     generation_params: Dict[str, Any] = {}
     extra_info: Dict[str, Any] = {}
 
-    class Config:
-        populate_by_name = True
-        from_attributes = True
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     # Alias for backward compatibility
     metadata: Dict[str, Any] = Field(default={}, alias="extra_info")
@@ -63,8 +61,7 @@ class FileResponse(FileBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VariantGroupBase(BaseModel):
@@ -89,8 +86,7 @@ class VariantGroupResponse(VariantGroupBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VariantSelect(BaseModel):
