@@ -80,7 +80,7 @@ class WorkflowAdvanceToStageRequest(BaseModel):
 @router.post("/{project_id}/advance", response_model=TaskResponse)
 async def advance_workflow(
     project_id: UUID,
-    request: WorkflowAdvanceRequest,
+    request: Optional[WorkflowAdvanceRequest] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -94,6 +94,7 @@ async def advance_workflow(
     """
     workflow = WorkflowService(db)
 
+    request = request or WorkflowAdvanceRequest()
     try:
         task = await workflow.advance_stage(
             project_id=project_id,
@@ -113,7 +114,7 @@ async def advance_workflow(
 async def advance_to_stage(
     project_id: UUID,
     target_stage: str,
-    request: WorkflowAdvanceToStageRequest,
+    request: Optional[WorkflowAdvanceToStageRequest] = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -138,6 +139,7 @@ async def advance_to_stage(
         )
 
     workflow = WorkflowService(db)
+    request = request or WorkflowAdvanceToStageRequest()
 
     try:
         task = await workflow.advance_stage(
