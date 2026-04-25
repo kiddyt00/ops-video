@@ -7,7 +7,8 @@ Integrates all generation services:
 - Audio (TTS via edge-tts, BGM via scipy)
 - Video (FFmpeg composition)
 """
-from uuid import UUID
+from pathlib import Path
+from uuid import UUID, uuid4
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
@@ -553,6 +554,13 @@ class WorkflowService:
         ).first()
 
         panels = parameters.get("panels", [])
+        if not panels and settings.MOCK_MODE:
+            import tempfile
+            from PIL import Image
+            tmp_img = Path(tempfile.gettempdir()) / f"mock_panel_{uuid4()}.png"
+            img = Image.new("RGB", (540, 960), color=(100, 100, 150))
+            img.save(tmp_img)
+            panels = [{"image_path": str(tmp_img), "duration": 3.0, "text": "Mock panel"}]
         resolution = tuple(parameters.get("resolution", [1080, 1920]))
         fps = parameters.get("fps", 24)
         generate_bgm = parameters.get("generate_bgm", True)
@@ -620,7 +628,10 @@ class WorkflowService:
 
         topic = parameters.get("topic")
         if not topic:
-            raise WorkflowError("Script generation requires 'topic' parameter")
+            if settings.MOCK_MODE:
+                topic = "Test Topic"
+            else:
+                raise WorkflowError("Script generation requires 'topic' parameter")
 
         style = parameters.get("style", "comic")
         duration = parameters.get("duration", "1-3 minutes")
@@ -707,9 +718,12 @@ class WorkflowService:
                         prompt = str(storyboard_path.read_text()[:500])
 
         if not prompt:
-            raise WorkflowError(
-                "Image generation requires 'prompt' parameter or valid storyboard content"
-            )
+            if settings.MOCK_MODE:
+                prompt = "A test image"
+            else:
+                raise WorkflowError(
+                    "Image generation requires 'prompt' parameter or valid storyboard content"
+                )
 
         negative_prompt = parameters.get("negative_prompt", "")
         variant_count = int(parameters.get("variant_count", 4))
