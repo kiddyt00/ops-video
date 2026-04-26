@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
 import asyncio
+import logging
 
 from ...db.session import get_db
 from ...db.task_crud import task_crud
 from ...db.file_crud import variant_group_crud
 from ...schemas.task import TaskCreate, TaskStage
 from ...schemas.generator import GenerateRequest, GenerateResponse, GeneratorInfo
+from ...services.workflow_service import WorkflowError
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 # Generator metadata
 GENERATORS = {
@@ -177,8 +180,15 @@ async def _dispatch_generation(
         elif generator_type == "video_composer":
             return _generate_video(db, task, parameters)
         return {"success": False, "error": "Unknown generator type"}
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("dispatch_generation WorkflowError: generator_type=%s, %s", generator_type, str(e), exc_info=True)
         return {"success": False, "error": str(e)}
+    except (ValueError, TypeError) as e:
+        logger.error("dispatch_generation invalid input: generator_type=%s, %s", generator_type, str(e), exc_info=True)
+        return {"success": False, "error": f"Invalid parameters: {e}"}
+    except Exception as e:
+        logger.error("dispatch_generation unexpected error: generator_type=%s, %s", generator_type, str(e), exc_info=True)
+        return {"success": False, "error": f"Internal error: {e}"}
 
 
 async def _generate_script(db, task, params):

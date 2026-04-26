@@ -15,6 +15,7 @@ from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
 from .middleware.security import setup_security, XSSProtectionMiddleware
 from .middleware.rate_limit import setup_rate_limiting
+from .middleware.request_id import RequestIDMiddleware
 
 # Setup logging on startup
 setup_logging(settings.LOG_LEVEL, settings.LOG_FORMAT)
@@ -49,6 +50,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Request ID middleware
+app.add_middleware(RequestIDMiddleware)
+
 # Security middleware (CORS + Security Headers)
 setup_security(app, allowed_origins=settings.cors_origins)
 
@@ -62,8 +66,7 @@ setup_rate_limiting(app, requests_per_minute=60, burst=100)
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     """Middleware for logging requests and responses"""
-    # Generate request ID
-    request_id = str(uuid.uuid4())[:8]
+    request_id = getattr(request.state, "request_id", str(uuid.uuid4()))
 
     # Get start time for performance tracking
     start_time = time.time()

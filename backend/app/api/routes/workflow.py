@@ -8,9 +8,12 @@ from typing import Any, Dict, List, Optional
 import asyncio
 
 from ...db.session import get_db
-from ...services.workflow_service import WorkflowService
+from ...services.workflow_service import WorkflowService, WorkflowError
 from ...services.traceability_service import TraceabilityService
+from ...core.logging_config import get_logger
 from ...schemas.task import TaskResponse
+
+logger = get_logger(__name__)
 
 router = APIRouter()
 
@@ -103,9 +106,16 @@ async def advance_workflow(
             execute=request.execute,
         )
         return task
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("advance_workflow failed: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except (ValueError, TypeError) as e:
+        logger.error("advance_workflow invalid input: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
 
@@ -149,9 +159,16 @@ async def advance_to_stage(
             execute=request.execute,
         )
         return task
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("advance_to_stage failed: stage=%s, %s", target_stage, str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except (ValueError, TypeError) as e:
+        logger.error("advance_to_stage invalid input: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
 
@@ -193,9 +210,16 @@ async def rollback_to_stage(
             file_id=file_id,
         )
         return task
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("rollback_to_stage failed: stage=%s, %s", target_stage, str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except (ValueError, TypeError) as e:
+        logger.error("rollback_to_stage invalid input: %s", str(e), exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e)
         )
 
@@ -211,7 +235,8 @@ def compare_variants(
     try:
         comparison = workflow.get_variant_comparison(variant_group_id)
         return comparison
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("compare_variants failed: variant_group=%s, %s", variant_group_id, str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
@@ -314,7 +339,8 @@ async def rollback_and_regenerate(
             "status": "pending",
             "message": "Regeneration task created",
         }
-    except Exception as e:
+    except WorkflowError as e:
+        logger.error("rollback_and_regenerate failed: %s", str(e), exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)

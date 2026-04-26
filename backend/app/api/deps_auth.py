@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from ..db.session import get_db
 from ..db.user_crud import user_crud
 from ..core.security import decode_token
+from ..core.logging_config import get_logger
 from ..models.user import User, UserRole
+
+logger = get_logger(__name__)
 
 
 # HTTP Bearer token scheme
@@ -131,6 +134,7 @@ async def get_optional_user(
             return user
 
     except Exception:
+        logger.debug("get_optional_user: token validation failed for optional auth", exc_info=True)
         pass
 
     return None
