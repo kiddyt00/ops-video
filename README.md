@@ -8,7 +8,11 @@
 - **文生分镜**: 根据脚本生成分镜描述
 - **文生图**: 根据分镜生成漫画风格图片（支持通义万相 / SiliconFlow）
 - **多结果选择**: 每步骤生成多个变体，用户可选择最佳结果
+- **音频合成**: TTS 语音 + BGM 背景音乐 + SFX 音效
+- **视频合成**: FFmpeg 图片序列拼接 + 音频混合
 - **追溯系统**: 记录所有生成参数、版本、任务历史
+- **数据分析**: 视频元数据分析、项目仪表盘、JSON 报告导出
+- **用户系统**: JWT 认证、角色权限、API 限流
 
 ## 技术栈
 
@@ -129,27 +133,50 @@ ops-video/
 
 ## 开发计划
 
-### Phase 1: 基础架构 (进行中)
-- [x] 项目骨架
-- [x] 数据库模型
-- [x] Docker 配置
-- [ ] 基础 API 实现
+### Phase 1: 基础架构 ✅
+项目骨架、数据库模型 (Project/Task/File/VariantGroup)、Docker 配置、基础 API
 
-### Phase 2: 核心功能
-- [ ] 文生脚本 (LLM)
-- [ ] 文生分镜 (LLM)
-- [ ] 文生图 (通义万相)
-- [ ] 变体选择机制
+### Phase 2: 核心功能 ✅
+LLM 脚本/分镜生成、图片生成、Generator Services、CRUD API
 
-### Phase 3: 工作流
-- [ ] 阶段推进
-- [ ] 追溯系统
-- [ ] 版本对比
+### Phase 3: 工作流引擎 ✅
+阶段推进/回滚、版本对比、谱系追踪、Workflow API
 
-### Phase 4: 音频和视频
-- [ ] TTS 生成
-- [ ] BGM 生成
-- [ ] 视频合成
+### Phase 4: 前端界面 (MVP) ✅
+shadcn/ui 深色模式、三栏布局、项目列表/详情、工作流页面
+
+### Phase 5: 集成测试 ✅
+42 个 E2E 测试（全 CRUD + 完整工作流 + 边界条件）
+
+### Phase 6: 音频与视频合成 ✅
+TTS (edge-tts)、BGM (numpy/scipy 合成)、SFX、FFmpeg 视频拼接
+
+### Phase 7: 前端集成测试 ✅
+vitest + testing-library + E2E 工作流脚本
+
+### Phase 8: 前端 UI 完善 ✅
+VariantPicker、WorkflowProgress、深色主题、所有生成 Hooks
+
+### Phase 9: 部署配置优化 ✅
+Docker 多阶段构建、生产 compose、健康检查、环境变量模板
+
+### Phase 10: 性能优化 ✅
+Redis 缓存、JSON 结构化日志、请求中间件、前端代码分割
+
+### Phase 11: 安全与权限 ✅
+JWT 认证、角色权限、Redis 滑动窗口限流、CSP/HSTS/CORS
+
+### Phase 12: 多 Provider 图片生成 ✅
+DashScope (通义万相) + SiliconFlow (FLUX.1)，动态路由
+
+### Phase 13: 简化 Provider ✅
+移除 ComfyUI，默认使用通义万相，完善 stage_map
+
+### Phase 14: 数据分析与报告 ✅
+视频元数据分析、仪表盘、JSON 报告导出、文件类型分布图
+
+### Phase 15: 功能完善与优化 🚧
+用户项目管理、项目分享协作、参数预设模板、历史记录与回收站
 
 ## License
 
