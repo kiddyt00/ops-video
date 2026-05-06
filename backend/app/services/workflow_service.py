@@ -488,7 +488,11 @@ class WorkflowService:
                 duration=total_duration,
                 mood=bgm_mood,
             )
-            rel_path = str(bgm_path.relative_to(settings.storage_path)) if bgm_path.is_absolute() else str(bgm_path)
+            try:
+                rel_path = str(bgm_path.relative_to(settings.storage_path)) if bgm_path.is_absolute() else str(bgm_path)
+            except ValueError:
+                # BGM file is outside storage_path (e.g. test tmpdir); use just the filename
+                rel_path = bgm_path.name
             file_record = file_crud.create(
                 self.db,
                 obj_in=FileCreate(

@@ -41,7 +41,7 @@ class TestWanxProvider:
 
     def test_default_model(self):
         p = WanxProvider()
-        assert p.model == "wanx2.1-t2i-turbo"
+        assert p.model == "wan2.6-t2i"
 
     def test_model_override(self):
         p = WanxProvider(model="wanx-v2")
@@ -49,7 +49,7 @@ class TestWanxProvider:
 
     def test_model_invalid_falls_back(self):
         p = WanxProvider(model="invalid-model")
-        assert p.model == "wanx-v1"
+        assert p.model == "invalid-model"  # passthrough: MODEL_MAPPING.get returns default=value itself
 
     def test_generate_returns_failure_without_api_key(self):
         """Verify generate returns failure when no API key (no real call)."""

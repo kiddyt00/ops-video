@@ -54,8 +54,8 @@ class Settings(BaseSettings):
     IMAGE_PROVIDER: str = "DASHSCOPE"
 
     # DashScope (通义万相) API
-    DASHSCOPE_API_KEY: str = "sk-b8bd0f8077764c59b948c503cf1ee5f7"
-    DASHSCOPE_MODEL: str = "wanx2.1-t2i-turbo"  # wanx-v1 or wanx-v2
+    DASHSCOPE_API_KEY: str = "sk-26a410fc4042497187fd5401f786c155"
+    DASHSCOPE_MODEL: str = "wan2.6-t2i"  # wan2.6 同步调用，推荐
 
     # SiliconFlow API (OpenAI-compatible /images/generations)
     SILICONFLOW_API_KEY: str = ""

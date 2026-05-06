@@ -285,8 +285,9 @@ class TestE2EMangaWorkflow:
         for key in ("images", "audio", "video", "scripts", "storyboards"):
             (tmp_path / key).mkdir(parents=True, exist_ok=True)
 
-        # Patch STORAGE_DIRS dict in place
+        # Save and patch STORAGE_DIRS dict
         import app.config
+        _saved_storage_dirs = dict(app.config.STORAGE_DIRS)
         for key in list(app.config.STORAGE_DIRS.keys()):
             app.config.STORAGE_DIRS[key] = tmp_path / key
 
@@ -294,16 +295,27 @@ class TestE2EMangaWorkflow:
         monkeypatch.setattr(type(app.config.settings), "storage_path",
                             property(lambda self: tmp_path))
 
-        # Patch service directories (these are captured at class/module load time)
+        # Save and patch service directories (these are captured at class/module load time)
         from app.services.tts_service import tts_service
         from app.services.bgm_service import bgm_service
         from app.services.video_synthesis_service import video_synthesis_service
+
+        _saved_tts_dir = tts_service.AUDIO_DIR
+        _saved_bgm_dir = bgm_service.AUDIO_DIR
+        _saved_video_dir = video_synthesis_service.video_dir
 
         tts_service.AUDIO_DIR = tmp_path / "audio"
         bgm_service.AUDIO_DIR = tmp_path / "audio" / "bgm"
         video_synthesis_service.video_dir = tmp_path / "video"
 
         yield tmp_path
+
+        # Restore original values
+        app.config.STORAGE_DIRS.clear()
+        app.config.STORAGE_DIRS.update(_saved_storage_dirs)
+        tts_service.AUDIO_DIR = _saved_tts_dir
+        bgm_service.AUDIO_DIR = _saved_bgm_dir
+        video_synthesis_service.video_dir = _saved_video_dir
 
     def test_full_manga_workflow(self, client, setup_storedir):
         """
