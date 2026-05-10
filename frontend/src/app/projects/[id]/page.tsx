@@ -30,11 +30,16 @@ export default function ProjectPage() {
 
   const handleAdvance = async () => {
     setApiError(null)
-    // We'll import and call the advance mutation here
     try {
-      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/workflow/${projectId}/advance`, {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ execute: true }),
       })
       if (!resp.ok) {
         const data = await resp.json()
@@ -50,13 +55,18 @@ export default function ProjectPage() {
   const handleGenerate = async (stage: TaskStage, stageParams: Record<string, unknown>) => {
     setApiError(null)
     try {
-      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/workflow/${projectId}/execute`, {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      const stageMap: Record<string, string> = {
+        script: 'script', storyboard: 'storyboard', image: 'image', audio: 'audio', video: 'video'
+      }
+      const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance/${stageMap[stage] || stage}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          generator_type: stage,
-          parameters: stageParams,
-        }),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ parameters: stageParams, execute: true }),
       })
       if (!resp.ok) {
         const data = await resp.json()
