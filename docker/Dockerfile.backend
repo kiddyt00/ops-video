@@ -1,8 +1,11 @@
 # Multi-stage Dockerfile for backend production build
 # Stage 1: Builder
-FROM python:3.11-slim as builder
+FROM python:3.11-slim-bookworm as builder
 
 WORKDIR /app
+
+# Use Aliyun mirrors for apt (faster in China)
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
@@ -15,11 +18,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
-FROM python:3.11-slim as runtime
+FROM python:3.11-slim-bookworm as runtime
 
 WORKDIR /app
 
-# Install runtime dependencies
+# Use Aliyun mirrors for apt
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources
+
+# Install runtime dependencies (ffmpeg needed for video composition)
 RUN apt-get update && apt-get install -y \
     libpq5 \
     ffmpeg \
@@ -41,10 +47,6 @@ ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import httpx; httpx.get('http://localhost:8000/health')" || exit 1
 
 # Run with uvicorn workers for production
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4"]
