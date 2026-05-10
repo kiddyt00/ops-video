@@ -13,9 +13,10 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install dependencies (use Aliyun PyPI mirror)
+# Copy requirements and install dependencies (use Tsinghua PyPI mirror)
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -r requirements.txt
+ENV PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim-bookworm as runtime
