@@ -60,7 +60,7 @@ setup_security(app, allowed_origins=settings.cors_origins)
 app.add_middleware(XSSProtectionMiddleware)
 
 # Rate Limiting (requires Redis)
-setup_rate_limiting(app, requests_per_minute=60, burst=100)
+setup_rate_limiting(app, requests_per_minute=300, burst=500)
 
 
 @app.middleware("http")

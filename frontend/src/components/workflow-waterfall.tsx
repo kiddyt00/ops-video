@@ -48,8 +48,11 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
   const currentStage = workflowStatus?.current_stage as TaskStage | null
 
   const getStatus = (key: string): string => {
-    const t = tasks?.find(t => t.stage === key)
-    if (t) return t.status
+    const stageTasks = (tasks ?? []).filter(t => t.stage === key)
+    // Prefer completed, then running, then any status, then pending
+    if (stageTasks.some(t => t.status === 'completed')) return 'completed'
+    if (stageTasks.some(t => t.status === 'running')) return 'running'
+    if (stageTasks.length > 0) return stageTasks[0].status
     return stageMap.get(key) ?? 'pending'
   }
 
@@ -87,7 +90,8 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
               const isOpen = expanded === key
               const isCurrent = currentStage === key
               const stageFiles = getFiles(fileType)
-              const task = tasks?.find(t => t.stage === key)
+              const stageTasks = (tasks ?? []).filter(t => t.stage === key)
+              const task = stageTasks.find(t => t.status === 'completed') || stageTasks[0]
               const hasPreview = stageFiles.length > 0 && (fileType === 'image' || fileType === 'video' || fileType === 'audio')
 
               return (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { useProject } from '@/hooks/use-projects'
 import { useTasks } from '@/hooks/use-tasks'
 import { useWorkflowStatus } from '@/hooks/use-workflow'
@@ -21,6 +22,7 @@ export default function ProjectPage() {
   const projectId = params.id as string
   const [apiError, setApiError] = useState<string | null>(null)
 
+  const queryClient = useQueryClient()
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
   const { data: tasks, isLoading: loadingTasks, error: tasksError } = useTasks(projectId)
   const { data: workflowStatus, isLoading: loadingWorkflow, error: workflowError } = useWorkflowStatus(projectId)
@@ -166,7 +168,10 @@ export default function ProjectPage() {
         onGenerate={handleGenerate}
         onAdvance={handleAdvance}
         isLoading={loadingTasks}
-        onFilesChange={() => window.location.reload()}
+        onFilesChange={() => {
+          queryClient.invalidateQueries({ queryKey: ['files'] })
+          queryClient.invalidateQueries({ queryKey: ['workflow'] })
+        }}
       />
     </AppShell>
   )

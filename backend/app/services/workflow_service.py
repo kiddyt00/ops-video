@@ -304,25 +304,22 @@ class WorkflowService:
 
         elif target_stage == TaskStage.VIDEO:
             # Collect all required data for video composition
-            image_files = stages_status.get("image", {}).get("selected_files", [])
+            image_files = [f for f in file_crud.get_all(self.db, project_id=project_id) if f.file_type.value == 'image']
             storyboard_files = stages_status.get("storyboard", {}).get("selected_files", [])
-            audio_files = stages_status.get("audio", {}).get("selected_files", [])
+            audio_files = [f for f in file_crud.get_all(self.db, project_id=project_id) if f.file_type.value == 'audio']
 
             panels = []
 
-            # Get image paths
-            image_paths = []
-            for f in image_files:
-                file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
-                if file_record:
-                    image_paths.append(str(settings.storage_path / file_record.file_path))
+            # Get image paths (all images, not just selected)
+            image_paths = [str(settings.storage_path / f.file_path) for f in image_files]
 
-            # Get audio paths (TTS)
-            tts_paths = []
-            for f in audio_files:
-                file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
-                if file_record and file_record.file_type == FileType.AUDIO:
-                    tts_paths.append(str(settings.storage_path / file_record.file_path))
+            # Get audio paths (TTS first, fallback to all audio)
+            tts_only = [f for f in audio_files if f.generation_params and
+                        isinstance(f.generation_params, dict) and
+                        f.generation_params.get('type') == 'tts']
+            tts_paths = [str(settings.storage_path / f.file_path) for f in (tts_only or audio_files)]
+
+            # Get storyboard timing
             storyboard_data = {}
             if storyboard_files:
                 file_record = file_crud.get(self.db, file_id=UUID(storyboard_files[0]["file_id"]))
@@ -334,7 +331,7 @@ class WorkflowService:
                         storyboard_data = parse_storyboard(storyboard_path.read_text())
 
             # Build panels array for video composition
-            num_panels = min(len(image_paths), len(storyboard_data.get("panels", [])))
+            num_panels = max(len(image_paths), len(storyboard_data.get("panels", []))) if storyboard_data else len(image_paths)
 
             # Load SFX paths from audio task if available
             sfx_path_map = self._get_sfx_path_map(project_id)

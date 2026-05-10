@@ -130,13 +130,14 @@ function ScriptCard({ file, onDelete }: { file: FileRecord; onDelete: (id: strin
   const [collapsed, setCollapsed] = useState(true)
 
   useEffect(() => {
+    if (collapsed) return
     setLoading(true)
     fetch(`${API_BASE}/files/${file.id}/download`)
       .then(r => r.text())
       .then(setContent)
       .catch(() => setContent('加载失败'))
       .finally(() => setLoading(false))
-  }, [file.id])
+  }, [file.id, collapsed])
 
   return (
     <div className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-3 space-y-2">
@@ -191,6 +192,7 @@ function StoryboardCard({ file, onDelete }: { file: FileRecord; onDelete: (id: s
   const [collapsed, setCollapsed] = useState(true)
 
   useEffect(() => {
+    if (collapsed) return
     setLoading(true)
     fetch(`${API_BASE}/files/${file.id}/download`)
       .then(r => r.text())
@@ -202,7 +204,7 @@ function StoryboardCard({ file, onDelete }: { file: FileRecord; onDelete: (id: s
       .then(setData)
       .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [file.id])
+  }, [file.id, collapsed])
 
   return (
     <div className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-3 space-y-2">

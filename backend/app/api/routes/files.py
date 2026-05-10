@@ -94,7 +94,17 @@ def download_file(
             detail=f"File not found on disk: {file.file_path}"
         )
 
-    return FastAPIFileResponse(file_path, media_type="application/octet-stream")
+    # Determine MIME type from file extension
+    ext = file_path.suffix.lower()
+    mime_map = {
+        '.mp4': 'video/mp4', '.webm': 'video/webm',
+        '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
+        '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
+        '.json': 'application/json', '.txt': 'text/plain',
+    }
+    media_type = mime_map.get(ext, 'application/octet-stream')
+
+    return FastAPIFileResponse(file_path, media_type=media_type)
 
 
 @router.post("", response_model=FileResponse, status_code=status.HTTP_201_CREATED)
