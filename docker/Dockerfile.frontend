@@ -20,6 +20,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Build Next.js application
+ARG NEXT_PUBLIC_API_URL=/api/v1
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
