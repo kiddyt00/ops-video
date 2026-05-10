@@ -1,87 +1,67 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronDown, ChevronRight, Play, Loader2, CheckCircle2, AlertCircle, Circle, ArrowDown } from 'lucide-react'
-import { cn, formatRelativeTime } from '@/lib/utils'
+import { useState, useEffect, useCallback } from 'react'
+import { ChevronDown, ChevronRight, Play, Loader2, CheckCircle2, AlertCircle, Circle, Sparkles, FileText, Image as ImageIcon, Music, Film, Download, ExternalLink } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ParameterPanel } from '@/components/parameter-panel'
-import { MediaPreviews } from '@/components/media-previews'
-import { ArtifactViewer } from '@/components/artifact-viewer'
 import { type TaskStage, type Task } from '@/types/task'
 import type { FileRecord } from '@/lib/api/files'
 
-const STAGES: { key: TaskStage; label: string; description: string }[] = [
-  { key: 'script', label: '脚本', description: '使用 LLM 生成漫剧脚本' },
-  { key: 'storyboard', label: '分镜', description: '根据脚本生成分镜描述' },
-  { key: 'image', label: '图片', description: '根据分镜生成图片' },
-  { key: 'audio', label: '音频', description: '生成配音和音效' },
-  { key: 'video', label: '视频', description: '合成最终视频' },
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
+
+const STAGES: { key: TaskStage; label: string; desc: string; icon: typeof Sparkles; fileType: string }[] = [
+  { key: 'script', label: '剧本', desc: 'AI 编剧创作故事', icon: FileText, fileType: 'script' },
+  { key: 'storyboard', label: '分镜', desc: '拆解为视觉分镜', icon: Sparkles, fileType: 'storyboard' },
+  { key: 'image', label: '生图', desc: 'Wan2.6 文生图', icon: ImageIcon, fileType: 'image' },
+  { key: 'audio', label: '配音', desc: 'Qwen3-TTS 旁白音效', icon: Music, fileType: 'audio' },
+  { key: 'video', label: '成片', desc: 'FFmpeg 合成最终视频', icon: Film, fileType: 'video' },
 ]
 
-const STATUS_CONFIG: Record<string, { label: string; icon: typeof Circle; color: string; bg: string }> = {
-  completed: { label: '已完成', icon: CheckCircle2, color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/30' },
-  running: { label: '运行中', icon: Loader2, color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/30' },
-  failed: { label: '失败', icon: AlertCircle, color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30' },
-  pending: { label: '未开始', icon: Circle, color: 'text-muted-foreground', bg: 'bg-muted/10 border-border' },
-  cancelled: { label: '已取消', icon: AlertCircle, color: 'text-gray-500', bg: 'bg-gray-500/10 border-gray-500/30' },
+const statusCfg: Record<string, { label: string; color: string; glow: string; dot: string }> = {
+  completed: { label: '完成', color: 'text-emerald-400', glow: 'shadow-emerald-500/20', dot: 'bg-emerald-400' },
+  running: { label: '生成中', color: 'text-sky-400', glow: 'shadow-sky-500/30', dot: 'bg-sky-400 animate-pulse' },
+  failed: { label: '失败', color: 'text-rose-400', glow: 'shadow-rose-500/20', dot: 'bg-rose-400' },
+  pending: { label: '待开始', color: 'text-zinc-500', glow: '', dot: 'bg-zinc-600' },
+  cancelled: { label: '已取消', color: 'text-zinc-500', glow: '', dot: 'bg-zinc-600' },
 }
 
-interface WorkflowWaterfallProps {
+interface Props {
   projectId: string
   tasks?: Task[]
   files?: FileRecord[]
-  workflowStatus?: {
-    current_stage: string | null
-    stages: { stage: string; status: string }[]
-  }
+  workflowStatus?: { current_stage: string | null; stages: { stage: string; status: string }[] }
   onGenerate: (stage: TaskStage, params: Record<string, unknown>) => void
   onAdvance: () => void
   isLoading?: boolean
   onFilesChange?: () => void
 }
 
-export function WorkflowWaterfall({
-  projectId,
-  tasks,
-  files,
-  workflowStatus,
-  onGenerate,
-  onAdvance,
-  isLoading,
-  onFilesChange,
-}: WorkflowWaterfallProps) {
-  const [expandedStage, setExpandedStage] = useState<TaskStage | null>(null)
+export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, isLoading, onFilesChange }: Props) {
+  const [expanded, setExpanded] = useState<TaskStage | null>(null)
 
   const stageMap = new Map(workflowStatus?.stages.map(s => [s.stage, s.status]) ?? [])
   const currentStage = workflowStatus?.current_stage as TaskStage | null
 
-  const getStageStatus = (stageKey: string): string => {
-    const task = tasks?.find(t => t.stage === stageKey)
-    if (task) return task.status
-    return stageMap.get(stageKey) ?? 'pending'
+  const getStatus = (key: string): string => {
+    const t = tasks?.find(t => t.stage === key)
+    if (t) return t.status
+    return stageMap.get(key) ?? 'pending'
   }
 
-  const toggleStage = (stage: TaskStage) => {
-    setExpandedStage(prev => prev === stage ? null : stage)
-  }
+  const getFiles = (fileType: string) => (files ?? []).filter(f => f.file_type === fileType && f.is_selected)
+
+  const toggle = (s: TaskStage) => setExpanded(p => p === s ? null : s)
 
   if (isLoading) {
     return (
       <ScrollArea className="h-full">
-        <div className="p-6 max-w-2xl mx-auto space-y-4">
+        <div className="p-6 max-w-3xl mx-auto space-y-5">
           {STAGES.map((_, i) => (
-            <div key={i}>
-              <Card className="h-16 animate-pulse bg-muted" />
-              {i < STAGES.length - 1 && (
-                <div className="flex items-center justify-center py-2">
-                  <ArrowDown className="w-5 h-5 text-muted-foreground/30" />
-                </div>
-              )}
-            </div>
+            <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />
           ))}
         </div>
       </ScrollArea>
@@ -89,163 +69,277 @@ export function WorkflowWaterfall({
   }
 
   return (
-    <div className="flex h-full">
-      {/* Waterfall list */}
-      <ScrollArea className="flex-1">
-        <div className="p-6 max-w-2xl mx-auto">
-          {STAGES.map(({ key, label, description }, index) => {
-            const status = getStageStatus(key)
-            const statusConf = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending
-            const StatusIcon = statusConf.icon
-            const isExpanded = expandedStage === key
-            const isCurrent = currentStage === key
-            const task = tasks?.find(t => t.stage === key)
+    <div className="h-full bg-gradient-to-b from-[#0a0a14] via-[#0d0d1a] to-[#0a0a14]">
+      <ScrollArea className="h-full">
+        <div className="p-6 max-w-3xl mx-auto space-y-0">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h2 className="text-lg font-semibold text-white/90 tracking-wide">生成流水线</h2>
+            <p className="text-xs text-zinc-500 mt-1">点击阶段展开查看制品与参数</p>
+          </div>
 
-            return (
-              <div key={key}>
-                {/* Stage card */}
-                <Card
-                  className={cn(
-                    'cursor-pointer transition-all hover:shadow-md border',
-                    statusConf.bg,
-                    isExpanded && 'ring-1 ring-primary/20 shadow-md',
-                    isCurrent && 'ring-2 ring-blue-500/30',
-                  )}
-                  onClick={() => toggleStage(key)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {isExpanded ? (
-                          <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                        ) : (
-                          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                        )}
-                        <div>
-                          <CardTitle className="text-base flex items-center gap-2">
-                            {label}
-                            <StatusIcon className={cn('w-4 h-4', statusConf.color, status === 'running' && 'animate-spin')} />
-                          </CardTitle>
-                          <CardDescription className="text-xs">{description}</CardDescription>
+          {/* Stage pipeline */}
+          <div className="relative">
+            {/* Vertical timeline line */}
+            <div className="absolute left-8 top-0 bottom-0 w-px bg-gradient-to-b from-violet-500/30 via-sky-500/20 to-emerald-500/30" />
+
+            {STAGES.map(({ key, label, desc, icon: Icon, fileType }, i) => {
+              const status = getStatus(key)
+              const cfg = statusCfg[status] ?? statusCfg.pending
+              const isOpen = expanded === key
+              const isCurrent = currentStage === key
+              const stageFiles = getFiles(fileType)
+              const task = tasks?.find(t => t.stage === key)
+              const hasPreview = stageFiles.length > 0 && (fileType === 'image' || fileType === 'video' || fileType === 'audio')
+
+              return (
+                <div key={key} className="relative pb-2">
+                  {/* Timeline dot */}
+                  <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
+                    <div className={cn('w-3.5 h-3.5 rounded-full border-2 border-[#0a0a14] transition-colors', cfg.dot)} />
+                  </div>
+
+                  {/* Stage card */}
+                  <div className="ml-14">
+                    <Card
+                      className={cn(
+                        'border-0 rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden',
+                        'bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06]',
+                        isOpen && 'bg-white/[0.06] ring-1 ring-violet-500/30',
+                        isCurrent && status === 'running' && 'ring-1 ring-sky-500/40 shadow-lg shadow-sky-500/10',
+                        status === 'completed' && 'shadow-lg shadow-emerald-500/5',
+                        status === 'failed' && 'ring-1 ring-rose-500/20',
+                      )}
+                      onClick={() => toggle(key)}
+                    >
+                      {/* Main bar */}
+                      <div className="flex items-center gap-4 p-4">
+                        {/* Icon */}
+                        <div className={cn(
+                          'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                          status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
+                          status === 'running' ? 'bg-sky-500/15 text-sky-400' :
+                          status === 'failed' ? 'bg-rose-500/10 text-rose-400' :
+                          'bg-zinc-800 text-zinc-500',
+                        )}>
+                          {status === 'running' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {statusConf.label}
-                        </Badge>
-                        {task && task.started_at && (
-                          <span className="text-xs text-muted-foreground">
-                            {formatRelativeTime(task.started_at)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
 
-                    {/* Error message */}
-                    {task?.error_message && (
-                      <p className="text-xs text-destructive mt-1 ml-8">{task.error_message}</p>
-                    )}
-                  </CardHeader>
-                </Card>
-
-                {/* Expanded detail area */}
-                {isExpanded && (
-                  <div className="ml-8 mt-2 mb-2">
-                    <Card>
-                      <CardContent className="pt-4">
-                        {/* Task info */}
-                        {task ? (
-                          <div className="space-y-2 mb-4">
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">生成器</span>
-                              <span>{task.generator_type}</span>
-                            </div>
-                            {task.started_at && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">开始时间</span>
-                                <span>{new Date(task.started_at).toLocaleString('zh-CN')}</span>
-                              </div>
-                            )}
-                            {task.completed_at && (
-                              <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">完成时间</span>
-                                <span>{new Date(task.completed_at).toLocaleString('zh-CN')}</span>
-                              </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-semibold text-white/90">{label}</span>
+                            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', cfg.color, 'bg-white/5')}>
+                              {cfg.label}
+                            </Badge>
+                            {isCurrent && status === 'running' && (
+                              <span className="text-[10px] text-sky-400/80 animate-pulse">● 处理中</span>
                             )}
                           </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground mb-4">尚未创建此阶段任务，点击下方按钮开始生成</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>
+                        </div>
+
+                        {/* Mini preview for completed stages */}
+                        {status === 'completed' && hasPreview && (
+                          <MiniPreview fileType={fileType} file={stageFiles[0]} />
                         )}
 
-                        <Separator className="my-3" />
-
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onGenerate(key, {})
-                            }}
-                            disabled={status === 'running'}
-                          >
-                            <Play className="w-3.5 h-3.5 mr-1.5" />
-                            {task ? '重新生成' : '生成'}
-                          </Button>
-                          {status === 'completed' && isCurrent && (
-                            <Button size="sm" variant="secondary" onClick={(e) => { e.stopPropagation(); onAdvance() }}>
-                              推进到下一阶段
-                            </Button>
-                          )}
+                        {/* Expand arrow */}
+                        <div className={cn('transition-transform duration-200', isOpen && 'rotate-180')}>
+                          <ChevronDown className="w-4 h-4 text-zinc-600" />
                         </div>
-                      </CardContent>
+                      </div>
+
+                      {/* Error bar */}
+                      {task?.error_message && (
+                        <div className="px-4 pb-3">
+                          <div className="text-[11px] text-rose-400/80 bg-rose-500/5 rounded-lg px-3 py-2">
+                            {task.error_message.slice(0, 200)}
+                          </div>
+                        </div>
+                      )}
                     </Card>
 
-                    {/* Parameter panel inline */}
-                    <Card className="mt-2">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">参数设置</CardTitle>
-                        <CardDescription>配置 {label} 阶段的生成参数</CardDescription>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <ParameterPanel
-                          stage={key}
-                          onGenerate={(params) => onGenerate(key, params)}
-                          onAdvance={status === 'completed' && isCurrent ? onAdvance : undefined}
-                          canGenerate={true}
-                          canAdvance={status === 'completed' && isCurrent}
-                        />
-                      </CardContent>
-                    </Card>
+                    {/* Expanded content */}
+                    {isOpen && (
+                      <div className="mt-2 ml-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                        {/* Artifacts preview */}
+                        {status === 'completed' && stageFiles.length > 0 && (
+                          <StageArtifacts fileType={fileType} files={stageFiles} onFilesChange={onFilesChange} />
+                        )}
 
-                    {/* Artifacts */}
-                    {files && files.length > 0 && (
-                      <ArtifactViewer stage={key} files={files} onFilesChange={onFilesChange} />
+                        {/* Parameters + Actions */}
+                        <Card className="border-0 rounded-xl bg-white/[0.02]">
+                          <CardContent className="p-4">
+                            <ParameterPanel
+                              stage={key}
+                              onGenerate={(params) => onGenerate(key, params)}
+                              canGenerate={true}
+                              canAdvance={false}
+                            />
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs border-white/10 text-white/70 hover:bg-white/10"
+                                onClick={(e) => { e.stopPropagation(); onGenerate(key, {}) }}
+                                disabled={status === 'running'}
+                              >
+                                <Play className="w-3 h-3 mr-1" />
+                                {task ? '重新生成' : '开始生成'}
+                              </Button>
+                              {status === 'completed' && isCurrent && (
+                                <Button size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onAdvance() }}>
+                                  推进下一阶段
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
                     )}
                   </div>
-                )}
+                </div>
+              )
+            })}
+          </div>
 
-                {/* Arrow connector */}
-                {index < STAGES.length - 1 && (
-                  <div className="flex items-center justify-center py-2">
-                    <ArrowDown className={cn(
-                      'w-5 h-5',
-                      status === 'completed' ? 'text-green-500' : 'text-muted-foreground/30'
-                    )} />
-                  </div>
-                )}
+          {/* Bottom spacing */}
+          <div className="h-16" />
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Mini preview thumbnail in the stage bar                            */
+/* ------------------------------------------------------------------ */
+
+function MiniPreview({ fileType, file }: { fileType: string; file: FileRecord }) {
+  const src = `${API_BASE}/files/${file.id}/download`
+
+  if (fileType === 'image') {
+    return (
+      <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/10">
+        <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
+      </div>
+    )
+  }
+
+  if (fileType === 'video') {
+    return (
+      <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/10 flex items-center justify-center">
+        <Film className="w-5 h-5 text-zinc-500" />
+      </div>
+    )
+  }
+
+  if (fileType === 'audio') {
+    return (
+      <div className="shrink-0">
+        <audio controls src={src} className="h-7 w-32 [&::-webkit-media-controls-panel]:bg-zinc-800" preload="metadata" />
+      </div>
+    )
+  }
+
+  return null
+}
+
+/* ------------------------------------------------------------------ */
+/* Expanded artifacts gallery                                         */
+/* ------------------------------------------------------------------ */
+
+function StageArtifacts({ fileType, files, onFilesChange }: { fileType: string; files: FileRecord[]; onFilesChange?: () => void }) {
+  const [lightbox, setLightbox] = useState<string | null>(null)
+
+  if (fileType === 'image') {
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">生成图片 · {files.length} 张</p>
+        <div className="grid grid-cols-2 gap-2">
+          {files.map(f => {
+            const src = `${API_BASE}/files/${f.id}/download`
+            return (
+              <div
+                key={f.id}
+                className="aspect-[4/5] rounded-xl overflow-hidden bg-zinc-900 cursor-pointer ring-1 ring-white/5 hover:ring-violet-500/40 transition-all group relative"
+                onClick={() => setLightbox(src)}
+              >
+                <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                  <span className="text-[10px] text-white/80 truncate">{f.file_path.split('/').pop()}</span>
+                </div>
               </div>
             )
           })}
-
-          {/* Generated files preview */}
-          {files && files.length > 0 && (
-            <div className="mt-6">
-              <MediaPreviews projectId={projectId} />
-            </div>
-          )}
         </div>
-      </ScrollArea>
+        {/* Lightbox */}
+        {lightbox && (
+          <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center cursor-zoom-out" onClick={() => setLightbox(null)}>
+            <img src={lightbox} alt="" className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg" onClick={e => e.stopPropagation()} />
+            <a href={lightbox} download className="absolute bottom-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20">
+              <Download className="w-5 h-5" />
+            </a>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (fileType === 'video') {
+    return (
+      <div className="space-y-3">
+        <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">最终视频</p>
+        {files.map(f => {
+          const src = `${API_BASE}/files/${f.id}/download`
+          return (
+            <div key={f.id} className="rounded-xl overflow-hidden bg-black ring-1 ring-white/5">
+              <video controls src={src} className="w-full max-h-[360px] object-contain" preload="metadata" />
+              <div className="flex items-center justify-between px-3 py-2 bg-zinc-900">
+                <span className="text-xs text-zinc-400 truncate">{f.file_path.split('/').pop()}</span>
+                <a href={src} download className="text-xs text-zinc-500 hover:text-white flex items-center gap-1">
+                  <Download className="w-3 h-3" />下载
+                </a>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  if (fileType === 'audio') {
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">配音文件 · {files.length} 个</p>
+        {files.map(f => {
+          const src = `${API_BASE}/files/${f.id}/download`
+          return (
+            <div key={f.id} className="rounded-xl bg-white/[0.03] ring-1 ring-white/5 p-3 flex items-center gap-3">
+              <Music className="w-4 h-4 text-zinc-500 shrink-0" />
+              <audio controls src={src} className="flex-1 h-8" preload="metadata" />
+              <a href={src} download className="shrink-0"><Download className="w-3.5 h-3.5 text-zinc-600 hover:text-white" /></a>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // script / storyboard
+  return (
+    <div className="space-y-2">
+      <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">{fileType === 'script' ? '剧本' : '分镜数据'} · {files.length} 个</p>
+      {files.map(f => (
+        <div key={f.id} className="flex items-center gap-2 text-xs text-zinc-400 px-1">
+          <FileText className="w-3 h-3 shrink-0" />
+          <span className="truncate">{f.file_path.split('/').pop()}</span>
+          <a href={`${API_BASE}/files/${f.id}/download`} download className="ml-auto shrink-0 text-zinc-600 hover:text-white">
+            <Download className="w-3 h-3" />
+          </a>
+        </div>
+      ))}
     </div>
   )
 }

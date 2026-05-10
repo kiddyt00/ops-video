@@ -1,3 +1,4 @@
+from .storyboard_parser import parse_storyboard
 """
 Workflow Service - Core workflow engine
 
@@ -287,13 +288,13 @@ class WorkflowService:
                 if file_record:
                     import json
                     from pathlib import Path
-                    storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                    storyboard_path = settings.storage_path / file_record.file_path
                     if storyboard_path.exists():
-                        storyboard_data = json.loads(storyboard_path.read_text())
+                        storyboard_data = parse_storyboard(storyboard_path.read_text())
                         panels = storyboard_data.get("panels", [])
 
                         # Extract text for TTS
-                        texts = [p.get("text", p.get("dialogue", "")) for p in panels if p.get("text") or p.get("dialogue")]
+                        texts = [p.get("text") or p.get("dialogue") or p.get("scene_description", "") for p in panels]
 
                         return {
                             "texts": texts,
@@ -314,14 +315,14 @@ class WorkflowService:
             for f in image_files:
                 file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
                 if file_record:
-                    image_paths.append(str(STORAGE_DIRS["images"] / file_record.file_path))
+                    image_paths.append(str(settings.storage_path / file_record.file_path))
 
             # Get audio paths (TTS)
             tts_paths = []
             for f in audio_files:
                 file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
                 if file_record and file_record.file_type == FileType.AUDIO:
-                    tts_paths.append(str(STORAGE_DIRS["audio"] / file_record.file_path))
+                    tts_paths.append(str(settings.storage_path / file_record.file_path))
 
             # Get storyboard timing
             storyboard_data = {}
@@ -330,9 +331,9 @@ class WorkflowService:
                 if file_record:
                     import json
                     from pathlib import Path
-                    storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                    storyboard_path = settings.storage_path / file_record.file_path
                     if storyboard_path.exists():
-                        storyboard_data = json.loads(storyboard_path.read_text())
+                        storyboard_data = parse_storyboard(storyboard_path.read_text())
 
             # Build panels array for video composition
             num_panels = min(len(image_paths), len(storyboard_data.get("panels", [])))
@@ -709,10 +710,10 @@ class WorkflowService:
             # Try to infer prompt from storyboard content
             file_record = file_crud.get(self.db, file_id=storyboard_file_id)
             if file_record:
-                storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                storyboard_path = settings.storage_path / file_record.file_path
                 if storyboard_path.exists():
                     import json
-                    storyboard_data = json.loads(storyboard_path.read_text())
+                    storyboard_data = parse_storyboard(storyboard_path.read_text())
                     panels = storyboard_data.get("panels", [])
                     # Build prompt from first panel description
                     if panels:

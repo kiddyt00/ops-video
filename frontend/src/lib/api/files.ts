@@ -9,6 +9,7 @@ export interface FileRecord {
   file_path: string
   version: number
   is_selected: boolean
+  generation_params?: Record<string, unknown>
   created_at: string
 }
 
