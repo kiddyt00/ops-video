@@ -168,11 +168,24 @@ async def _test_image(model, prompt: str) -> str:
                 if resp.status_code != 200:
                     raise ValueError(f"Submit failed: HTTP {resp.status_code}: {resp.text[:200]}")
                 data = resp.json()
+
+                # Check for async task_id first (legacy behavior)
                 task_id = data.get("output", {}).get("task_id")
-                if not task_id:
-                    raise ValueError(f"No task_id in response: {json.dumps(data, ensure_ascii=False)[:300]}")
-                status = data.get("output", {}).get("task_status", "PENDING")
-                return f"Task submitted: {task_id} (status: {status})"
+                if task_id:
+                    status = data.get("output", {}).get("task_status", "PENDING")
+                    return f"Task submitted: {task_id} (status: {status})"
+
+                # Check for sync inline images
+                choices = data.get("output", {}).get("choices", [])
+                if choices:
+                    n_images = 0
+                    for choice in choices:
+                        for item in choice.get("message", {}).get("content", []):
+                            if item.get("image"):
+                                n_images += 1
+                    return f"Generation completed ({n_images} image(s))"
+
+                raise ValueError(f"Unexpected response: {json.dumps(data, ensure_ascii=False)[:300]}")
 
             else:
                 # Legacy async text2image (wanx-v2, wanx2.1, etc.)
