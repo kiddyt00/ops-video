@@ -2,332 +2,290 @@
 
 import { useState } from 'react'
 import {
-  Brain, Paintbrush, Mic, Music, Clapperboard,
-  Sparkles, ChevronDown, ChevronRight, CheckCircle2,
-  FlaskConical, AlertCircle, Cpu, Zap, Layers, Wand2
+  Brain, Paintbrush, Mic, Music, Clapperboard, Cpu, Sparkles,
+  Plus, Pencil, Trash2, Play, Loader2, AlertCircle, CheckCircle2,
+  X, Power, PowerOff, FlaskConical, Zap
 } from 'lucide-react'
 import { AppShell } from '@/components/app-shell'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { useQuery } from '@tanstack/react-query'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────
 
-interface GeneratorInfo {
-  name: string
-  type: string
-  description: string
-  parameters: Record<string, { type: string; required: boolean; default?: string | number | boolean; description: string }>
-}
-
-interface ModelCategory {
+interface AIModel {
   id: string
-  label: string
-  description: string
-  icon: typeof Brain
-  color: string
-  bgColor: string
-  borderColor: string
-  textColor: string
-  badgeColor: string
-  generators: GeneratorInfo[]
-}
-
-// ─── Model providers info (static, editable) ──────────────────────────
-
-interface ProviderInfo {
   name: string
-  models: { name: string; description: string; recommended?: boolean }[]
-  status: 'active' | 'mock' | 'unavailable'
+  category: string
+  provider: string
+  model_name: string
+  api_key: string | null
+  api_base_url: string | null
+  is_enabled: boolean
+  is_builtin: boolean
+  config: Record<string, unknown>
+  created_at: string
+  updated_at: string
 }
 
-const PROVIDERS: Record<string, ProviderInfo> = {
-  llm: {
-    name: 'DashScope 通义千问',
-    models: [
-      { name: 'qwen-plus', description: '均衡性能，适合剧本/分镜生成', recommended: true },
-      { name: 'qwen-max', description: '最强能力，适合复杂剧情', recommended: false },
-      { name: 'qwen-turbo', description: '高速响应，适合快速迭代', recommended: false },
-    ],
-    status: 'mock',
-  },
-  wanx: {
-    name: '通义万相 Wanx',
-    models: [
-      { name: 'wan2.6-t2i', description: '文生图旗舰模型', recommended: true },
-      { name: 'wanx-v1', description: '稳定版本，兼容性好', recommended: false },
-    ],
-    status: 'mock',
-  },
-  tts: {
-    name: 'Edge TTS',
-    models: [
-      { name: 'zh-CN-XiaoxiaoNeural', description: '女声·温柔', recommended: true },
-      { name: 'zh-CN-YunxiNeural', description: '男声·沉稳', recommended: false },
-      { name: 'zh-CN-XiaoyiNeural', description: '女声·活泼', recommended: false },
-    ],
-    status: 'active',
-  },
-  bgm: {
-    name: 'SciPy 合成引擎',
-    models: [
-      { name: 'ambient', description: '氛围音乐' },
-      { name: 'dramatic', description: '戏剧化配乐' },
-      { name: 'cheerful', description: '轻快欢快' },
-    ],
-    status: 'active',
-  },
-  video: {
-    name: 'FFmpeg 引擎',
-    models: [
-      { name: 'H.264/AAC', description: '标准 MP4 输出' },
-    ],
-    status: 'active',
-  },
+interface ModelForm {
+  name: string; category: string; provider: string; model_name: string
+  api_key?: string; api_base_url?: string
 }
 
-// ─── API ──────────────────────────────────────────────────────────────
-
-async function fetchGenerators(): Promise<GeneratorInfo[]> {
-  const { data } = await api.get<GeneratorInfo[]>('/generators')
-  return data
+const emptyForm: ModelForm = {
+  name: '', category: 'llm', provider: 'dashscope', model_name: '',
+  api_key: '', api_base_url: '',
 }
 
 // ─── Category Config ──────────────────────────────────────────────────
 
-const CATEGORY_CONFIG: Record<string, Omit<ModelCategory, 'generators'>> = {
-  llm: {
-    id: 'llm', label: '大语言模型', description: '剧本创作与分镜拆解',
-    icon: Brain, color: '#6366f1', bgColor: 'bg-violet-500/5', borderColor: 'border-violet-500/20',
-    textColor: 'text-violet-400', badgeColor: 'bg-violet-500/10 text-violet-400 border-violet-500/20',
-  },
-  wanx: {
-    id: 'wanx', label: '文生图', description: '根据分镜描述生成漫画图片',
-    icon: Paintbrush, color: '#f59e0b', bgColor: 'bg-amber-500/5', borderColor: 'border-amber-500/20',
-    textColor: 'text-amber-400', badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  },
-  tts: {
-    id: 'tts', label: '文生音频', description: '将文字转为自然语音旁白',
-    icon: Mic, color: '#10b981', bgColor: 'bg-emerald-500/5', borderColor: 'border-emerald-500/20',
-    textColor: 'text-emerald-400', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  },
-  bgm: {
-    id: 'bgm', label: '音乐生成', description: '自动生成背景音乐与音效',
-    icon: Music, color: '#ec4899', bgColor: 'bg-pink-500/5', borderColor: 'border-pink-500/20',
-    textColor: 'text-pink-400', badgeColor: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
-  },
-  video: {
-    id: 'video', label: '视频合成', description: '图片+音频+时间轴 → 最终视频',
-    icon: Clapperboard, color: '#06b6d4', bgColor: 'bg-cyan-500/5', borderColor: 'border-cyan-500/20',
-    textColor: 'text-cyan-400', badgeColor: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-  },
+const CATEGORIES: Record<string, { label: string; icon: typeof Brain; color: string; providers: { value: string; label: string }[] }> = {
+  llm: { label: '大语言模型', icon: Brain, color: '#6366f1',
+    providers: [{ value: 'dashscope', label: 'DashScope' }, { value: 'openai', label: 'OpenAI' }, { value: 'ollama', label: 'Ollama' }] },
+  wanx: { label: '文生图', icon: Paintbrush, color: '#f59e0b',
+    providers: [{ value: 'dashscope', label: '通义万相' }, { value: 'siliconflow', label: 'SiliconFlow' }] },
+  tts: { label: '文生音频', icon: Mic, color: '#10b981',
+    providers: [{ value: 'edge_tts', label: 'Edge TTS' }] },
+  bgm: { label: '音乐生成', icon: Music, color: '#ec4899',
+    providers: [{ value: 'scipy', label: 'SciPy 合成' }] },
+  video: { label: '视频合成', icon: Clapperboard, color: '#06b6d4',
+    providers: [{ value: 'ffmpeg', label: 'FFmpeg' }] },
 }
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  active: { label: '已接入', className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
-  mock: { label: 'Mock', className: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
-  unavailable: { label: '未配置', className: 'bg-red-500/15 text-red-400 border-red-500/30' },
+// ─── API ──────────────────────────────────────────────────────────────
+
+const modelsApi = {
+  list: () => api.get<AIModel[]>('/models').then(r => r.data),
+  create: (data: ModelForm & { config?: Record<string, unknown> }) => api.post<AIModel>('/models', data).then(r => r.data),
+  update: (id: string, data: Partial<ModelForm>) => api.put<AIModel>(`/models/${id}`, data).then(r => r.data),
+  delete: (id: string) => api.delete(`/models/${id}`),
+  toggle: (id: string) => api.post<AIModel>(`/models/${id}/toggle`).then(r => r.data),
+  test: (id: string, prompt?: string) => api.post<{ success: boolean; message: string; latency_ms: number; result: string }>(`/models/${id}/test`, { prompt }).then(r => r.data),
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────
 
 export default function ModelsPage() {
-  const { data: generators, isLoading, error } = useQuery({
-    queryKey: ['generators'],
-    queryFn: fetchGenerators,
-  })
+  const qc = useQueryClient()
+  const { data: models, isLoading, error } = useQuery({ queryKey: ['ai-models'], queryFn: modelsApi.list })
 
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null)
-  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<ModelForm>(emptyForm)
+  const [formError, setFormError] = useState<string | null>(null)
 
-  // Group generators by type
-  const categories = generators
-    ? Object.entries(CATEGORY_CONFIG).map(([type, config]) => ({
-        ...config,
-        generators: generators.filter(g => g.type === type),
-      })).filter(c => c.generators.length > 0)
-    : []
+  const [testResult, setTestResult] = useState<Record<string, { running: boolean; result?: string; error?: string; latency?: number }>>({})
+
+  const createMut = useMutation({ mutationFn: modelsApi.create, onSuccess: () => { qc.invalidateQueries({ queryKey: ['ai-models'] }); setFormOpen(false) } })
+  const updateMut = useMutation({ mutationFn: ({ id, data }: { id: string; data: Partial<ModelForm> }) => modelsApi.update(id, data), onSuccess: () => { qc.invalidateQueries({ queryKey: ['ai-models'] }); setFormOpen(false) } })
+  const deleteMut = useMutation({ mutationFn: modelsApi.delete, onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-models'] }) })
+  const toggleMut = useMutation({ mutationFn: modelsApi.toggle, onSuccess: () => qc.invalidateQueries({ queryKey: ['ai-models'] }) })
+
+  const openCreate = () => { setEditingId(null); setForm(emptyForm); setFormError(null); setFormOpen(true) }
+  const openEdit = (m: AIModel) => {
+    setEditingId(m.id)
+    setForm({ name: m.name, category: m.category, provider: m.provider, model_name: m.model_name, api_key: m.api_key || '', api_base_url: m.api_base_url || '' })
+    setFormError(null)
+    setFormOpen(true)
+  }
+
+  const handleSave = () => {
+    if (!form.name.trim()) { setFormError('名称不能为空'); return }
+    if (!form.model_name.trim()) { setFormError('模型名称不能为空'); return }
+    setFormError(null)
+    if (editingId) updateMut.mutate({ id: editingId, data: form })
+    else createMut.mutate(form)
+  }
+
+  const handleTest = async (model: AIModel) => {
+    setTestResult(prev => ({ ...prev, [model.id]: { running: true } }))
+    try {
+      const r = await modelsApi.test(model.id)
+      setTestResult(prev => ({ ...prev, [model.id]: { running: false, result: r.result, latency: r.latency_ms } }))
+    } catch (e) {
+      setTestResult(prev => ({ ...prev, [model.id]: { running: false, error: e instanceof Error ? e.message : 'Test failed' } }))
+    }
+    setTimeout(() => setTestResult(prev => { const n = { ...prev }; delete n[model.id]; return n }), 8000)
+  }
+
+  const grouped = models ? Object.entries(CATEGORIES).map(([cat, cfg]) => ({
+    ...cfg, key: cat, models: models.filter(m => m.category === cat)
+  })).filter(g => g.models.length > 0) : []
 
   return (
     <AppShell>
       <ScrollArea className="h-full">
         <div className="p-6 max-w-5xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
                 <Cpu className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold">模型中心</h2>
-                <p className="text-sm text-muted-foreground">管理 AI 模型接入与配置</p>
+                <h2 className="text-2xl font-bold">模型管理</h2>
+                <p className="text-sm text-muted-foreground">配置和管理 AI 模型接入</p>
               </div>
             </div>
+            <Button onClick={openCreate}><Plus className="w-4 h-4 mr-1.5" />添加模型</Button>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="flex items-start gap-2 text-sm text-red-400 bg-red-500/10 rounded-xl p-3.5 mb-6">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>加载模型信息失败</span>
-            </div>
-          )}
-
-          {/* Loading */}
           {isLoading ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Card key={i}><CardHeader><Skeleton className="h-5 w-32" /><Skeleton className="h-4 w-48 mt-2" /></CardHeader></Card>
-              ))}
-            </div>
+            <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-20 w-full" />)}</div>
           ) : (
-            <div className="space-y-10">
-              {/* ─── Category Groups ──────────────────────────────── */}
-              {categories.map(category => (
-                <section key={category.id}>
-                  {/* Category Header */}
-                  <div className={cn(
-                    'flex items-center gap-4 mb-4 p-4 rounded-2xl border cursor-pointer transition-all duration-200',
-                    category.bgColor, category.borderColor,
-                    expandedCategory === category.id && 'ring-1'
-                  )}
-                  onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
-                  >
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: category.color + '15' }}
-                    >
-                      <category.icon className="w-6 h-6" style={{ color: category.color }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        {category.label}
-                        <Badge className={cn('text-[10px]', category.badgeColor)}>
-                          {category.generators.length} 个模型
-                        </Badge>
-                      </h3>
-                      <p className="text-sm text-muted-foreground">{category.description}</p>
-                    </div>
-                    {expandedCategory === category.id ? (
-                      <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
-                    )}
+            <div className="space-y-8">
+              {grouped.map(group => (
+                <section key={group.key}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <group.icon className="w-4 h-4" style={{ color: group.color }} />
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{group.label}</h3>
+                    <Badge variant="outline" className="text-[10px]">{group.models.length}</Badge>
                   </div>
+                  <div className="space-y-2">
+                    {group.models.map(model => {
+                      const test = testResult[model.id]
+                      return (
+                        <Card key={model.id} className={cn('border-border/50 transition-all', !model.is_enabled && 'opacity-50')}>
+                          <CardHeader className="py-3 px-4">
+                            <div className="flex items-center gap-4">
+                              <button
+                                onClick={() => toggleMut.mutate(model.id)}
+                                className={cn('shrink-0 transition-colors cursor-pointer', model.is_enabled ? 'text-emerald-400' : 'text-muted-foreground')}
+                                title={model.is_enabled ? '已启用，点击禁用' : '已禁用，点击启用'}
+                              >
+                                {model.is_enabled ? <Power className="w-5 h-5" /> : <PowerOff className="w-5 h-5" />}
+                              </button>
 
-                  {/* Expanded Details */}
-                  {expandedCategory === category.id && (
-                    <div className="space-y-4 pl-4 ml-6 border-l-2" style={{ borderColor: category.color + '20' }}>
-                      {/* Provider Info */}
-                      {PROVIDERS[category.id] && (() => {
-                        const provider = PROVIDERS[category.id]
-                        const status = STATUS_MAP[provider.status]
-                        return (
-                          <div>
-                            <div
-                              className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/30 cursor-pointer transition-colors"
-                              onClick={() => setExpandedProvider(expandedProvider === category.id ? null : category.id)}
-                            >
-                              <Layers className="w-4 h-4 text-muted-foreground shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">{provider.name}</span>
-                                  <Badge className={cn('text-[10px]', status.className)}>{status.label}</Badge>
+                                  <span className="font-medium text-sm">{model.name}</span>
+                                  {!model.is_enabled && <Badge className="text-[10px] bg-muted">已禁用</Badge>}
+                                  {model.is_builtin && <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">内置</Badge>}
+                                  {model.api_key && <Badge className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">已配置</Badge>}
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5">
-                                  {provider.status === 'mock' ? '需要配置 API Key 才能使用真实服务' : '本地引擎，无需额外配置'}
+                                  {model.provider} · {model.model_name}
+                                  {model.api_base_url && ` · ${model.api_base_url}`}
                                 </p>
-                              </div>
-                              {expandedProvider === category.id ? (
-                                <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                              )}
-                            </div>
-
-                            {expandedProvider === category.id && (
-                              <div className="ml-9 space-y-1.5 mt-2 mb-4">
-                                {provider.models.map(m => (
-                                  <div key={m.name} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                                    <Wand2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-mono">{m.name}</span>
-                                      {m.recommended && (
-                                        <Badge className="ml-2 text-[9px] bg-primary/10 text-primary border-primary/20">推荐</Badge>
-                                      )}
-                                    </div>
-                                    <span className="text-xs text-muted-foreground hidden sm:block">{m.description}</span>
-                                    {category.id === 'llm' && provider.status === 'mock' && (
-                                      <FlaskConical className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                    )}
-                                    {provider.status === 'active' && (
-                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                {test && (
+                                  <div className={cn('mt-2 text-xs rounded-lg p-2', test.error ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400')}>
+                                    {test.running ? (
+                                      <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />测试中...</span>
+                                    ) : test.error ? (
+                                      `失败: ${test.error}`
+                                    ) : (
+                                      <span>✅ {test.result?.substring(0, 200)}{test.latency ? ` (${test.latency}ms)` : ''}</span>
                                     )}
                                   </div>
-                                ))}
+                                )}
                               </div>
-                            )}
-                          </div>
-                        )
-                      })()}
 
-                      {/* Generator cards */}
-                      {category.generators.map(gen => (
-                        <Card key={gen.name} className="border-border/50 bg-muted/10">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <CardTitle className="text-sm flex items-center gap-2">
-                                  <Sparkles className="w-3.5 h-3.5" style={{ color: category.color }} />
-                                  {gen.name}
-                                </CardTitle>
-                                <CardDescription className="text-xs mt-1">{gen.description}</CardDescription>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {model.is_enabled && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="测试连接" onClick={() => handleTest(model)} disabled={test?.running}>
+                                    {test?.running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="编辑" onClick={() => openEdit(model)}>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                {!model.is_builtin && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="删除" onClick={() => { if (confirm('确定删除？')) deleteMut.mutate(model.id) }}>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
                               </div>
-                              <Badge variant="outline" className="text-[10px]">{gen.type}</Badge>
                             </div>
                           </CardHeader>
-                          {gen.parameters && Object.keys(gen.parameters).length > 0 && (
-                            <CardContent className="pt-0">
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {Object.entries(gen.parameters).map(([key, param]) => (
-                                  <div key={key} className="px-2.5 py-1.5 rounded-lg bg-background/50 border border-border/30">
-                                    <p className="text-xs font-medium">{key}</p>
-                                    <p className="text-[10px] text-muted-foreground truncate">{param.description}</p>
-                                    {param.required && (
-                                      <Badge className="text-[9px] mt-1 bg-red-500/10 text-red-400 border-red-500/20">必填</Badge>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </CardContent>
-                          )}
                         </Card>
-                      ))}
-                    </div>
-                  )}
+                      )
+                    })}
+                  </div>
                 </section>
               ))}
             </div>
           )}
-
-          {/* Legend */}
-          <div className="mt-12 pt-6 border-t border-border/50">
-            <p className="text-xs text-muted-foreground mb-3">图例</p>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(CATEGORY_CONFIG).map(([id, cfg]) => (
-                <div key={id} className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <div className="w-3 h-3 rounded" style={{ backgroundColor: cfg.color + '30' }} />
-                  <span>{cfg.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </ScrollArea>
+
+      {/* ─── Add/Edit Dialog ────────────────────────────────────── */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? '编辑模型' : '添加模型'}</DialogTitle>
+            <DialogDescription>配置 AI 模型接入参数</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            {formError && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg p-2.5">
+                <AlertCircle className="w-4 h-4 shrink-0" /><span>{formError}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-medium mb-1 block">名称</label>
+              <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="例如: 通义千问 (Qwen-Plus)" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium mb-1 block">分类</label>
+                <Select value={form.category} onValueChange={v => { if (v) setForm(p => ({ ...p, category: v, provider: CATEGORIES[v]?.providers[0]?.value || '' })) }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(CATEGORIES).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1 block">提供商</label>
+                <Select value={form.provider} onValueChange={v => { if (v) setForm(p => ({ ...p, provider: v })) }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(CATEGORIES[form.category]?.providers || []).map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium mb-1 block">模型名称</label>
+              <Input value={form.model_name} onChange={e => setForm(p => ({ ...p, model_name: e.target.value }))} placeholder="例如: qwen-plus" />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium mb-1 block">API Key</label>
+              <Input value={form.api_key} onChange={e => setForm(p => ({ ...p, api_key: e.target.value }))} placeholder="sk-..." type="password" />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium mb-1 block">API Base URL</label>
+              <Input value={form.api_base_url} onChange={e => setForm(p => ({ ...p, api_base_url: e.target.value }))} placeholder="https://api.example.com/v1" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
+            <Button onClick={handleSave} disabled={createMut.isPending || updateMut.isPending}>
+              {(createMut.isPending || updateMut.isPending) && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {editingId ? '保存' : '添加'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   )
 }
