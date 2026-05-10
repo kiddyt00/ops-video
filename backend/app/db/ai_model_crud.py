@@ -1,4 +1,6 @@
-"""AI Model CRUD operations"""
+"""
+AI Model CRUD operations
+"""
 from uuid import UUID
 from typing import Optional, List
 from sqlalchemy.orm import Session
@@ -52,20 +54,28 @@ class AIModelCRUD:
         return model
 
     def seed_builtins(self, db: Session) -> int:
-        """Seed built-in models if they don't exist. Returns count of seeded models."""
+        """Seed built-in models if they don't exist."""
         existing = {m.name for m in self.get_all(db)}
         builtins = [
-            AIModelCreate(name="通义千问 (Qwen-Plus)", category="llm", provider="dashscope",
+            # LLM
+            AIModelCreate(name="通义千问 (Qwen-Plus)", category="llm", provider="DashScope",
                          model_name="qwen-plus", api_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
                          is_builtin=True, is_enabled=False),
-            AIModelCreate(name="通义万相 (Wan2.6)", category="text2img", provider="dashscope",
+            # Text-to-Image
+            AIModelCreate(name="通义万相 Wan2.6", category="text2img", provider="DashScope",
                          model_name="wan2.6-t2i", api_base_url="https://dashscope.aliyuncs.com/api/v1",
                          is_builtin=True, is_enabled=False),
-            AIModelCreate(name="Edge TTS (Xiaoxiao)", category="tts", provider="edge_tts",
+            # Text-to-Audio / TTS
+            AIModelCreate(name="CosyVoice (百炼)", category="tts", provider="DashScope",
+                         model_name="cosyvoice-v1", api_base_url="https://dashscope.aliyuncs.com/api/v1",
+                         is_builtin=True, is_enabled=False),
+            AIModelCreate(name="Edge TTS (Xiaoxiao)", category="tts", provider="Edge TTS",
                          model_name="zh-CN-XiaoxiaoNeural", is_builtin=True, is_enabled=True),
-            AIModelCreate(name="BGM 合成引擎", category="bgm", provider="scipy",
+            # BGM
+            AIModelCreate(name="SciPy 合成引擎", category="bgm", provider="SciPy",
                          model_name="scipy-synth", is_builtin=True, is_enabled=True),
-            AIModelCreate(name="FFmpeg 视频合成", category="video", provider="ffmpeg",
+            # Video
+            AIModelCreate(name="FFmpeg H.264/AAC", category="video", provider="FFmpeg",
                          model_name="H.264/AAC", is_builtin=True, is_enabled=True),
         ]
         count = 0

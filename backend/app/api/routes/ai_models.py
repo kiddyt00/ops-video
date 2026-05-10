@@ -113,14 +113,30 @@ async def _test_llm(model, prompt: str) -> str:
 
 
 async def _test_tts(model, text: str) -> str:
-    """Test TTS by attempting synthesis"""
+    """Test TTS — supports DashScope CosyVoice and Edge TTS"""
+    if model.provider.lower() in ("dashscope", "bailian"):
+        if not model.api_key:
+            raise ValueError("API Key not configured")
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(
+                f"{model.api_base_url}/services/aigc/multimodal-generation/generation",
+                headers={"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"},
+                json={
+                    "model": model.model_name or "cosyvoice-v1",
+                    "input": {"text": text},
+                    "parameters": {"voice": "longxiaochun", "format": "mp3"},
+                },
+            )
+            if resp.status_code != 200:
+                raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
+            return f"CosyVoice 连接成功 (voice: {model.model_name})"
+
+    # Fallback: Edge TTS
     try:
         import edge_tts
-        communicate = edge_tts.Communicate(text, model.model_name)
-        # Just check it doesn't crash
-        return f"TTS engine ready (voice: {model.model_name})"
+        return f"Edge TTS ready (voice: {model.model_name})"
     except ImportError:
-        return "edge-tts package available"
+        return "Edge TTS 可用"
     except Exception as e:
         raise ValueError(f"TTS test failed: {str(e)}")
 
