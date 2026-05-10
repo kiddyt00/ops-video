@@ -1,11 +1,20 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { Film, BarChart3, ListTodo, Users, Settings, ExternalLink, ArrowLeft, Menu, X } from 'lucide-react'
+import { Film, BarChart3, ListTodo, Users, Settings, ExternalLink, ArrowLeft, Menu, X, LogIn, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useAuth } from '@/hooks/use-auth'
 
 const NAV_ITEMS = [
   { key: 'projects', label: '项目总览', icon: Film, href: '/' },
@@ -33,10 +42,16 @@ interface AppShellProps {
 export function AppShell({ projectHeader, rightPanel, showSidebar = true, children }: AppShellProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { user, isAuthenticated, logout } = useAuth()
 
   // Determine active nav item
   const activeKey = NAV_ITEMS.find(item => pathname === item.href)?.key
     ?? (pathname.startsWith('/projects/') ? 'projects' : 'projects')
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/login')
+  }
 
   return (
     <div className="h-screen flex flex-col bg-background text-foreground">
@@ -90,6 +105,40 @@ export function AppShell({ projectHeader, rightPanel, showSidebar = true, childr
         </div>
 
         <div className="flex items-center gap-2">
+          {isAuthenticated && user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="gap-2 px-2 hover:bg-muted">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(user.username || user.email).charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm hidden sm:inline">{user.username || user.email}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-3 py-2 text-sm text-muted-foreground truncate">
+                  {user.email}
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  退出登录
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              onClick={() => router.push('/login')}
+            >
+              <LogIn className="w-4 h-4" />
+              <span className="hidden sm:inline">登录</span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
