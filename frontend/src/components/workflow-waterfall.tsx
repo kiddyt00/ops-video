@@ -52,7 +52,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
     return stageMap.get(key) ?? 'pending'
   }
 
-  const getFiles = (fileType: string) => (files ?? []).filter(f => f.file_type === fileType && f.is_selected)
+  const getFiles = (fileType: string) => (files ?? []).filter(f => f.file_type === fileType)
 
   const toggle = (s: TaskStage) => setExpanded(p => p === s ? null : s)
 

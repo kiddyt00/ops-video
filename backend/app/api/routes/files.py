@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pathlib import Path
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse as FastAPIFileResponse
 from ...db.session import get_db
 from ...db.file_crud import file_crud, variant_group_crud
 from ...db.project_crud import project_crud
@@ -94,7 +94,7 @@ def download_file(
             detail=f"File not found on disk: {file.file_path}"
         )
 
-    return FileResponse(file_path, media_type="application/octet-stream")
+    return FastAPIFileResponse(file_path, media_type="application/octet-stream")
 
 
 @router.post("", response_model=FileResponse, status_code=status.HTTP_201_CREATED)
