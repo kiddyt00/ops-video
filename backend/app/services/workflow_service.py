@@ -544,7 +544,7 @@ class WorkflowService:
         parameters: Dict[str, Any],
     ):
         """Execute video composition."""
-        from .video_synthesis_service import video_synthesis_service
+        from .i2v_composer import i2v_composer
         from .bgm_service import bgm_service
         from ..schemas.file import FileCreate
 
@@ -576,7 +576,8 @@ class WorkflowService:
             )
 
         # Compose video
-        video_path = video_synthesis_service.compose(
+        video_path = await i2v_composer.compose(
+            storyboard_panels=storyboard.get("panels", []) if (storyboard := parameters.get("storyboard_data", {})) else None,
             panels=panels,
             bgm_path=bgm_path,
             resolution=resolution,
