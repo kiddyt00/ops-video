@@ -134,7 +134,10 @@ async def _test_tts(model, text: str) -> str:
         if model.model_name and "cosyvoice" in model.model_name.lower():
             payload["parameters"]["voice"] = "longxiaochun"
             payload["parameters"]["format"] = "mp3"
-        # Qwen3-TTS: no extra parameters needed
+        # Qwen3-TTS: requires voice + language_type
+        elif model.model_name and "qwen3-tts" in model.model_name.lower():
+            payload["parameters"]["voice"] = "Cherry"
+            payload["parameters"]["language_type"] = "Chinese"
 
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
