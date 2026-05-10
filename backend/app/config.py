@@ -62,7 +62,7 @@ class Settings(BaseSettings):
     SILICONFLOW_MODEL: str = "black-forest-labs/FLUX.1-schnell"
 
     # Mock Mode — skip real API calls, return fake data
-    MOCK_MODE: bool = True
+    MOCK_MODE: bool = False
 
     # Logging
     LOG_LEVEL: str = "INFO"
