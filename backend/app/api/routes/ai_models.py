@@ -158,7 +158,7 @@ async def _test_image(model, prompt: str) -> str:
                 payload = {
                     "model": model.model_name,
                     "input": {"messages": [{"role": "user", "content": [{"text": prompt}]}]},
-                    "parameters": {"size": "512*512", "n": 1, "prompt_extend": False, "watermark": False},
+                    "parameters": {"size": "768*768", "n": 1, "prompt_extend": False, "watermark": False},
                 }
                 resp = await client.post(
                     f"https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
