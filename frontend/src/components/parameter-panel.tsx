@@ -25,6 +25,8 @@ import {
 import { Play, RefreshCw, Settings, AlertCircle } from 'lucide-react'
 import { type TaskStage } from '@/types/task'
 import { STAGE_PARAMS, type ParamField } from '@/lib/stage-params'
+import { PresetSelector } from '@/components/preset-selector'
+import { PresetManager } from '@/components/preset-manager'
 
 interface ParameterPanelProps {
   className?: string
@@ -78,6 +80,17 @@ export function ParameterPanel({
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [apiError, setApiError] = useState<string | null>(null)
+  const [presetManagerOpen, setPresetManagerOpen] = useState(false)
+
+  const applyPreset = (params: Record<string, unknown>) => {
+    const defaults: Record<string, string | number> = {}
+    for (const f of fields) {
+      defaults[f.key] = (params[f.key] as string | number) ?? f.default ?? ''
+    }
+    setFormValues(defaults)
+    setErrors({})
+    setApiError(null)
+  }
 
   // Reset form when stage changes
   useState // (lint helper — reset in useEffect below)
@@ -148,7 +161,14 @@ export function ParameterPanel({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">{STAGE_LABELS[stage] || stage}</CardTitle>
-              <CardDescription>当前阶段操作</CardDescription>
+              <CardDescription className="flex items-center justify-between">
+                <span>当前阶段操作</span>
+                <PresetSelector
+                  stage={stage}
+                  onSelect={applyPreset}
+                  onOpenManager={() => setPresetManagerOpen(true)}
+                />
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
               {apiError && (
@@ -252,6 +272,8 @@ export function ParameterPanel({
           {children}
         </div>
       </ScrollArea>
+
+      <PresetManager open={presetManagerOpen} onOpenChange={setPresetManagerOpen} />
     </div>
   )
 }
