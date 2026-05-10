@@ -80,8 +80,8 @@ async def test_model(model_id: UUID, request: ModelTestRequest = ModelTestReques
             result = await _test_tts(model, request.prompt or "你好，这是语音合成测试。")
         elif model.category in ("text2img", "wanx"):
             result = await _test_image(model, request.prompt or "A beautiful sunset over mountains")
-        elif model.category == "i2v":
-            result = "图生视频模型（需上传图片测试，请在工作流中验证）"
+        elif model.category in ("i2v", "t2v"):
+            result = await _test_video(model, request.prompt or "一只猫在草地上奔跑")
         elif model.category in ("bgm", "video"):
             result = "本地引擎，无需测试连接"
         else:
@@ -218,3 +218,38 @@ async def _test_image(model, prompt: str) -> str:
                 return f"Image generation task created: {task_id}"
 
     raise ValueError(f"Unsupported image provider: {model.provider}")
+
+
+async def _test_video(model, prompt: str) -> str:
+    """Test video generation model (i2v/t2v) via video-generation endpoint."""
+    if not model.api_key:
+        raise ValueError("API Key not configured")
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        if model.provider.lower() in ("dashscope", "bailian"):
+            payload = {
+                "model": model.model_name,
+                "input": {
+                    "messages": [{"role": "user", "content": [{"text": prompt}]}]
+                },
+                "parameters": {},
+            }
+            resp = await client.post(
+                "https://dashscope.aliyuncs.com/api/v1/services/aigc/video-generation/video-synthesis",
+                headers={
+                    "Authorization": f"Bearer {model.api_key}",
+                    "Content-Type": "application/json",
+                    "X-DashScope-Async": "enable",
+                },
+                json=payload,
+            )
+            if resp.status_code != 200:
+                raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
+            data = resp.json()
+            task_id = data.get("output", {}).get("task_id")
+            if task_id:
+                status = data.get("output", {}).get("task_status", "PENDING")
+                return f"Task submitted: {task_id} (status: {status})"
+            return f"Video generation connected ({model.model_name})"
+
+    raise ValueError(f"Unsupported video provider: {model.provider}")
