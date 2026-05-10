@@ -8,7 +8,8 @@ import { useWorkflowStatus } from '@/hooks/use-workflow'
 import { useFiles } from '@/hooks/use-files'
 import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { ShareDialog } from '@/components/share-dialog'
+import { AlertCircle, RefreshCw, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -136,6 +137,17 @@ export default function ProjectPage() {
           </div>
         </div>
       )}
+      <div className="flex items-center justify-end px-4 pt-3 max-w-4xl mx-auto">
+        <ShareDialog
+          projectId={projectId}
+          trigger={
+            <Button variant="outline" size="sm" className="gap-1.5">
+              <Share2 className="w-3.5 h-3.5" />
+              分享
+            </Button>
+          }
+        />
+      </div>
       <WorkflowWaterfall
         projectId={projectId}
         tasks={tasks}

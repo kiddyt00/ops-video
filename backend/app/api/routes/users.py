@@ -1,10 +1,10 @@
 """
-User management API routes (admin)
+User management API routes
 """
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from ...db.session import get_db
 from ...db.user_crud import user_crud
@@ -23,6 +23,22 @@ def _require_admin(current_user: User):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
         )
+
+
+@router.get("/search", response_model=UserResponse)
+def search_user(
+    email: str = Query(..., description="Email address to search for"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Search for a user by email (for sharing). Returns 404 if not found."""
+    user = user_crud.get_by_email(db, email=email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with email '{email}' not found",
+        )
+    return user
 
 
 @router.get("", response_model=List[UserResponse])
@@ -68,7 +84,6 @@ def update_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User {user_id} not found",
         )
-    # Only allow updating role and is_active from admin panel
     if "role" in user_update:
         user.role = UserRole(user_update["role"])
     if "is_active" in user_update:
