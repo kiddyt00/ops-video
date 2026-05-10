@@ -1,4 +1,4 @@
-"""rename owner_id to user_id in projects
+"""rename owner_id to user_id in projects (no-op: fresh installs already have user_id)
 
 Revision ID: 006_rename_owner_id_to_user_id
 Revises: 005_add_project_soft_delete
@@ -16,10 +16,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.alter_column('projects', 'owner_id', new_column_name='user_id')
-    op.create_index('ix_projects_user_id', 'projects', ['user_id'])
+    # Column is already user_id in fresh installs (001 creates it as user_id)
+    # Only add index if it doesn't exist
+    op.create_index('ix_projects_user_id', 'projects', ['user_id'], if_not_exists=True)
 
 
 def downgrade() -> None:
     op.drop_index('ix_projects_user_id', 'projects')
-    op.alter_column('projects', 'user_id', new_column_name='owner_id')
