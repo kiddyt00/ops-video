@@ -23,6 +23,7 @@ from ..db.project_crud import project_crud
 from ..schemas.task import TaskCreate, TaskStatusUpdate
 from ..schemas.file import VariantGroupCreate
 from ..config import STORAGE_DIRS, settings
+from .storyboard_parser import parse_storyboard
 
 
 class WorkflowError(Exception):
@@ -287,9 +288,9 @@ class WorkflowService:
                 if file_record:
                     import json
                     from pathlib import Path
-                    storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                    storyboard_path = settings.storage_path / file_record.file_path
                     if storyboard_path.exists():
-                        storyboard_data = json.loads(storyboard_path.read_text())
+                        storyboard_data = parse_storyboard(storyboard_path.read_text())
                         panels = storyboard_data.get("panels", [])
 
                         # Extract text for TTS
@@ -330,9 +331,9 @@ class WorkflowService:
                 if file_record:
                     import json
                     from pathlib import Path
-                    storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                    storyboard_path = settings.storage_path / file_record.file_path
                     if storyboard_path.exists():
-                        storyboard_data = json.loads(storyboard_path.read_text())
+                        storyboard_data = parse_storyboard(storyboard_path.read_text())
 
             # Build panels array for video composition
             num_panels = min(len(image_paths), len(storyboard_data.get("panels", [])))
@@ -709,10 +710,10 @@ class WorkflowService:
             # Try to infer prompt from storyboard content
             file_record = file_crud.get(self.db, file_id=storyboard_file_id)
             if file_record:
-                storyboard_path = STORAGE_DIRS["storyboards"] / file_record.file_path
+                storyboard_path = settings.storage_path / file_record.file_path
                 if storyboard_path.exists():
                     import json
-                    storyboard_data = json.loads(storyboard_path.read_text())
+                    storyboard_data = parse_storyboard(storyboard_path.read_text())
                     panels = storyboard_data.get("panels", [])
                     # Build prompt from first panel description
                     if panels:
