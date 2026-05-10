@@ -9,6 +9,12 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+# revision identifiers, used by Alembic.
+revision = '004_add_parameter_presets'
+down_revision = '003_add_project_shares'
+branch_labels = None
+depends_on = None
+
 
 def upgrade() -> None:
     op.create_table(
