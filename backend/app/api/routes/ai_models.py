@@ -142,25 +142,45 @@ async def _test_tts(model, text: str) -> str:
 
 
 async def _test_image(model, prompt: str) -> str:
-    """Test image generation model"""
+    """Test image generation model — supports DashScope wan2.6 (sync) and legacy async models"""
     if not model.api_key:
         raise ValueError("API Key not configured")
 
-    if model.provider == "dashscope":
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{model.api_base_url}/services/aigc/text2image/image-synthesis",
-                headers={"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": model.model_name,
-                    "input": {"prompt": prompt},
-                    "parameters": {"size": "512*512", "n": 1},
-                },
-            )
-            if resp.status_code != 200:
-                raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
-            data = resp.json()
-            task_id = data.get("output", {}).get("task_id", "unknown")
-            return f"Image generation task created: {task_id}"
+    if model.provider.lower() in ("dashscope", "bailian"):
+        # Determine endpoint: wan2.6 uses multimodal-generation, legacy uses text2image
+        if model.model_name and model.model_name.startswith("wan2.6"):
+            # Sync multimodal-generation (wan2.6-t2i)
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{model.api_base_url}/services/aigc/multimodal-generation/generation",
+                    headers={"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model.model_name,
+                        "input": {"messages": [{"role": "user", "content": [{"text": prompt}]}]},
+                        "parameters": {"size": "512*512", "n": 1, "prompt_extend": False, "watermark": False},
+                    },
+                )
+                if resp.status_code != 200:
+                    raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
+                data = resp.json()
+                n_images = len(data.get("output", {}).get("choices", []))
+                return f"Wan2.6 sync generation completed ({n_images} image(s))"
+        else:
+            # Legacy async text2image (wanx-v2, wanx2.1, etc.)
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{model.api_base_url}/services/aigc/text2image/image-synthesis",
+                    headers={"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"},
+                    json={
+                        "model": model.model_name,
+                        "input": {"prompt": prompt},
+                        "parameters": {"size": "512*512", "n": 1},
+                    },
+                )
+                if resp.status_code != 200:
+                    raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
+                data = resp.json()
+                task_id = data.get("output", {}).get("task_id", "unknown")
+                return f"Image generation task created: {task_id}"
 
     raise ValueError(f"Unsupported image provider: {model.provider}")
