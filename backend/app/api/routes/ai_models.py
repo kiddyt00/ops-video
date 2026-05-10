@@ -77,8 +77,10 @@ async def test_model(model_id: UUID, request: ModelTestRequest = ModelTestReques
             result = await _test_llm(model, request.prompt or "Say hello in one sentence.")
         elif model.category == "tts":
             result = await _test_tts(model, request.prompt or "你好，这是语音合成测试。")
-        elif model.category == "wanx":
+        elif model.category in ("text2img", "wanx"):
             result = await _test_image(model, request.prompt or "A beautiful sunset over mountains")
+        elif model.category == "i2v":
+            result = "图生视频模型（需上传图片测试，请在工作流中验证）"
         elif model.category in ("bgm", "video"):
             result = "本地引擎，无需测试连接"
         else:

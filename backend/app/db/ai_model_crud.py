@@ -58,7 +58,7 @@ class AIModelCRUD:
             AIModelCreate(name="通义千问 (Qwen-Plus)", category="llm", provider="dashscope",
                          model_name="qwen-plus", api_base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
                          is_builtin=True, is_enabled=False),
-            AIModelCreate(name="通义万相 (Wan2.6)", category="wanx", provider="dashscope",
+            AIModelCreate(name="通义万相 (Wan2.6)", category="text2img", provider="dashscope",
                          model_name="wan2.6-t2i", api_base_url="https://dashscope.aliyuncs.com/api/v1",
                          is_builtin=True, is_enabled=False),
             AIModelCreate(name="Edge TTS (Xiaoxiao)", category="tts", provider="edge_tts",
