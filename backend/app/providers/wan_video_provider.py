@@ -63,12 +63,17 @@ class WanVideoProvider(BaseProvider):
                 payload = {
                     "model": self.model,
                     "input": {
+                        "prompt": prompt,
                         "media": [
-                            {"type": "image_url", "data": image_ref},
-                            {"type": "text", "data": prompt},
+                            {"type": "first_frame", "url": image_ref},
                         ]
                     },
-                    "parameters": {"size": size},
+                    "parameters": {
+                        "resolution": "720P",
+                        "duration": parameters.get("duration", 5),
+                        "prompt_extend": True,
+                        "watermark": False,
+                    },
                 }
 
                 resp = await client.post(

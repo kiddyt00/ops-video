@@ -1,9 +1,8 @@
 """
 Wan2.7 i2v Video Composer
 
-Replaces FFmpeg static composition with AI-animated clips.
+Generates one i2v animated clip, then adds TTS narration + BGM.
 """
-import asyncio
 import subprocess
 import time
 from pathlib import Path
@@ -14,7 +13,7 @@ from ..providers.wan_video_provider import wan_video_provider
 
 
 class I2VComposer:
-    """Generates animated video clips via Wan2.7 i2v, then stitches with FFmpeg."""
+    """i2v generation + audio mixing."""
 
     def __init__(self):
         self.video_dir = STORAGE_DIRS["video"]
@@ -28,91 +27,70 @@ class I2VComposer:
         fps: int = 24,
         storyboard_panels: Optional[List[Dict]] = None,
     ) -> Path:
-        """
-        Compose final video:
-        1. Generate i2v clips for each panel image
-        2. Concat all clips + add audio
-        """
-        sb = storyboard_panels or []
+        """Generate i2v clip from first image, then mix with TTS audio."""
 
-        # Step 1: Generate i2v animated clips
-        clip_paths = []
-        for i, panel in enumerate(panels):
-            img_path = panel.get("image_path", "")
-            if not img_path or not Path(img_path).exists():
-                continue
+        # Step 1: Generate one i2v clip
+        i2v_clip = None
+        if panels:
+            p = panels[0]
+            img = p.get("image_path", "")
+            sb = storyboard_panels or []
+            prompt = sb[0].get("scene_description", "让画面动起来")[:200] if sb else "让画面动起来"
 
-            # Build prompt from storyboard
-            prompt = "让画面动起来"
-            if i < len(sb):
-                desc = sb[i].get("scene_description", "")
-                if desc:
-                    prompt = desc[:200]  # keep reasonable length
+            if img and Path(img).exists():
+                result = await wan_video_provider.generate({
+                    "image_path": img,
+                    "prompt": prompt,
+                    "duration": 5,
+                    "output_filename": "clip_i2v.mp4",
+                })
+                if result.success and result.file_paths:
+                    i2v_clip = result.file_paths[0]
 
-            result = await wan_video_provider.generate({
-                "image_path": img_path,
-                "prompt": prompt,
-                "output_filename": f"clip_{i:03d}.mp4",
-            })
+        if not i2v_clip:
+            # Fallback: still frame from first image
+            i2v_clip = self._make_still(
+                panels[0].get("image_path", "") if panels else "",
+                duration=5, resolution=resolution, fps=fps,
+            )
 
-            if result.success and result.file_paths:
-                clip_paths.append(result.file_paths[0])
-            else:
-                print(f"[i2v] Panel {i} failed: {result.error_message}, falling back to still")
-                clip_paths.append(None)
-
-        # Step 2: Build FFmpeg concat + audio
-        return self._ffmpeg_concat(clip_paths, panels, bgm_path, resolution, fps)
-
-    def _ffmpeg_concat(
-        self,
-        clip_paths: List[Optional[Path]],
-        panels: List[Dict[str, Any]],
-        bgm_path: Optional[Path],
-        resolution: tuple,
-        fps: int,
-    ) -> Path:
-        """Concat clips with FFmpeg, add audio, output final MP4."""
+        # Step 2: Collect TTS audio files (from panels)
         import tempfile
+        tts_files = []
+        for panel in panels:
+            ap = panel.get("audio_path", "")
+            if ap and Path(ap).exists():
+                tts_files.append(Path(ap))
 
+        # Step 3: Mix audio tracks into video
         ts = int(time.time())
-        output_path = self.video_dir / f"final_i2v_{ts}.mp4"
-
-        # Build concat file
-        concat_list = []
-        for i, clip in enumerate(clip_paths):
-            if clip and clip.exists():
-                concat_list.append(f"file '{clip}'")
-            elif i < len(panels):
-                # Fallback: generate a still frame video from the image
-                still = self._make_still(panels[i].get("image_path", ""), panels[i].get("duration", 3.0), resolution, fps, i)
-                if still:
-                    concat_list.append(f"file '{still}'")
-
-        if not concat_list:
-            raise RuntimeError("No clips to compose")
-
-        concat_file = self.video_dir / f"concat_{ts}.txt"
-        concat_file.write_text("\n".join(concat_list))
+        output = self.video_dir / f"final_i2v_{ts}.mp4"
 
         # Build ffmpeg command
-        cmd = [
-            "ffmpeg", "-y",
-            "-f", "concat", "-safe", "0", "-i", str(concat_file),
-        ]
+        cmd = ["ffmpeg", "-y", "-i", str(i2v_clip)]
 
-        # Add audio
-        audio_inputs = []
-        for i, panel in enumerate(panels):
-            audio_path = panel.get("audio_path")
-            if audio_path and Path(audio_path).exists():
-                audio_inputs.extend(["-i", audio_path])
+        # Add TTS audio inputs
+        for tf in tts_files:
+            cmd.extend(["-i", str(tf)])
 
-        if bgm_path and bgm_path.exists():
-            audio_inputs.extend(["-i", str(bgm_path)])
+        # Add BGM
+        has_bgm = bgm_path and bgm_path.exists()
+        if has_bgm:
+            cmd.extend(["-i", str(bgm_path)])
 
-        if audio_inputs:
-            cmd.extend(audio_inputs)
+        # Build filter: mix all audio tracks
+        audio_inputs = len(tts_files) + (1 if has_bgm else 0)
+        if audio_inputs > 0:
+            # Mix all audio inputs into one track
+            amix_inputs = "".join(f"[{i+1}:a]" for i in range(audio_inputs))
+            afilter = f"{amix_inputs}amix=inputs={audio_inputs}:duration=first:dropout_transition=0[audio]"
+            cmd.extend([
+                "-filter_complex", afilter,
+                "-map", "0:v",
+                "-map", "[audio]",
+            ])
+        else:
+            cmd.extend(["-map", "0:v", "-map", "0:a?"])
 
         cmd.extend([
             "-c:v", "libx264", "-preset", "fast", "-crf", "28",
@@ -120,40 +98,24 @@ class I2VComposer:
             "-vf", f"scale={resolution[0]}:{resolution[1]}:force_original_aspect_ratio=decrease,pad={resolution[0]}:{resolution[1]}:(ow-iw)/2:(oh-ih)/2",
             "-r", str(fps),
             "-movflags", "+faststart",
-            str(output_path),
+            "-shortest",
+            str(output),
         ])
 
         subprocess.run(cmd, check=True, capture_output=True)
+        return output
 
-        # Cleanup
-        concat_file.unlink(missing_ok=True)
-
-        return output_path
-
-    def _make_still(
-        self,
-        img_path: str,
-        duration: float,
-        resolution: tuple,
-        fps: int,
-        index: int,
-    ) -> Optional[Path]:
-        """Create a still-frame video from an image (fallback if i2v fails)."""
-        if not img_path or not Path(img_path).exists():
-            return None
-
+    def _make_still(self, img_path: str, duration: float, resolution: tuple, fps: int) -> Path:
+        """Still frame fallback."""
         ts = int(time.time())
-        output = self.video_dir / f"still_{index:03d}_{ts}.mp4"
-        cmd = [
-            "ffmpeg", "-y",
-            "-loop", "1", "-i", img_path,
+        out = self.video_dir / f"still_{ts}.mp4"
+        subprocess.run([
+            "ffmpeg", "-y", "-loop", "1", "-i", img_path,
             "-c:v", "libx264", "-t", str(duration),
             "-vf", f"scale={resolution[0]}:{resolution[1]}:force_original_aspect_ratio=decrease,pad={resolution[0]}:{resolution[1]}:(ow-iw)/2:(oh-ih)/2",
-            "-r", str(fps), "-pix_fmt", "yuv420p",
-            str(output),
-        ]
-        subprocess.run(cmd, check=True, capture_output=True)
-        return output
+            "-r", str(fps), "-pix_fmt", "yuv420p", str(out),
+        ], check=True, capture_output=True)
+        return out
 
 
 i2v_composer = I2VComposer()
