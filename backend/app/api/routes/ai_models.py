@@ -119,14 +119,10 @@ async def _test_tts(model, text: str) -> str:
         if not model.api_key:
             raise ValueError("API Key not configured")
 
-        # Build multimodal-generation payload
+        # Build multimodal-generation payload — TTS uses input.text, not input.messages
         payload = {
             "model": model.model_name or "cosyvoice-v1",
-            "input": {
-                "messages": [
-                    {"role": "user", "content": [{"text": text}]}
-                ]
-            },
+            "input": {"text": text},
             "parameters": {},
         }
 
