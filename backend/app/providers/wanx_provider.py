@@ -64,10 +64,15 @@ class WanxProvider(BaseProvider):
         else:
             return await self._generate_async(parameters)
 
-    # ─── Sync (wan2.6-t2i) ────────────────────────────────────────────
+    # ─── Wan2.6 (multimodal-generation, task-based async) ─────────────
 
     async def _generate_sync(self, parameters: Dict[str, Any]) -> GenerationResult:
-        """Generate via multimodal-generation (wan2.6-t2i sync)."""
+        """Generate via multimodal-generation (wan2.6-t2i, task-based async).
+
+        Submits a generation task, polls until complete, then downloads images.
+        Despite the method name, wan2.6 uses the same async task/poll pattern
+        as legacy models — just with a different submission endpoint.
+        """
         prompt = parameters.get("prompt", "")
         negative_prompt = parameters.get("negative_prompt", "")
         size = parameters.get("size", "1280*1280")
@@ -100,7 +105,8 @@ class WanxProvider(BaseProvider):
             if seed != -1:
                 payload["parameters"]["seed"] = seed
 
-            async with httpx.AsyncClient(timeout=120.0) as client:
+            async with httpx.AsyncClient(timeout=300.0) as client:
+                # Step 1: Submit task
                 resp = await client.post(
                     f"{self.BASE_URL}/services/aigc/multimodal-generation/generation",
                     headers={
@@ -112,23 +118,37 @@ class WanxProvider(BaseProvider):
                 resp.raise_for_status()
                 data = resp.json()
 
-                # Extract image URLs from response
-                image_urls = []
-                for choice in data.get("output", {}).get("choices", []):
-                    for item in choice.get("message", {}).get("content", []):
-                        if item.get("type") == "image":
-                            image_urls.append(item["image"])
+                task_id = data.get("output", {}).get("task_id")
+                if not task_id:
+                    # Maybe synchronous response with inline images?
+                    image_urls = []
+                    for choice in data.get("output", {}).get("choices", []):
+                        for item in choice.get("message", {}).get("content", []):
+                            if item.get("type") == "image":
+                                image_urls.append(item["image"])
+                    if image_urls:
+                        image_paths = await self._download_images(image_urls, output_dir, client)
+                        return GenerationResult(
+                            file_paths=image_paths,
+                            parameters=parameters,
+                            metadata={"model": self.model, "seed": seed, "image_count": len(image_paths)},
+                        )
+                    raise RuntimeError(f"No task_id or images in response: {json.dumps(data, ensure_ascii=False)[:500]}")
 
-                if not image_urls:
-                    raise RuntimeError(f"No images in response: {json.dumps(data, ensure_ascii=False)[:500]}")
+                # Step 2: Poll task
+                result_data = await self._wait_for_task(task_id, client)
 
-                # Download and save images
-                image_paths = await self._download_images(image_urls, output_dir, client)
+                # Step 3: Download and save images
+                image_paths = await self._save_images(
+                    result_data["output"]["results"],
+                    output_dir,
+                )
 
                 return GenerationResult(
                     file_paths=image_paths,
                     parameters=parameters,
                     metadata={
+                        "task_id": task_id,
                         "model": self.model,
                         "seed": seed,
                         "image_count": len(image_paths),
