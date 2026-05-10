@@ -2,11 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { taskApi } from '@/lib/api/tasks'
 import type { TaskCreate, TaskStatusUpdate } from '@/types/task'
 
-export function useTasks(projectId?: string) {
+export function useTasks(projectId?: string, opts?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['tasks', projectId],
     queryFn: () => taskApi.list(projectId),
-    enabled: !!projectId,
+    enabled: (opts?.enabled ?? true) && !!projectId,
   })
 }
 

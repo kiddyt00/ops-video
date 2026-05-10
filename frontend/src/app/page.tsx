@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Loader2, Trash2, AlertCircle, Clock, CheckCircle2 } from 'lucide-react'
+import { Plus, Loader2, Trash2, AlertCircle, Clock, CheckCircle2, RotateCcw, ShieldBan } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { AppShell } from '@/components/app-shell'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -24,17 +25,46 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useProjects, useCreateProject, useDeleteProject } from '@/hooks/use-projects'
+import {
+  useProjects,
+  useMyProjects,
+  useSharedProjects,
+  useRecycleBin,
+  useCreateProject,
+  useDeleteProject,
+  useRestoreProject,
+  usePermanentDeleteProject,
+} from '@/hooks/use-projects'
 import { useTasks } from '@/hooks/use-tasks'
+import { useAuth } from '@/hooks/use-auth'
 import { ErrorBoundary } from '@/components/error-boundary'
 import type { Task } from '@/types/task'
+import type { Project } from '@/types/project'
 
 const STAGE_ORDER = ['script', 'storyboard', 'image', 'audio', 'video']
 
-function ProjectCard({ project }: { project: { id: string; name: string; description: string | null; created_at: string } }) {
+type TabKey = 'mine' | 'shared' | 'recycle'
+
+// ─── Project Card ─────────────────────────────────────────────────────
+
+function ProjectCard({
+  project,
+  showDelete = true,
+  showRestore = false,
+  showPermanentDelete = false,
+  onRestore,
+  onPermanentDelete,
+}: {
+  project: Project
+  showDelete?: boolean
+  showRestore?: boolean
+  showPermanentDelete?: boolean
+  onRestore?: (id: string) => void
+  onPermanentDelete?: (id: string) => void
+}) {
   const router = useRouter()
   const deleteProject = useDeleteProject()
-  const { data: tasks } = useTasks(project.id)
+  const { data: tasks } = useTasks(project.id, { enabled: !showRestore && !showPermanentDelete })
 
   const completedCount = (tasks ?? []).filter((t: Task) => t.status === 'completed').length
 
@@ -49,26 +79,48 @@ function ProjectCard({ project }: { project: { id: string; name: string; descrip
     }
   }
 
+  const handleRestore = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRestore?.(project.id)
+  }
+
+  const handlePermanentDelete = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (confirm('确定永久删除此项目？此操作不可撤销！')) {
+      onPermanentDelete?.(project.id)
+    }
+  }
+
   return (
     <Card
-      className="cursor-pointer hover:border-primary transition-colors group relative"
-      onClick={() => router.push(`/projects/${project.id}`)}
+      className={cn(
+        'cursor-pointer hover:border-primary transition-colors group relative',
+        (showRestore || showPermanentDelete) && 'opacity-70 hover:opacity-100'
+      )}
+      onClick={() => !showRestore && !showPermanentDelete && router.push(`/projects/${project.id}`)}
     >
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span className="truncate">{project.name}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7"
-            onClick={handleDelete}
-          >
-            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-          </Button>
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            {showDelete && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDelete}>
+                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+              </Button>
+            )}
+            {showRestore && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRestore} title="恢复">
+                <RotateCcw className="w-3.5 h-3.5 text-green-500" />
+              </Button>
+            )}
+            {showPermanentDelete && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePermanentDelete} title="永久删除">
+                <ShieldBan className="w-3.5 h-3.5 text-destructive" />
+              </Button>
+            )}
+          </div>
         </CardTitle>
-        <CardDescription>
-          {project.description || '暂无描述'}
-        </CardDescription>
+        <CardDescription>{project.description || '暂无描述'}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -76,21 +128,28 @@ function ProjectCard({ project }: { project: { id: string; name: string; descrip
             <Clock className="w-3 h-3" />
             <span>{formatRelativeTime(project.created_at)}</span>
           </div>
-          <div className="flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" />
-            <span>已完成 {completedCount}/{STAGE_ORDER.length}</span>
-          </div>
+          {!showRestore && !showPermanentDelete && (
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3" />
+              <span>已完成 {completedCount}/{STAGE_ORDER.length}</span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function ProjectsOverview() {
-  const router = useRouter()
-  const { data: projects, isLoading, error } = useProjects()
+// ─── Create Project Dialog ────────────────────────────────────────────
+
+function CreateProjectDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const createProject = useCreateProject()
-  const [showDialog, setShowDialog] = useState(false)
   const [newName, setNewName] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
@@ -120,9 +179,151 @@ function ProjectsOverview() {
       setNewName('')
       setNewDesc('')
       setNameError(null)
-      setShowDialog(false)
+      onOpenChange(false)
     } catch (e: unknown) {
       setMutateError(e instanceof Error ? e.message : '创建项目失败')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>新建项目</DialogTitle>
+          <DialogDescription>为你的漫剧短片创建一个新项目</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          {mutateError && (
+            <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-2">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{mutateError}</span>
+            </div>
+          )}
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">项目名称 <span className="text-destructive">*</span></label>
+            <Input
+              value={newName}
+              onChange={e => { setNewName(e.target.value); if (nameError) validateName(e.target.value) }}
+              onBlur={() => validateName(newName)}
+              placeholder="输入项目名称"
+              autoFocus
+              className={cn(nameError && 'border-destructive')}
+            />
+            {nameError && <p className="text-xs text-destructive mt-1">{nameError}</p>}
+          </div>
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">描述（可选）</label>
+            <Input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="项目描述" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+          <Button onClick={handleCreate} disabled={!newName.trim() || createProject.isPending}>
+            {createProject.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+            创建
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Project Grid ─────────────────────────────────────────────────────
+
+function ProjectGrid({
+  projects,
+  isLoading,
+  error,
+  emptyMessage,
+  showDelete,
+  showRestore,
+  showPermanentDelete,
+  onRestore,
+  onPermanentDelete,
+}: {
+  projects: Project[] | undefined
+  isLoading: boolean
+  error: Error | null
+  emptyMessage: string
+  showDelete?: boolean
+  showRestore?: boolean
+  showPermanentDelete?: boolean
+  onRestore?: (id: string) => Promise<void>
+  onPermanentDelete?: (id: string) => Promise<void>
+}) {
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-full mt-2" />
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3">
+        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+        <span>{error instanceof Error ? error.message : '加载失败'}</span>
+      </div>
+    )
+  }
+
+  if (!projects || projects.length === 0) {
+    return <p className="text-center py-12 text-muted-foreground">{emptyMessage}</p>
+  }
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {projects.map(project => (
+        <ProjectCard
+          key={project.id}
+          project={project}
+          showDelete={showDelete}
+          showRestore={showRestore}
+          showPermanentDelete={showPermanentDelete}
+          onRestore={onRestore}
+          onPermanentDelete={onPermanentDelete}
+        />
+      ))}
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────
+
+function ProjectsOverview() {
+  const router = useRouter()
+  const { isAuthenticated } = useAuth()
+  const [activeTab, setActiveTab] = useState<TabKey>('mine')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+
+  const { data: myProjects, isLoading: mineLoading, error: mineError } = useMyProjects()
+  const { data: sharedProjects, isLoading: sharedLoading, error: sharedError } = useSharedProjects()
+  const { data: recycleProjects, isLoading: recycleLoading, error: recycleError } = useRecycleBin()
+
+  const restoreMutation = useRestoreProject()
+  const permanentDeleteMutation = usePermanentDeleteProject()
+
+  const handleRestore = async (id: string) => {
+    try {
+      await restoreMutation.mutateAsync(id)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '恢复失败')
+    }
+  }
+
+  const handlePermanentDelete = async (id: string) => {
+    try {
+      await permanentDeleteMutation.mutateAsync(id)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '删除失败')
     }
   }
 
@@ -132,110 +333,66 @@ function ProjectsOverview() {
         <div className="p-6 max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-semibold">项目总览</h2>
-            <Button onClick={() => {
-              setMutateError(null)
-              setNameError(null)
-              setShowDialog(true)
-            }}>
-              <Plus className="w-4 h-4 mr-1.5" />
-              新建项目
-            </Button>
-          </div>
-
-          {error && (
-            <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3 mb-4">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>{error instanceof Error ? error.message : '加载项目失败'}</span>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-full mt-2" />
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          ) : projects && projects.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {projects.map(project => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20">
-              <p className="text-muted-foreground mb-4">还没有项目，创建一个开始吧</p>
-              <Button onClick={() => setShowDialog(true)}>
+            {isAuthenticated && (
+              <Button onClick={() => setShowCreateDialog(true)}>
                 <Plus className="w-4 h-4 mr-1.5" />
                 新建项目
               </Button>
+            )}
+          </div>
+
+          {!isAuthenticated ? (
+            <div className="text-center py-20">
+              <p className="text-muted-foreground mb-4">登录后即可管理你的项目</p>
+              <Button onClick={() => router.push('/login')}>前往登录</Button>
             </div>
+          ) : (
+            <>
+              <Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabKey)} className="w-full">
+                <TabsList className="mb-6">
+                  <TabsTrigger value="mine">我的项目</TabsTrigger>
+                  <TabsTrigger value="shared">分享给我</TabsTrigger>
+                  <TabsTrigger value="recycle">回收站</TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              {activeTab === 'mine' && (
+                <ProjectGrid
+                  projects={myProjects}
+                  isLoading={mineLoading}
+                  error={mineError}
+                  emptyMessage="还没有项目，点击右上角新建项目开始"
+                  showDelete
+                />
+              )}
+
+              {activeTab === 'shared' && (
+                <ProjectGrid
+                  projects={sharedProjects}
+                  isLoading={sharedLoading}
+                  error={sharedError}
+                  emptyMessage="没有被分享的项目"
+                />
+              )}
+
+              {activeTab === 'recycle' && (
+                <ProjectGrid
+                  projects={recycleProjects}
+                  isLoading={recycleLoading}
+                  error={recycleError}
+                  emptyMessage="回收站为空"
+                  showRestore
+                  showPermanentDelete
+                  onRestore={handleRestore}
+                  onPermanentDelete={handlePermanentDelete}
+                />
+              )}
+            </>
           )}
         </div>
       </ScrollArea>
 
-      <Dialog open={showDialog} onOpenChange={(open) => {
-        setShowDialog(open)
-        if (!open) {
-          setNameError(null)
-          setMutateError(null)
-        }
-      }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>新建项目</DialogTitle>
-            <DialogDescription>为你的漫剧短片创建一个新项目</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {mutateError && (
-              <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-2">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>{mutateError}</span>
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">项目名称 <span className="text-destructive">*</span></label>
-              <Input
-                value={newName}
-                onChange={e => {
-                  setNewName(e.target.value)
-                  if (nameError) validateName(e.target.value)
-                }}
-                onBlur={() => validateName(newName)}
-                placeholder="输入项目名称"
-                autoFocus
-                className={cn(nameError && 'border-destructive')}
-              />
-              {nameError && <p className="text-xs text-destructive mt-1">{nameError}</p>}
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">描述（可选）</label>
-              <Input
-                value={newDesc}
-                onChange={e => setNewDesc(e.target.value)}
-                placeholder="项目描述"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowDialog(false)
-              setNameError(null)
-              setMutateError(null)
-            }}>
-              取消
-            </Button>
-            <Button onClick={handleCreate} disabled={!newName.trim() || createProject.isPending}>
-              {createProject.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-              创建
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CreateProjectDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
     </AppShell>
   )
 }
