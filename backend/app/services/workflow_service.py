@@ -315,16 +315,14 @@ class WorkflowService:
             for f in image_files:
                 file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
                 if file_record:
-                    image_paths.append(str(STORAGE_DIRS["images"] / file_record.file_path))
+                    image_paths.append(str(settings.storage_path / file_record.file_path))
 
             # Get audio paths (TTS)
             tts_paths = []
             for f in audio_files:
                 file_record = file_crud.get(self.db, file_id=UUID(f["file_id"]))
                 if file_record and file_record.file_type == FileType.AUDIO:
-                    tts_paths.append(str(STORAGE_DIRS["audio"] / file_record.file_path))
-
-            # Get storyboard timing
+                    tts_paths.append(str(settings.storage_path / file_record.file_path))
             storyboard_data = {}
             if storyboard_files:
                 file_record = file_crud.get(self.db, file_id=UUID(storyboard_files[0]["file_id"]))
