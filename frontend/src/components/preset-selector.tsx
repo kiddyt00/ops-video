@@ -37,12 +37,10 @@ export function PresetSelector({ stage, onSelect, onOpenManager }: PresetSelecto
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-          <Bookmark className="w-3.5 h-3.5" />
-          <span>预设</span>
-          <ChevronDown className="w-3 h-3 opacity-50" />
-        </Button>
+      <DropdownMenuTrigger className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-input bg-background hover:bg-muted text-xs transition-colors cursor-pointer">
+        <Bookmark className="w-3.5 h-3.5" />
+        <span>预设</span>
+        <ChevronDown className="w-3 h-3 opacity-50" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
         {isLoading ? (

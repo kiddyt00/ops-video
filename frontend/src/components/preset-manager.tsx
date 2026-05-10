@@ -179,7 +179,7 @@ export function PresetManager({ open, onOpenChange }: PresetManagerProps) {
               {!editingId && (
                 <div>
                   <label className="text-xs font-medium mb-1 block">类型</label>
-                  <Select value={formType} onValueChange={setFormType}>
+                  <Select value={formType} onValueChange={(v) => v != null && setFormType(v)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

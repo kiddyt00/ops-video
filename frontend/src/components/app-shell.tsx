@@ -107,15 +107,13 @@ export function AppShell({ projectHeader, rightPanel, showSidebar = true, childr
         <div className="flex items-center gap-2">
           {isAuthenticated && user ? (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="gap-2 px-2 hover:bg-muted">
-                  <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                      {(user.username || user.email).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm hidden sm:inline">{user.username || user.email}</span>
-                </Button>
+              <DropdownMenuTrigger className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer">
+                <Avatar className="h-7 w-7">
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                    {(user.username || user.email).charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-sm hidden sm:inline">{user.username || user.email}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <div className="px-3 py-2 text-sm text-muted-foreground truncate">

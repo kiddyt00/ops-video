@@ -98,13 +98,11 @@ export function ShareDialog({ projectId, trigger }: ShareDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {trigger ? (
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <div onClick={() => setOpen(true)} className="cursor-pointer inline-flex">{trigger}</div>
       ) : (
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Share2 className="w-3.5 h-3.5" />
-            分享
-          </Button>
+        <DialogTrigger className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-input bg-background hover:bg-muted text-sm transition-colors cursor-pointer">
+          <Share2 className="w-3.5 h-3.5" />
+          分享
         </DialogTrigger>
       )}
 
@@ -150,7 +148,7 @@ export function ShareDialog({ projectId, trigger }: ShareDialogProps) {
                 <p className="text-sm font-medium truncate">{foundUser.username}</p>
                 <p className="text-xs text-muted-foreground truncate">{foundUser.email}</p>
               </div>
-              <Select value={permission} onValueChange={setPermission}>
+              <Select value={permission} onValueChange={(v) => v != null && setPermission(v)}>
                 <SelectTrigger className="w-20 h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
