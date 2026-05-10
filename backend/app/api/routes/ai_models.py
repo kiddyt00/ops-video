@@ -114,23 +114,37 @@ async def _test_llm(model, prompt: str) -> str:
 
 
 async def _test_tts(model, text: str) -> str:
-    """Test TTS — supports DashScope CosyVoice and Edge TTS"""
+    """Test TTS — supports DashScope models (CosyVoice, Qwen3-TTS) and Edge TTS"""
     if model.provider.lower() in ("dashscope", "bailian"):
         if not model.api_key:
             raise ValueError("API Key not configured")
+
+        # Build multimodal-generation payload
+        payload = {
+            "model": model.model_name or "cosyvoice-v1",
+            "input": {
+                "messages": [
+                    {"role": "user", "content": [{"text": text}]}
+                ]
+            },
+            "parameters": {},
+        }
+
+        # CosyVoice-specific parameters
+        if model.model_name and "cosyvoice" in model.model_name.lower():
+            payload["parameters"]["voice"] = "longxiaochun"
+            payload["parameters"]["format"] = "mp3"
+        # Qwen3-TTS: no extra parameters needed
+
         async with httpx.AsyncClient(timeout=60) as client:
             resp = await client.post(
-                f"{model.api_base_url}/services/aigc/multimodal-generation/generation",
+                f"https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
                 headers={"Authorization": f"Bearer {model.api_key}", "Content-Type": "application/json"},
-                json={
-                    "model": model.model_name or "cosyvoice-v1",
-                    "input": {"text": text},
-                    "parameters": {"voice": "longxiaochun", "format": "mp3"},
-                },
+                json=payload,
             )
             if resp.status_code != 200:
                 raise ValueError(f"API returned {resp.status_code}: {resp.text[:200]}")
-            return f"CosyVoice 连接成功 (voice: {model.model_name})"
+            return f"TTS 连接成功 ({model.model_name})"
 
     # Fallback: Edge TTS
     try:
