@@ -301,9 +301,26 @@
 ## 待完成
 
 ### Phase 16: 尾帧延长 ✅
-- 视频尾帧自动延长功能
-- 支持自定义延长时长
-- FFmpeg 尾帧处理
+- **WanVideoProvider extend() 方法**:
+  - `extract_last_frame(clip_path)` — FFmpeg `-sseof -1` 提取尾帧
+  - `extend(prev_clip_path, prompt, duration)` — 尾帧作为参考图生成续段
+  - 复用现有下载 + OSS 上传管线
+- **I2VComposer 场景识别与尾帧链**:
+  - `group_panels_by_scene()` — 解析 storyboard scene_id，无 scene_id 时按连续性推断
+  - 同一 scene 的连续 panels：首帧 generate() → 后续 extend() 链式生成
+  - 不同 scene 之间独立 generate()
+  - `compose_episode_with_tail_extend()` 新方法与原有 `compose_episode()` 并存
+- **14 个测试覆盖**:
+  - 尾帧提取（真实 FFmpeg）
+  - extend() mock 测试
+  - 场景分组（单/多 scene、空、边界）
+  - 尾帧链端到端（单 scene 链、多 scene、无 scene_id 降级）
+- **新增文件**:
+  - `backend/tests/test_tail_frame_extend.py` (450+ 行)
+- **修改文件**:
+  - `backend/app/providers/wan_video_provider.py`
+  - `backend/app/services/i2v_composer.py`
+- **Commit**: `b39d3de`
 
 ### Phase 17: 其他优化
 - 用户项目管理（我的项目列表）
@@ -362,7 +379,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: `572daaa` - Phase 15.9 集成测试完成
-- **总测试数**: 217 (Phase 15 新增 38 个)
-- **已完成阶段**: Phase 1 ~ Phase 15
-- **下一阶段**: Phase 16 - 尾帧延长
+- **最新 Commit**: `b39d3de` - Phase 16 尾帧延长完成
+- **总测试数**: 231 (Phase 15 新增 38 个, Phase 16 新增 14 个)
+- **已完成阶段**: Phase 1 ~ Phase 16
+- **下一阶段**: Phase 17 - 功能优化与用户体验
