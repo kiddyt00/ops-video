@@ -5,6 +5,8 @@ Uses DashScope video-generation API to animate still images.
 """
 import asyncio
 import logging
+import os
+import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -155,6 +157,120 @@ class WanVideoProvider(BaseProvider):
             parameters={"image_count": len(image_paths), "generated": len(paths)},
             metadata={"model": self.model},
         )
+
+    async def extend(
+        self,
+        prev_clip_path: Path,
+        prompt: str,
+        duration: int = 5,
+        output_filename: str = "",
+    ) -> GenerationResult:
+        """Generate a continuation video clip using the last frame of a previous clip.
+
+        Uses DashScope i2v API with the tail frame of prev_clip_path as reference.
+
+        Args:
+            prev_clip_path: Path to the previous video clip.
+            prompt: Prompt for the continuation.
+            duration: Duration in seconds.
+            output_filename: Output filename (auto-generated if empty).
+
+        Returns:
+            GenerationResult with the generated clip path.
+        """
+        # Extract last frame from previous clip
+        last_frame_path = await self.extract_last_frame(prev_clip_path)
+        if not last_frame_path or not last_frame_path.exists():
+            return GenerationResult(
+                file_paths=[],
+                parameters={
+                    "prev_clip_path": str(prev_clip_path),
+                    "prompt": prompt,
+                },
+                success=False,
+                error_message="Failed to extract last frame from previous clip",
+            )
+
+        try:
+            # Reuse generate() with the extracted last frame as image_path
+            params: Dict[str, Any] = {
+                "image_path": str(last_frame_path),
+                "prompt": prompt,
+                "duration": duration,
+                "output_dir": "video",
+            }
+            if output_filename:
+                params["output_filename"] = output_filename
+
+            result = await self.generate(params)
+            return result
+        except Exception as e:
+            return GenerationResult(
+                file_paths=[],
+                parameters={
+                    "prev_clip_path": str(prev_clip_path),
+                    "prompt": prompt,
+                },
+                success=False,
+                error_message=str(e),
+            )
+
+    async def extract_last_frame(self, clip_path: Path) -> Optional[Path]:
+        """Extract the last frame of a video clip as a PNG image.
+
+        Uses FFmpeg to seek to the last frame and save as last_frame.png.
+        Temp files use home directory (snap FFmpeg confinement).
+
+        Args:
+            clip_path: Path to the source video clip.
+
+        Returns:
+            Path to the extracted last_frame.png, or None on failure.
+        """
+        if not clip_path or not clip_path.exists():
+            logger.warning("extract_last_frame: clip not found: %s", clip_path)
+            return None
+
+        home = os.path.expanduser("~")
+        output_dir = Path(home) / "tail_frame_tmp"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        frame_path = output_dir / "last_frame.png"
+
+        # FFmpeg command: seek to near the end, extract 1 frame
+        # -sseof -1 seeks to 1 second before the end, -update 1 overwrites
+        cmd = [
+            "ffmpeg", "-y",
+            "-sseof", "-1",
+            "-i", str(clip_path),
+            "-update", "1",
+            "-frames:v", "1",
+            "-q:v", "1",
+            str(frame_path),
+        ]
+        env = os.environ.copy()
+        env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+        env.pop("DISPLAY", None)
+        env["TMPDIR"] = home
+        env["TEMP"] = home
+        env["TMP"] = home
+
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+            if result.returncode != 0:
+                logger.warning("FFmpeg extract_last_frame failed: %s", result.stderr[:300])
+                return None
+            if not frame_path.exists():
+                logger.warning("FFmpeg did not produce output file")
+                return None
+            logger.info("Extracted last frame: %s (%d bytes)", frame_path, frame_path.stat().st_size)
+            return frame_path
+        except subprocess.TimeoutExpired:
+            logger.warning("FFmpeg extract_last_frame timed out")
+            return None
+        except Exception as e:
+            logger.warning("extract_last_frame error: %s", e)
+            return None
 
     # ─── Helpers ──────────────────────────────────────────────────
 

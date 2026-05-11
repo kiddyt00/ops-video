@@ -229,6 +229,187 @@ class I2VComposer:
         logger.info("Falling back to still frame for panel")
         return self._make_still(img_path, duration=target_duration)
 
+    async def _extend_panel_clip(
+        self,
+        prev_clip_path: Path,
+        storyboard_panel: Dict[str, Any],
+        target_duration: float = 5.0,
+        index: int = 0,
+    ) -> Path:
+        """Extend from a previous clip using tail-frame continuation.
+
+        Args:
+            prev_clip_path: Path to the previous clip to extend from.
+            storyboard_panel: Storyboard panel dict with 'scene_description'.
+            target_duration: Desired clip duration in seconds.
+            index: Panel index (for filename).
+
+        Returns:
+            Path to the generated clip, or fallback still on failure.
+        """
+        prompt = storyboard_panel.get("scene_description", "让画面动起来")[:200]
+        clip_filename = f"panel_extend_{index}_{int(time.time()*1000)}.mp4"
+
+        try:
+            result = await wan_video_provider.extend(
+                prev_clip_path=prev_clip_path,
+                prompt=prompt,
+                duration=int(target_duration),
+                output_filename=clip_filename,
+            )
+            if result.success and result.file_paths:
+                return result.file_paths[0]
+        except Exception as e:
+            logger.warning("Wan i2v extend failed for panel %d: %s", index, e)
+
+        # Fallback: still frame
+        img_path = ""  # no image for extend fallback
+        logger.info("Falling back to still frame for extend panel %d", index)
+        return self._make_still(img_path, duration=target_duration)
+
+    # ─── Scene-aware tail-frame chain ───────────────────────────────
+
+    @staticmethod
+    def group_panels_by_scene(
+        panels: List[Dict[str, Any]],
+        storyboard_panels: List[Dict[str, Any]],
+    ) -> List[List[tuple]]:
+        """Group panels into scene groups based on scene_id.
+
+        If scene_id is not present in storyboard panels, treats all panels
+        as a single continuous scene.
+
+        Args:
+            panels: Panel dicts with image_path.
+            storyboard_panels: Storyboard panel dicts possibly with scene_id.
+
+        Returns:
+            List of scene groups. Each group is a list of (panel_index, panel, storyboard_panel) tuples.
+        """
+        if not panels:
+            return []
+
+        # Check if any storyboard panel has scene_id
+        has_scene_ids = any("scene_id" in sp for sp in storyboard_panels)
+
+        if not has_scene_ids:
+            # No scene_id: treat all as one continuous scene
+            return [[(i, panels[i], storyboard_panels[i] if i < len(storyboard_panels) else {})
+                     for i in range(len(panels))]]
+
+        # Group by scene_id
+        groups: Dict[Any, List[tuple]] = {}
+        order: List[Any] = []
+
+        for i in range(len(panels)):
+            sb = storyboard_panels[i] if i < len(storyboard_panels) else {}
+            scene_id = sb.get("scene_id", f"default_{i}")
+
+            if scene_id not in groups:
+                groups[scene_id] = []
+                order.append(scene_id)
+            groups[scene_id].append((i, panels[i], sb))
+
+        return [groups[sid] for sid in order]
+
+    async def compose_episode_with_tail_extend(
+        self,
+        panels: List[Dict[str, Any]],
+        storyboard: Dict[str, Any],
+        bgm_path: Optional[Path] = None,
+        tts_paths: Optional[List[Path]] = None,
+        sfx_paths: Optional[List[Path]] = None,
+        resolution: tuple = (1080, 1920),
+        fps: int = 24,
+    ) -> Path:
+        """Generate a full episode using tail-frame continuation within scenes.
+
+        Workflow:
+          1. Group panels by scene_id (or treat all as one scene).
+          2. For each scene: first panel uses generate(), subsequent panels use extend().
+          3. Concat all clips with crossfade transitions.
+          4. Mix audio: TTS + BGM + SFX.
+          5. Return final video path.
+
+        Args:
+            panels: List of dicts with at least image_path per panel.
+            storyboard: Storyboard dict with 'panels' key.
+            bgm_path: Optional background music path.
+            tts_paths: Optional list of TTS audio paths, one per panel.
+            sfx_paths: Optional list of SFX audio paths, one per panel.
+            resolution: Video (width, height).
+            fps: Frames per second.
+
+        Returns:
+            Path to the final composed MP4.
+        """
+        ts = int(time.time())
+        sb_panels = storyboard.get("panels", [])
+
+        # Step 1: Group panels by scene
+        scene_groups = self.group_panels_by_scene(panels, sb_panels)
+        logger.info("Tail-extend composer: %d scene group(s) detected", len(scene_groups))
+
+        # Step 2: Generate clips per scene
+        all_clips: List[Path] = []
+        panel_durations: List[float] = []
+
+        for group_idx, group in enumerate(scene_groups):
+            prev_clip: Optional[Path] = None
+
+            for local_idx, (global_idx, panel, sb_panel) in enumerate(group):
+                target_duration = sb_panel.get("duration", 5)
+                panel_durations.append(target_duration)
+
+                if local_idx == 0:
+                    # First panel in scene: generate from image
+                    clip_path = await self._generate_panel_clip(panel, sb_panel, target_duration)
+                else:
+                    # Subsequent panel in same scene: extend from previous clip
+                    if prev_clip and prev_clip.exists():
+                        clip_path = await self._extend_panel_clip(
+                            prev_clip_path=prev_clip,
+                            storyboard_panel=sb_panel,
+                            target_duration=target_duration,
+                            index=global_idx,
+                        )
+                    else:
+                        # Fallback: generate from image if prev clip unavailable
+                        logger.warning(
+                            "Previous clip unavailable for extend at panel %d, falling back to generate",
+                            global_idx,
+                        )
+                        clip_path = await self._generate_panel_clip(panel, sb_panel, target_duration)
+
+                all_clips.append(clip_path)
+                prev_clip = clip_path
+                logger.info("Scene %d, Panel %d clip: %s", group_idx, global_idx, clip_path)
+
+        # Step 3: Concat clips with crossfade transitions
+        with tempfile.TemporaryDirectory(dir=os.path.expanduser("~")) as tmpdir:
+            tmp = Path(tmpdir)
+
+            if len(all_clips) == 1:
+                video_concat = all_clips[0]
+            else:
+                video_concat = await self._concat_clips_with_transition(
+                    all_clips, transition="crossfade", duration=0.5
+                )
+
+            # Step 4: Mix audio
+            total_duration = sum(panel_durations)
+
+            final_video = await self._mix_audio(
+                video_concat,
+                bgm_path=bgm_path,
+                tts_paths=tts_paths,
+                sfx_paths=sfx_paths,
+                total_duration=total_duration,
+                output_path=self.video_dir / f"episode_tail_ext_{ts}.mp4",
+            )
+
+        return final_video
+
     async def _concat_clips_with_transition(
         self,
         clips: List[Path],
