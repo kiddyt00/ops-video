@@ -9,8 +9,10 @@ import { useWorkflowStatus } from '@/hooks/use-workflow'
 import { useFiles } from '@/hooks/use-files'
 import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
+import { CharacterCardManager } from '@/components/character-card-manager'
 import { ShareDialog } from '@/components/share-dialog'
-import { AlertCircle, RefreshCw, Share2 } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { AlertCircle, RefreshCw, Share2, Workflow, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -160,19 +162,46 @@ export default function ProjectPage() {
           }
         />
       </div>
-      <WorkflowWaterfall
-        projectId={projectId}
-        tasks={tasks}
-        files={files}
-        workflowStatus={workflowStatus ?? undefined}
-        onGenerate={handleGenerate}
-        onAdvance={handleAdvance}
-        isLoading={loadingTasks}
-        onFilesChange={() => {
-          queryClient.invalidateQueries({ queryKey: ['files'] })
-          queryClient.invalidateQueries({ queryKey: ['workflow'] })
-        }}
-      />
+
+      {/* Tabs: Workflow / Character Cards */}
+      <Tabs defaultValue="workflow" className="flex-1 flex flex-col min-h-0">
+        <div className="px-4 pt-2 max-w-4xl mx-auto w-full">
+          <TabsList className="w-full">
+            <TabsTrigger value="workflow" className="gap-1.5">
+              <Workflow className="w-3.5 h-3.5" />
+              工作流
+            </TabsTrigger>
+            <TabsTrigger value="character-cards" className="gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              角色卡
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="workflow" className="flex-1 min-h-0 mt-3">
+          <ScrollArea className="h-full">
+            <WorkflowWaterfall
+              projectId={projectId}
+              tasks={tasks}
+              files={files}
+              workflowStatus={workflowStatus ?? undefined}
+              onGenerate={handleGenerate}
+              onAdvance={handleAdvance}
+              isLoading={loadingTasks}
+              onFilesChange={() => {
+                queryClient.invalidateQueries({ queryKey: ['files'] })
+                queryClient.invalidateQueries({ queryKey: ['workflow'] })
+              }}
+            />
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-4xl mx-auto w-full h-full">
+            <CharacterCardManager projectId={projectId} className="h-full" />
+          </div>
+        </TabsContent>
+      </Tabs>
     </AppShell>
   )
 }
