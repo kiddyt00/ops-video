@@ -7,6 +7,8 @@ from .task import Task, TaskStatus, TaskStage, TaskStatusLog
 from .file import File, FileType, VariantGroup
 from .user import User, UserRole, RefreshToken
 from .project_share import ProjectShare, SharePermission
+from .storage_provider import StorageProvider
+from .character_card import CharacterCard
 
 __all__ = [
     "Base",
@@ -24,4 +26,6 @@ __all__ = [
     "RefreshToken",
     "ProjectShare",
     "SharePermission",
+    "StorageProvider",
+    "CharacterCard",
 ]
