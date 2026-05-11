@@ -52,6 +52,7 @@ Thumbs.db
 
 # Storage
 storage/
+!frontend/src/app/storage/
 *.log
 
 # Testing
