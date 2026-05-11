@@ -12,3 +12,6 @@ export * from './use-generators'
 
 // File hooks
 export * from './use-files'
+
+// Chapter hooks
+export * from './use-chapters'

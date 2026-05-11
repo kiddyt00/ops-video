@@ -7,31 +7,39 @@ import { useProject } from '@/hooks/use-projects'
 import { useTasks } from '@/hooks/use-tasks'
 import { useWorkflowStatus } from '@/hooks/use-workflow'
 import { useFiles } from '@/hooks/use-files'
+import { useChapter } from '@/hooks/use-chapters'
 import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
-import { CharacterCardManager } from '@/components/character-card-manager'
-import { ChaptersList } from '@/components/chapters-list'
 import { ShareDialog } from '@/components/share-dialog'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { AlertCircle, RefreshCw, Share2, Workflow, Users, Film } from 'lucide-react'
+import { AlertCircle, RefreshCw, Share2, ArrowLeft, Film } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 import { type TaskStage } from '@/types/task'
 
-export default function ProjectPage() {
+const statusCfg: Record<string, { label: string; color: string; dot: string }> = {
+  completed: { label: '已完成', color: 'text-emerald-400', dot: 'bg-emerald-400' },
+  running: { label: '生成中', color: 'text-sky-400', dot: 'bg-sky-400 animate-pulse' },
+  failed: { label: '失败', color: 'text-rose-400', dot: 'bg-rose-400' },
+  pending: { label: '待开始', color: 'text-zinc-500', dot: 'bg-zinc-600' },
+}
+
+export default function ChapterPage() {
   const params = useParams()
   const router = useRouter()
   const projectId = params.id as string
+  const chapterId = params.chapterId as string
   const [apiError, setApiError] = useState<string | null>(null)
 
   const queryClient = useQueryClient()
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
+  const { data: chapter, isLoading: loadingChapter, error: chapterError } = useChapter(projectId, chapterId)
   const { data: tasks, isLoading: loadingTasks, error: tasksError } = useTasks(projectId)
   const { data: workflowStatus, isLoading: loadingWorkflow, error: workflowError } = useWorkflowStatus(projectId)
   const { data: files } = useFiles(projectId)
-
-  const currentStage = workflowStatus?.current_stage as TaskStage | null
 
   const handleAdvance = async () => {
     setApiError(null)
@@ -50,7 +58,6 @@ export default function ProjectPage() {
         const data = await resp.json()
         throw new Error(data.detail || '推进工作流失败')
       }
-      // Force re-fetch by reloading
       window.location.reload()
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '推进工作流失败')
@@ -88,18 +95,19 @@ export default function ProjectPage() {
     window.location.reload()
   }
 
-  const queryError = projectError || tasksError || workflowError
+  const queryError = projectError || chapterError || tasksError || workflowError
   if (queryError) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background text-foreground">
         <AlertCircle className="w-12 h-12 text-destructive mb-4" />
         <h2 className="text-xl font-semibold mb-2">加载失败</h2>
         <p className="text-sm text-muted-foreground mb-4 max-w-md text-center">
-          {queryError instanceof Error ? queryError.message : '无法加载项目数据'}
+          {queryError instanceof Error ? queryError.message : '无法加载章节数据'}
         </p>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.push('/')}>
-            返回项目列表
+          <Button variant="outline" onClick={() => router.push(`/projects/${projectId}`)}>
+            <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+            返回项目
           </Button>
           <Button onClick={handleRetry}>
             <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
@@ -110,13 +118,14 @@ export default function ProjectPage() {
     )
   }
 
-  const isLoading = loadingProject || loadingWorkflow
+  const isLoading = loadingProject || loadingChapter || loadingWorkflow
   if (isLoading) {
     return (
       <AppShell
         projectHeader={{ name: '...', workflowStatus: undefined }}
       >
         <div className="p-6 max-w-2xl mx-auto space-y-4">
+          <Skeleton className="h-8 w-48" />
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
@@ -137,6 +146,9 @@ export default function ProjectPage() {
     )
   }
 
+  const status = chapter?.status ?? 'pending'
+  const cfg = statusCfg[status] ?? statusCfg.pending
+
   return (
     <AppShell
       projectHeader={{
@@ -152,7 +164,42 @@ export default function ProjectPage() {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-end px-4 pt-3 max-w-4xl mx-auto">
+
+      {/* Chapter header */}
+      <div className="px-4 pt-3 max-w-4xl mx-auto w-full">
+        <div className="flex items-center gap-3 mb-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1"
+            onClick={() => router.push(`/projects/${projectId}`)}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            返回
+          </Button>
+          <Separator orientation="vertical" className="h-5" />
+          <div className="flex items-center gap-2 min-w-0">
+            <Film className="w-4 h-4 text-muted-foreground shrink-0" />
+            <h2 className="text-sm font-semibold truncate">
+              {chapter?.name || '章节详情'}
+            </h2>
+            {chapter && (
+              <Badge variant="outline" className="text-xs shrink-0">
+                第 {chapter.chapter_number} 章
+              </Badge>
+            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className={cn('w-2 h-2 rounded-full', cfg.dot)} />
+              <span className={cn('text-xs', cfg.color)}>{cfg.label}</span>
+            </div>
+          </div>
+        </div>
+        {chapter?.description && (
+          <p className="text-xs text-muted-foreground mb-3 ml-12">{chapter.description}</p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-end px-4 pt-1 max-w-4xl mx-auto">
         <ShareDialog
           projectId={projectId}
           trigger={
@@ -164,55 +211,22 @@ export default function ProjectPage() {
         />
       </div>
 
-      {/* Tabs: Workflow / Character Cards */}
-      <Tabs defaultValue="workflow" className="flex-1 flex flex-col min-h-0">
-        <div className="px-4 pt-2 max-w-4xl mx-auto w-full">
-          <TabsList className="w-full">
-            <TabsTrigger value="workflow" className="gap-1.5">
-              <Workflow className="w-3.5 h-3.5" />
-              工作流
-            </TabsTrigger>
-            <TabsTrigger value="chapters" className="gap-1.5">
-              <Film className="w-3.5 h-3.5" />
-              章节
-            </TabsTrigger>
-            <TabsTrigger value="character-cards" className="gap-1.5">
-              <Users className="w-3.5 h-3.5" />
-              角色卡
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        <TabsContent value="workflow" className="flex-1 min-h-0 mt-3">
-          <ScrollArea className="h-full">
-            <WorkflowWaterfall
-              projectId={projectId}
-              tasks={tasks}
-              files={files}
-              workflowStatus={workflowStatus ?? undefined}
-              onGenerate={handleGenerate}
-              onAdvance={handleAdvance}
-              isLoading={loadingTasks}
-              onFilesChange={() => {
-                queryClient.invalidateQueries({ queryKey: ['files'] })
-                queryClient.invalidateQueries({ queryKey: ['workflow'] })
-              }}
-            />
-          </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-4xl mx-auto w-full h-full">
-            <CharacterCardManager projectId={projectId} className="h-full" />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-6xl mx-auto w-full h-full">
-            <ChaptersList projectId={projectId} className="h-full" />
-          </div>
-        </TabsContent>
-      </Tabs>
+      {/* Workflow */}
+      <ScrollArea className="h-full mt-2">
+        <WorkflowWaterfall
+          projectId={projectId}
+          tasks={tasks}
+          files={files}
+          workflowStatus={workflowStatus ?? undefined}
+          onGenerate={handleGenerate}
+          onAdvance={handleAdvance}
+          isLoading={loadingTasks}
+          onFilesChange={() => {
+            queryClient.invalidateQueries({ queryKey: ['files'] })
+            queryClient.invalidateQueries({ queryKey: ['workflow'] })
+          }}
+        />
+      </ScrollArea>
     </AppShell>
   )
 }
