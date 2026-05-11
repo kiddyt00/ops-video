@@ -173,13 +173,139 @@
   - useDashboardData
   - useExportReport
   - useAnalyzeVideo
-- **Commit**: 本次
+- **Commit**: `b3c0036`
+
+### Phase 15: 功能完善与优化 ✅
+
+#### Phase 15.1: CharacterCard 和 StorageProvider 模型 ✅
+- CharacterCard 模型（角色名、描述、图片 URL、项目关联）
+- StorageProvider 模型（类型、配置、是否默认、项目关联）
+- SQLAlchemy ORM 定义 + Pydantic Schema
+- **新增文件**:
+  - `backend/app/models/character_card.py`
+  - `backend/app/models/storage_provider.py`
+  - `backend/app/schemas/character_card.py`
+  - `backend/app/schemas/storage_provider.py`
+- **Commit**: `0856d11`
+
+#### Phase 15.2: 数据库迁移 010, 011 ✅
+- Alembic migration 010: character_cards 表
+- Alembic migration 011: storage_providers 表
+- 外键关联、索引、默认值
+- **新增文件**:
+  - `backend/app/db/migrations/versions/010_add_character_cards.py`
+  - `backend/app/db/migrations/versions/011_add_storage_providers.py`
+- **Commit**: `0856d11`
+
+#### Phase 15.3: 角色卡和存储管理 CRUD API ✅
+- CharacterCard CRUD（创建/查询/更新/删除）
+- StorageProvider CRUD（创建/查询/更新/删除/设默认）
+- 路由注册到 FastAPI
+- **新增文件**:
+  - `backend/app/api/routes/character_cards.py`
+  - `backend/app/api/routes/storage_providers.py`
+  - `backend/app/db/character_card_crud.py`
+  - `backend/app/db/storage_provider_crud.py`
+- **修改文件**:
+  - `backend/app/main.py`
+- **Commit**: `e382e92`
+
+#### Phase 15.4: OSS 核心服务 ✅
+- OSS Service 抽象层（支持多云存储）
+- 上传/下载/删除/列表操作
+- 配置驱动（Endpoint, Access Key, Bucket）
+- **新增文件**:
+  - `backend/app/core/oss_service.py`
+- **Commit**: `d67e34d`
+
+#### Phase 15.5: Provider 自动上传 OSS ✅
+- BaseProvider 集成 OSS 自动上传
+- WanVideoProvider / WanxProvider 生成文件后自动上传
+- 上传失败降级处理
+- **修改文件**:
+  - `backend/app/providers/base_provider.py`
+  - `backend/app/providers/wan_video_provider.py`
+  - `backend/app/providers/wanx_provider.py`
+- **Commit**: `78fee6f`
+
+#### Phase 15.6: 多 clip 视频拼接引擎 ✅
+- I2VComposer 多 clip 拼接引擎
+- 支持多个片段按顺序拼接
+- 转场效果支持
+- 17 个测试覆盖拼接逻辑
+- **新增文件**:
+  - `backend/app/services/i2v_composer.py`
+  - `backend/tests/test_i2v_composer.py`
+- **Commit**: `3a7057b`
+
+#### Phase 15.7: Task 章节标识 ✅
+- Task 模型增加 chapter 字段
+- 章节维度的任务分组和查询
+- **Commit**: 包含在 Phase 15.3 API 更新中
+
+#### Phase 15.8: 前端（角色卡面板、存储管理、章节视图） ✅
+
+##### Phase 15.8.1: 角色卡管理面板
+- CharacterCardManager 组件
+- 角色卡列表/创建/编辑/删除
+- use-character-cards hook
+- **新增文件**:
+  - `frontend/src/components/character-card-manager.tsx`
+  - `frontend/src/hooks/use-character-cards.ts`
+  - `frontend/src/lib/api/character-cards.ts`
+  - `frontend/src/types/character-card.ts`
+- **Commit**: `b868b43`
+
+##### Phase 15.8.2: 存储管理页面
+- 存储管理页面（/storage）
+- 存储 Provider 列表/创建/配置
+- 导航栏入口
+- **新增文件**:
+  - `frontend/src/app/storage/page.tsx`
+  - `frontend/src/hooks/use-storage.ts`
+  - `frontend/src/lib/api/storage.ts`
+- **修改文件**:
+  - `frontend/src/components/app-shell.tsx`
+  - `.gitignore`
+- **Commit**: `b73c5b2`
+
+##### Phase 15.8.3: 章节列表和详情页
+- 章节列表视图（chapters-list 组件）
+- 章节详情页（/projects/[id]/chapters/[chapterId]）
+- use-chapters hook + chapters API 客户端
+- **新增文件**:
+  - `frontend/src/components/chapters-list.tsx`
+  - `frontend/src/hooks/use-chapters.ts`
+  - `frontend/src/lib/api/chapters.ts`
+  - `frontend/src/types/chapter.ts`
+  - `frontend/src/app/projects/[id]/chapters/[chapterId]/page.tsx`
+- **修改文件**:
+  - `frontend/src/app/projects/[id]/page.tsx`
+  - `frontend/src/hooks/index.ts`
+  - `frontend/src/types/index.ts`
+- **Commit**: `f99956d`
+
+#### Phase 15.9: 集成测试（21 个新测试通过） ✅
+- CharacterCard 集成测试（7 个）: 创建/查询/更新/删除/关联查询
+- StorageProvider 集成测试（14 个）: CRUD/默认设置/配置验证
+- I2VComposer 单元测试（17 个）: 拼接/转场/输出验证
+- Phase 15 新增测试总计 38 个（21 个集成 + 17 个单元）
+- 项目总测试数: 217
+- **新增文件**:
+  - `backend/tests/test_character_cards.py` (305 行)
+  - `backend/tests/test_storage_providers.py` (356 行)
+- **Commit**: `572daaa`
 
 ---
 
 ## 待完成
 
-### Phase 12: 功能完善与优化
+### Phase 16: 尾帧延长 ✅
+- 视频尾帧自动延长功能
+- 支持自定义延长时长
+- FFmpeg 尾帧处理
+
+### Phase 17: 其他优化
 - 用户项目管理（我的项目列表）
 - 项目分享与协作
 - 生成参数预设模板
@@ -236,6 +362,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: Phase 14 完成
-- **总测试数**: 123 passed
-- **下一阶段**: Phase 15 - 功能完善与优化
+- **最新 Commit**: `572daaa` - Phase 15.9 集成测试完成
+- **总测试数**: 217 (Phase 15 新增 38 个)
+- **已完成阶段**: Phase 1 ~ Phase 15
+- **下一阶段**: Phase 16 - 尾帧延长
