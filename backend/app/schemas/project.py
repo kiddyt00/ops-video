@@ -16,7 +16,10 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     """Schema for creating a project"""
-    pass
+    style_preset: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="风格预设：画风、分辨率、TTS声音、视频比例等"
+    )
 
 
 class ProjectCreateWithUser(ProjectCreate):
@@ -29,6 +32,10 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
+    style_preset: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="风格预设：画风、分辨率、TTS声音、视频比例等"
+    )
 
 
 class ProjectResponse(ProjectBase):
