@@ -5,12 +5,18 @@ Supports wan2.6-t2i (sync, multimodal-generation) and legacy async models.
 import asyncio
 import base64
 import json
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import httpx
 
 from ..config import settings, STORAGE_DIRS
+from ..db.session import SessionLocal
+from ..db.storage_provider_crud import storage_provider_crud
+from ..core.oss_service import OSSService
 from .base_provider import BaseProvider, GenerationResult
+
+logger = logging.getLogger(__name__)
 
 
 class WanxProvider(BaseProvider):
@@ -128,10 +134,12 @@ class WanxProvider(BaseProvider):
                                 image_urls.append(item["image"])
                     if image_urls:
                         image_paths = await self._download_images(image_urls, output_dir, client)
+                        oss_urls = await self._try_upload_to_oss(image_paths)
                         return GenerationResult(
                             file_paths=image_paths,
                             parameters=parameters,
                             metadata={"model": self.model, "seed": seed, "image_count": len(image_paths)},
+                            oss_urls=oss_urls,
                         )
                     raise RuntimeError(f"No task_id or images in response: {json.dumps(data, ensure_ascii=False)[:500]}")
 
@@ -144,6 +152,8 @@ class WanxProvider(BaseProvider):
                     output_dir,
                 )
 
+                oss_urls = await self._try_upload_to_oss(image_paths)
+
                 return GenerationResult(
                     file_paths=image_paths,
                     parameters=parameters,
@@ -153,6 +163,7 @@ class WanxProvider(BaseProvider):
                         "seed": seed,
                         "image_count": len(image_paths),
                     },
+                    oss_urls=oss_urls,
                 )
 
         except Exception as e:
@@ -208,6 +219,8 @@ class WanxProvider(BaseProvider):
                     output_dir,
                 )
 
+                oss_urls = await self._try_upload_to_oss(image_paths)
+
                 return GenerationResult(
                     file_paths=image_paths,
                     parameters=parameters,
@@ -216,6 +229,7 @@ class WanxProvider(BaseProvider):
                         "model": self.model,
                         "seed": seed,
                     },
+                    oss_urls=oss_urls,
                 )
 
         except Exception as e:
@@ -227,6 +241,35 @@ class WanxProvider(BaseProvider):
             )
 
     # ─── Helpers ──────────────────────────────────────────────────────
+
+    async def _try_upload_to_oss(self, paths: List[Path]) -> List[str]:
+        """Try uploading generated files to active OSS storage.
+
+        Non-blocking: on any error, logs a warning and returns [].
+        """
+        if not paths:
+            return []
+        try:
+            db = SessionLocal()
+            try:
+                provider = storage_provider_crud.get_active(db)
+                if not provider:
+                    return []
+                oss = OSSService(provider)
+                urls = []
+                for p in paths:
+                    try:
+                        url = oss.upload(str(p))
+                        urls.append(url)
+                        logger.info("WanxProvider uploaded %s -> %s", p, url)
+                    except Exception as e:
+                        logger.warning("WanxProvider OSS upload failed for %s: %s", p, e)
+                return urls
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning("WanxProvider OSS upload check failed: %s", e)
+            return []
 
     async def _download_images(
         self,

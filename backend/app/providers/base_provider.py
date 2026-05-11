@@ -14,6 +14,7 @@ class GenerationResult(BaseModel):
     metadata: Dict[str, Any] = {}
     success: bool = True
     error_message: str = ""
+    oss_urls: List[str] = []
 
 
 class BaseProvider(ABC):

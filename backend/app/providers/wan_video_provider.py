@@ -4,13 +4,19 @@ Wan2.7 i2v (Image-to-Video) Provider
 Uses DashScope video-generation API to animate still images.
 """
 import asyncio
+import logging
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import httpx
 
 from ..config import settings, STORAGE_DIRS
+from ..db.session import SessionLocal
+from ..db.storage_provider_crud import storage_provider_crud
+from ..core.oss_service import OSSService
 from .base_provider import BaseProvider, GenerationResult
+
+logger = logging.getLogger(__name__)
 
 
 class WanVideoProvider(BaseProvider):
@@ -98,10 +104,13 @@ class WanVideoProvider(BaseProvider):
                     video_url, output_dir, output_filename, client
                 )
 
+                oss_urls = await self._try_upload_to_oss([video_path])
+
                 return GenerationResult(
                     file_paths=[video_path],
                     parameters=parameters,
                     metadata={"model": self.model, "task_id": task_id},
+                    oss_urls=oss_urls,
                 )
 
         except Exception as e:
@@ -148,6 +157,35 @@ class WanVideoProvider(BaseProvider):
         )
 
     # ─── Helpers ──────────────────────────────────────────────────
+
+    async def _try_upload_to_oss(self, paths: List[Path]) -> List[str]:
+        """Try uploading generated files to active OSS storage.
+
+        Non-blocking: on any error, logs a warning and returns [].
+        """
+        if not paths:
+            return []
+        try:
+            db = SessionLocal()
+            try:
+                provider = storage_provider_crud.get_active(db)
+                if not provider:
+                    return []
+                oss = OSSService(provider)
+                urls = []
+                for p in paths:
+                    try:
+                        url = oss.upload(str(p))
+                        urls.append(url)
+                        logger.info("WanVideoProvider uploaded %s -> %s", p, url)
+                    except Exception as e:
+                        logger.warning("WanVideoProvider OSS upload failed for %s: %s", p, e)
+                return urls
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning("WanVideoProvider OSS upload check failed: %s", e)
+            return []
 
     async def _wait_for_task(self, task_id: str, client: httpx.AsyncClient, timeout: int = 300) -> Dict[str, Any]:
         """Poll task status until SUCCEEDED or FAILED."""
