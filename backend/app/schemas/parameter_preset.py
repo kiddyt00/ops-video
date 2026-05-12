@@ -30,6 +30,7 @@ class PresetResponse(BaseModel):
     generator_type: str
     description: Optional[str] = None
     parameters: Dict[str, Any]
+    is_system: bool = False
     created_at: datetime
     updated_at: datetime
 

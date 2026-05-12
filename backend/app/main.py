@@ -35,6 +35,17 @@ async def lifespan(app: FastAPI):
     else:
         logger.warning("Redis not available, caching and rate limiting disabled")
 
+    # Seed system presets if not already seeded
+    from .db.session import SessionLocal
+    from .db.preset_crud import seed_system_presets
+    db = SessionLocal()
+    try:
+        count = seed_system_presets(db)
+        if count > 0:
+            logger.info(f"Seeded {count} system parameter presets")
+    finally:
+        db.close()
+
     yield
 
     # Shutdown

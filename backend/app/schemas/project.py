@@ -12,6 +12,10 @@ class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
+    style_preset: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="风格预设: {style, resolution, aspect_ratio, tts_voice}"
+    )
 
 
 class ProjectCreate(ProjectBase):
@@ -29,6 +33,7 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
+    style_preset: Optional[Dict[str, Any]] = None
 
 
 class ProjectResponse(ProjectBase):

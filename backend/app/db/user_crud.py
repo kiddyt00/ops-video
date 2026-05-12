@@ -84,12 +84,12 @@ class UserCRUD:
 
     def update_last_login(self, db: Session, user_id: UUID) -> Optional[User]:
         """Update user's last login timestamp"""
-        from datetime import datetime
+        from datetime import datetime, timezone
         user = self.get(db, user_id=user_id)
         if not user:
             return None
 
-        user.last_login_at = datetime.utcnow()
+        user.last_login_at = datetime.now(timezone.utc)
         user.login_count = str(int(user.login_count) + 1)
 
         db.add(user)

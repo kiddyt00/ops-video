@@ -61,7 +61,7 @@ class File(BaseModel):
     version = Column(String(50), nullable=False, default="1.0.0")
     parent_file_id = Column(
         GUID(),
-        ForeignKey("files.id", ondelete="SET NULL"),
+        ForeignKey("files.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
         index=True
     )
@@ -106,7 +106,7 @@ class VariantGroup(BaseModel):
     stage = Column(String(50), nullable=False, index=True)
     selected_file_id = Column(
         GUID(),
-        ForeignKey("files.id", ondelete="SET NULL"),
+        ForeignKey("files.id", ondelete="SET NULL", use_alter=True),
         nullable=True,
         index=True
     )

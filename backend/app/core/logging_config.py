@@ -3,7 +3,7 @@ Structured logging configuration
 """
 import logging
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from pythonjsonlogger import jsonlogger
 from pathlib import Path
@@ -18,7 +18,7 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         super().add_fields(log_record, record, message_dict)
 
         # Add timestamp in ISO format
-        log_record['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+        log_record['timestamp'] = datetime.now(timezone.utc).isoformat() + 'Z'
 
         # Add log level
         log_record['level'] = record.levelname

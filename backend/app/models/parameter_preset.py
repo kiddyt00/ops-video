@@ -2,7 +2,7 @@
 Parameter preset model
 """
 import uuid
-from sqlalchemy import Column, String, ForeignKey, Text
+from sqlalchemy import Column, String, ForeignKey, Text, Boolean
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import relationship
 from .guid_type import GUID
@@ -25,6 +25,7 @@ class ParameterPreset(BaseModel):
     generator_type = Column(String(50), nullable=False, index=True)  # script, storyboard, image, tts, bgm, video_composer
     description = Column(Text, nullable=True)
     parameters = Column(JSON, nullable=False, default=dict)
+    is_system = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     user = relationship("User", backref="parameter_presets")

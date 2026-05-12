@@ -2,7 +2,7 @@
 Storage Provider CRUD operations
 """
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from ..models.storage_provider import StorageProvider
@@ -76,7 +76,7 @@ class StorageProviderCRUD:
         provider = self.get(db, provider_id)
         if not provider:
             return None
-        provider.last_tested_at = datetime.utcnow()
+        provider.last_tested_at = datetime.now(timezone.utc)
         provider.last_test_status = "success" if success else "failed"
         provider.last_test_error = error if not success else None
         db.commit()

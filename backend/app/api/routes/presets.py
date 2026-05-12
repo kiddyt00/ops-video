@@ -69,6 +69,11 @@ def update_preset(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not the preset owner",
         )
+    if preset.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System presets cannot be modified",
+        )
     updated = preset_crud.update(db, preset_id=preset_id, obj_in=preset_in)
     return updated
 
@@ -90,6 +95,11 @@ def delete_preset(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not the preset owner",
+        )
+    if preset.is_system:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System presets cannot be deleted",
         )
     success = preset_crud.delete(db, preset_id=preset_id)
     if not success:
