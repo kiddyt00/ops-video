@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { StoryWizard } from './story-wizard'
 import {
   BookOpen, Sparkles, Loader2, AlertCircle, Save, Pencil, RotateCcw,
   ChevronDown, ChevronUp, Clock, FileText,
@@ -429,51 +430,47 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
             </div>
           )}
 
-          {/* No story yet — Inspiration & Generate */}
+          {/* No story yet — Show interactive wizard */}
           {!isLoading && !story && !error && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    AI 灵感生成
-                  </CardTitle>
-                  <CardDescription>
-                    输入你的想法，AI 将帮助生成故事概念
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Textarea
-                    value={inspiration}
-                    onChange={(e) => setInspiration(e.target.value)}
-                    placeholder="例如：一个关于时间旅行的科幻故事，主角发现可以通过梦境穿越时空..."
-                    rows={3}
-                    className="text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={handleGenerateInspiration}
-                      disabled={!inspiration.trim() || inspirationMutation.isPending}
-                      size="sm"
-                    >
-                      {inspirationMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                      <Sparkles className="w-3.5 h-3.5 mr-1" />
-                      生成故事
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleGenerateStory}
-                      disabled={generateStoryMutation.isPending}
-                      size="sm"
-                    >
-                      {generateStoryMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                      <BookOpen className="w-3.5 h-3.5 mr-1" />
-                      使用默认模板
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <StoryWizard
+              onComplete={async (wizardParams) => {
+                setApiError(null)
+                const apiParams: Record<string, string> = {
+                  inspiration: wizardParams.inspiration,
+                  genre: wizardParams.genre,
+                  tone: wizardParams.tone,
+                  target_length: wizardParams.target_length,
+                }
+                if (wizardParams.golden_finger) apiParams.golden_finger = wizardParams.golden_finger
+                if (wizardParams.protagonist) apiParams.protagonist = wizardParams.protagonist
+                if (wizardParams.relationship) apiParams.relationship = wizardParams.relationship
+                if (wizardParams.worldbuilding_hints) apiParams.worldbuilding_hints = wizardParams.worldbuilding_hints
+
+                try {
+                  const token = localStorage.getItem('ops-video-tokens')
+                  const accessToken = token ? JSON.parse(token).access_token : null
+                  const resp = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance/inspiration`,
+                    {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+                      },
+                      body: JSON.stringify({ parameters: apiParams, execute: true }),
+                    }
+                  )
+                  if (!resp.ok) {
+                    const data = await resp.json()
+                    throw new Error(data.detail || '生成故事失败')
+                  }
+                  await refetch()
+                } catch (e) {
+                  setApiError(e instanceof Error ? e.message : '生成故事失败')
+                }
+              }}
+              isGenerating={inspirationMutation.isPending || generateStoryMutation.isPending}
+            />
           )}
 
           {/* Story content */}
