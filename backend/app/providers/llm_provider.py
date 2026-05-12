@@ -1,27 +1,71 @@
 """
 LLM Provider for script and storyboard generation
 Supports both local LLM (Ollama) and API (OpenAI-compatible)
+Configuration is loaded dynamically from the database (AIModel with category='llm' and is_active=True)
 """
 import json
 import httpx
 from typing import Any, Dict, List, Optional
 from pathlib import Path
-from ..config import settings
+from ..models.declarative import SessionLocal
+from ..db.ai_model_crud import ai_model_crud
 from .base_provider import BaseProvider, GenerationResult
 
 
 class LLMProvider(BaseProvider):
-    """LLM Provider for text generation"""
+    """LLM Provider for text generation.
+
+    Configuration is loaded dynamically from the database on each generate() call.
+    Requires an AIModel with category='llm' and is_active=True to be configured.
+    """
 
     def __init__(
         self,
-        api_key: str = "",
-        api_base_url: str = "",
-        model: str = "",
+        api_key: Optional[str] = None,
+        api_base_url: Optional[str] = None,
+        model: Optional[str] = None,
     ):
-        self.api_key = api_key or settings.LLM_API_KEY
-        self.api_base_url = api_base_url or settings.LLM_API_BASE_URL
-        self.model = model or settings.LLM_MODEL
+        # Config is loaded dynamically from DB; constructor params are only for testing/mocking
+        self._api_key = api_key
+        self._api_base_url = api_base_url
+        self._model = model
+        self._loaded = False
+
+    async def _load_model_config(self) -> None:
+        """Load active LLM model configuration from the database.
+
+        Must be called before generate(). Cached for the lifetime of the instance
+        unless explicitly reset.
+        """
+        if self._loaded and self._api_key and self._api_base_url and self._model:
+            return
+
+        db = SessionLocal()
+        try:
+            active_model = ai_model_crud.get_active(db, category="llm")
+            if not active_model:
+                from ..services.workflow_service import WorkflowError
+                raise WorkflowError(
+                    "No active LLM model configured. Please enable one in AI Models settings."
+                )
+            self._api_key = active_model.api_key or ""
+            self._api_base_url = active_model.api_base_url or ""
+            self._model = active_model.model_name or ""
+            self._loaded = True
+        finally:
+            db.close()
+
+    @property
+    def api_key(self) -> str:
+        return self._api_key or ""
+
+    @property
+    def api_base_url(self) -> str:
+        return self._api_base_url or ""
+
+    @property
+    def model(self) -> str:
+        return self._model or ""
 
     @property
     def name(self) -> str:
@@ -38,6 +82,8 @@ class LLMProvider(BaseProvider):
 
     async def generate(self, parameters: Dict[str, Any]) -> GenerationResult:
         """Generate text using LLM"""
+        await self._load_model_config()
+
         prompt = parameters.get("prompt", "")
         system_prompt = parameters.get("system_prompt", "")
         temperature = parameters.get("temperature", 0.7)

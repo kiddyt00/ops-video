@@ -45,10 +45,35 @@ class AIModelCRUD:
         return True
 
     def toggle(self, db: Session, model_id: UUID) -> Optional[AIModel]:
+        """Deprecated: use activate() instead. Toggles is_enabled only."""
         model = self.get(db, model_id)
         if not model:
             return None
         model.is_enabled = not model.is_enabled
+        db.commit()
+        db.refresh(model)
+        return model
+
+    def get_active(self, db: Session, category: str) -> Optional[AIModel]:
+        """Get the active model for a given category."""
+        return (
+            db.query(AIModel)
+            .filter(AIModel.category == category, AIModel.is_active == True)
+            .first()
+        )
+
+    def activate(self, db: Session, model_id: UUID) -> Optional[AIModel]:
+        """Activate a model and deactivate others in the same category."""
+        model = self.get(db, model_id)
+        if not model:
+            return None
+        # Deactivate all models in the same category
+        db.query(AIModel).filter(
+            AIModel.category == model.category,
+            AIModel.is_active == True,
+        ).update({"is_active": False}, synchronize_session="fetch")
+        # Activate this model
+        model.is_active = True
         db.commit()
         db.refresh(model)
         return model

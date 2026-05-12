@@ -21,6 +21,7 @@ class AIModel(BaseModel):
     api_base_url = Column(String(500), nullable=True)
     is_enabled = Column(Boolean, default=True, nullable=False)
     is_builtin = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=False, nullable=False, server_default="false")
     config = Column(JSON, nullable=False, default=dict)
 
     def __repr__(self):

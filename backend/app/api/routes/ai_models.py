@@ -52,7 +52,17 @@ def delete_model(model_id: UUID, db: Session = Depends(get_db)):
 
 @router.post("/{model_id}/toggle", response_model=AIModelResponse)
 def toggle_model(model_id: UUID, db: Session = Depends(get_db)):
-    model = ai_model_crud.toggle(db, model_id)
+    """Toggle model activation. Sets this model as active and deactivates others in the same category."""
+    model = ai_model_crud.activate(db, model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    return model
+
+
+@router.post("/{model_id}/activate", response_model=AIModelResponse)
+def activate_model(model_id: UUID, db: Session = Depends(get_db)):
+    """Activate a model and deactivate others in the same category. Alias for /toggle."""
+    model = ai_model_crud.activate(db, model_id)
     if not model:
         raise HTTPException(status_code=404, detail="Model not found")
     return model

@@ -44,8 +44,7 @@ client = TestClient(app)
 
 print("=" * 60)
 print("🎬 小猫的奇幻冒险 — 全链路真实生成")
-print(f"   LLM: {settings.LLM_MODEL}")
-print(f"   Image: {settings.DASHSCOPE_MODEL}")
+print(f"   LLM: (configured via database - AIModel category='llm')")
 print(f"   Storage: {settings.storage_path}")
 print("=" * 60)
 
