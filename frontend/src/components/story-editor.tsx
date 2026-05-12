@@ -350,15 +350,15 @@ function CharactersDisplay({ data }: { data: any }) {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-medium text-white/90">{String(char.name || `角色 ${idx + 1}`)}</p>
-              {char.role && (
+              {Boolean(char.role) && (
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">{String(char.role)}</Badge>
               )}
             </div>
           </div>
-          {char.description && (
+          {Boolean(char.description) && (
             <p className="text-xs text-zinc-400 leading-relaxed pl-10">{String(char.description)}</p>
           )}
-          {char.arc && (
+          {Boolean(char.arc) && (
             <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>
           )}
         </div>
