@@ -27,6 +27,7 @@ export default function ProjectPage() {
   const [apiError, setApiError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('story')
   const [selectedChapter, setSelectedChapter] = useState<{ id: string; name: string } | null>(null)
+  const [autoRunning, setAutoRunning] = useState(false)
 
   const queryClient = useQueryClient()
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
@@ -91,6 +92,38 @@ export default function ProjectPage() {
       queryClient.invalidateQueries({ queryKey: ['story', projectId] })
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '生成任务失败')
+    }
+  }
+
+  const handleRunAll = async () => {
+    setAutoRunning(true)
+    setApiError(null)
+    const token = localStorage.getItem('ops-video-tokens')
+    const accessToken = token ? JSON.parse(token).access_token : null
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+    }
+    try {
+      for (let i = 0; i < 10; i++) {
+        const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance`, {
+          method: 'POST', headers, body: JSON.stringify({ execute: true }),
+        })
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}))
+          if (resp.status === 400 && data.detail?.includes('completed')) break
+          throw new Error(data.detail || '推进失败')
+        }
+        // Refresh after each stage
+        queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['workflow', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['files', projectId] })
+        queryClient.invalidateQueries({ queryKey: ['story', projectId] })
+      }
+    } catch (e: unknown) {
+      setApiError(e instanceof Error ? e.message : '自动推进失败')
+    } finally {
+      setAutoRunning(false)
     }
   }
 
@@ -234,6 +267,8 @@ export default function ProjectPage() {
               workflowStatus={workflowStatus ?? undefined}
               onGenerate={handleGenerate}
               onAdvance={handleAdvance}
+              onRunAll={handleRunAll}
+              autoRunning={autoRunning}
               isLoading={loadingTasks}
               chapterId={selectedChapter?.id}
               chapterName={selectedChapter?.name}

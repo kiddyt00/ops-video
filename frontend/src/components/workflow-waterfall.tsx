@@ -40,6 +40,8 @@ interface Props {
   workflowStatus?: { current_stage: string | null; stages: { stage: string; status: string }[] }
   onGenerate: (stage: TaskStage, params: Record<string, unknown>) => void
   onAdvance: () => void
+  onRunAll?: () => void
+  autoRunning?: boolean
   isLoading?: boolean
   onFilesChange?: () => void
   /** If set, show chapter context banner and pass to onGenerate */
@@ -47,7 +49,7 @@ interface Props {
   chapterName?: string
 }
 
-export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, isLoading, onFilesChange, chapterId, chapterName }: Props) {
+export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, onRunAll, autoRunning, isLoading, onFilesChange, chapterId, chapterName }: Props) {
   const [expanded, setExpanded] = useState<TaskStage | null>(null)
 
   const stageMap = new Map(workflowStatus?.stages.map(s => [s.stage, s.status]) ?? [])
@@ -85,6 +87,23 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
           <div className="text-center mb-8">
             <h2 className="text-lg font-semibold text-white/90 tracking-wide">生成流水线</h2>
             <p className="text-xs text-zinc-500 mt-1">点击阶段展开查看制品与参数</p>
+            {onRunAll && (
+              <div className="mt-3">
+                <Button
+                  size="sm"
+                  onClick={onRunAll}
+                  disabled={autoRunning}
+                  className="gap-1.5 bg-violet-600 hover:bg-violet-500"
+                >
+                  {autoRunning ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5" />
+                  )}
+                  {autoRunning ? '生成中...' : '全部生成'}
+                </Button>
+              </div>
+            )}
             {chapterId && chapterName && (
               <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
                 <Film className="w-3.5 h-3.5 text-violet-400" />
