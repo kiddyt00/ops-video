@@ -124,9 +124,9 @@ def _build_story_prompt(inspiration: str, **kwargs) -> str:
     worldbuilding_hints = kwargs.get("worldbuilding_hints", "")
     extra = kwargs.get("extra_context", "")
 
-    prompt = f"""You are a professional story developer. Expand the following inspiration into a complete story outline.
+    prompt = f"""你是一位专业的故事开发者。请将以下灵感扩展为完整的故事大纲。
 
-Inspiration: {inspiration}
+灵感：{inspiration}
 """
     if genre:
         prompt += f"Genre: {genre}\n"
@@ -179,9 +179,9 @@ def _build_chapter_prompt(story_data: Dict[str, Any], chapter_count: int) -> str
     """Build the prompt for dividing a story into chapter outlines."""
     story_json = json.dumps(story_data, indent=2, ensure_ascii=False)
 
-    prompt = f"""You are a professional story developer. Divide the following story outline into exactly {chapter_count} chapters.
+    prompt = f"""你是一位专业的叙事结构师。请将以下故事大纲拆分为恰好 {chapter_count} 个章节。
 
-Story Outline:
+故事大纲：
 {story_json}
 
 Return a JSON object with the following structure:
@@ -333,9 +333,9 @@ class StoryGeneratorService:
         Also saves the result to the storage directory for the project.
         """
         system_prompt = (
-            "You are an expert story developer and narrative designer. "
-            "Your task is to expand brief inspirations into rich, structured story outlines. "
-            "Always return valid JSON matching the requested schema."
+            "你是一位专业的故事开发者和叙事设计师。"
+            "你的任务是将简短的灵感扩展为丰富、结构化的故事大纲。"
+            "请始终返回符合要求格式的有效 JSON。"
         )
 
         prompt = _build_story_prompt(inspiration, **kwargs)
@@ -402,9 +402,10 @@ class StoryGeneratorService:
             chapter_count = max(len(plot_points) * 2, 6)
 
         system_prompt = (
-            "You are an expert narrative structurer. "
-            "Divide story outlines into well-paced chapter outlines. "
-            "Always return valid JSON matching the requested schema."
+            "你是一位专业的叙事结构师。"
+            "请将故事大纲拆分为节奏良好的章节大纲。"
+            "请始终返回符合要求格式的有效 JSON。"
+            "所有内容请使用中文输出。"
         )
 
         prompt = _build_chapter_prompt(story_data, chapter_count)
