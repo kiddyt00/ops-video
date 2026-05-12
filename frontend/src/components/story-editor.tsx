@@ -227,7 +227,7 @@ function ChapterOutlineEditor({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
       {chapters.map((ch, idx) => (
         <div key={idx} className="border border-border rounded-lg overflow-hidden">
           {editingIndex === idx && draft ? (
