@@ -69,7 +69,7 @@ export default function TasksPage() {
             </div>
             <div className="flex items-center gap-2">
               <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
+              <Select value={statusFilter} onValueChange={(v) => v && setStatusFilter(v)}>
                 <SelectTrigger className="w-[110px]"><SelectValue placeholder="状态" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
@@ -79,7 +79,7 @@ export default function TasksPage() {
                   <SelectItem value="failed">失败</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={stageFilter} onValueChange={(v) => setStageFilter(v)}>
+              <Select value={stageFilter} onValueChange={(v) => v && setStageFilter(v)}>
                 <SelectTrigger className="w-[110px]"><SelectValue placeholder="阶段" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部阶段</SelectItem>
