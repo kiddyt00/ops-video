@@ -97,17 +97,38 @@ class ImageGeneratorService:
                 if settings.MOCK_MODE:
                     result = mock_image_result(prompt=prompt, variant_index=i)
                 else:
-                    result = await self.provider.generate({
-                        "prompt": prompt,
-                        "negative_prompt": negative_prompt,
-                        "seed": variant_seed,
-                        "steps": steps,
-                        "cfg_scale": cfg_scale,
-                        "sampler": sampler,
-                        "width": width,
-                        "height": height,
-                        "workflow_id": workflow_id,
-                    })
+                    # Try primary provider, fallback to secondary
+                    providers = [self.provider]
+                    if self.provider is wanx_provider:
+                        providers.append(siliconflow_provider)
+                    elif self.provider is siliconflow_provider:
+                        providers.append(wanx_provider)
+
+                    result = None
+                    last_error = None
+                    for prov in providers:
+                        try:
+                            result = await prov.generate({
+                                "prompt": prompt,
+                                "negative_prompt": negative_prompt,
+                                "seed": variant_seed,
+                                "steps": steps,
+                                "cfg_scale": cfg_scale,
+                                "sampler": sampler,
+                                "width": width,
+                                "height": height,
+                                "workflow_id": workflow_id,
+                            })
+                            if result.success:
+                                break
+                        except Exception as e:
+                            last_error = str(e)
+                            continue
+
+                    if result is None or not result.success:
+                        raise RuntimeError(
+                            f"All image providers failed. Last error: {last_error or result.error_message if result else 'unknown'}"
+                        )
 
                 if result.success and result.file_paths:
                     for file_path in result.file_paths:
