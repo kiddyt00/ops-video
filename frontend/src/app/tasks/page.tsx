@@ -69,7 +69,7 @@ export default function TasksPage() {
             </div>
             <div className="flex items-center gap-2">
               <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v)}>
                 <SelectTrigger className="w-[110px]"><SelectValue placeholder="状态" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
@@ -79,7 +79,7 @@ export default function TasksPage() {
                   <SelectItem value="failed">失败</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={stageFilter} onValueChange={setStageFilter}>
+              <Select value={stageFilter} onValueChange={(v) => setStageFilter(v)}>
                 <SelectTrigger className="w-[110px]"><SelectValue placeholder="阶段" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部阶段</SelectItem>
@@ -107,8 +107,14 @@ export default function TasksPage() {
                 return (
                   <Card
                     key={task.id}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => router.push(`/projects/${task.project_id}`)}
+                    onClick={() => {
+                      if (!projectName) return
+                      router.push(`/projects/${task.project_id}`)
+                    }}
+                    className={cn(
+                      'transition-colors',
+                      projectName ? 'cursor-pointer hover:bg-muted/50' : 'cursor-default opacity-60'
+                    )}
                   >
                     <CardContent className="pt-4">
                       <div className="flex items-center justify-between">
