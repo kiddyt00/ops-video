@@ -575,9 +575,9 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 title="章节大纲"
                 icon={<FileText className="w-4 h-4 text-muted-foreground" />}
                 badge={
-                  draft.chapter_outline.length > 0 && (
+                  (draft.chapter_outline?.length ?? 0) > 0 && (
                     <Badge variant="outline" className="text-[10px]">
-                      {draft.chapter_outline.length} 章
+                      {draft.chapter_outline!.length} 章
                     </Badge>
                   )
                 }
