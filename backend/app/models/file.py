@@ -20,6 +20,7 @@ class FileType(str, Enum):
     VIDEO = "video"
     SCRIPT = "script"
     STORYBOARD = "storyboard"
+    TEXT = "text"
     OTHER = "other"
 
 
