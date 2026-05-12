@@ -709,6 +709,29 @@ class WorkflowService:
         )
         task.output_file_ids = [str(file_record.id)]
 
+        # ── Create or update the Story DB record ────────────────────────
+        from ..db.story_crud import story_crud
+        from ..schemas.story import StoryCreate as StoryCreateSchema, StoryUpdate as StoryUpdateSchema
+        from ..models.story import StoryStatus
+
+        existing = story_crud.get_by_project(self.db, task.project_id)
+        story_obj = StoryCreateSchema(
+            inspiration=inspiration,
+            logline=story_data.get("logline"),
+            synopsis=story_data.get("synopsis"),
+            worldbuilding=story_data.get("worldbuilding"),
+            characters=story_data.get("characters"),
+            themes=story_data.get("themes"),
+            plot_points=story_data.get("plot_points"),
+            status=StoryStatus.draft,
+        )
+        if existing:
+            story_crud.update(self.db, existing.id, StoryUpdateSchema(**story_obj.model_dump(exclude_unset=True)))
+        else:
+            story_crud.create(self.db, task.project_id, story_obj)
+        self.db.commit()
+        # ────────────────────────────────────────────────────────────────
+
     async def _execute_story_generation(
         self,
         task: Task,
@@ -745,6 +768,10 @@ class WorkflowService:
         genre = parameters.get("genre", inspiration_data.get("genre", ""))
         tone = parameters.get("tone", inspiration_data.get("tone", ""))
         target_length = parameters.get("target_length", "")
+        golden_finger = parameters.get("golden_finger", "")
+        protagonist = parameters.get("protagonist", "")
+        relationship = parameters.get("relationship", "")
+        worldbuilding_hints = parameters.get("worldbuilding_hints", "")
 
         service = StoryGeneratorService()
         story_data = await service.generate_story(
@@ -753,6 +780,10 @@ class WorkflowService:
             genre=genre,
             tone=tone,
             target_length=target_length,
+            golden_finger=golden_finger,
+            protagonist=protagonist,
+            relationship=relationship,
+            worldbuilding_hints=worldbuilding_hints,
         )
 
         variant_group = self.db.query(VariantGroup).filter(
@@ -777,6 +808,27 @@ class WorkflowService:
             ),
         )
         task.output_file_ids = [str(file_record.id)]
+
+        # ── Update Story DB record ──────────────────────────────────────
+        from ..db.story_crud import story_crud
+        from ..schemas.story import StoryCreate as StoryCreateSchema, StoryUpdate as StoryUpdateSchema
+
+        existing = story_crud.get_by_project(self.db, task.project_id)
+        story_obj = StoryCreateSchema(
+            inspiration=inspiration_text,
+            logline=story_data.get("logline"),
+            synopsis=story_data.get("synopsis"),
+            worldbuilding=story_data.get("worldbuilding"),
+            characters=story_data.get("characters"),
+            themes=story_data.get("themes"),
+            plot_points=story_data.get("plot_points"),
+        )
+        if existing:
+            story_crud.update(self.db, existing.id, StoryUpdateSchema(**story_obj.model_dump(exclude_unset=True)))
+        else:
+            story_crud.create(self.db, task.project_id, story_obj)
+        self.db.commit()
+        # ────────────────────────────────────────────────────────────────
 
     async def _execute_chapter_outline_generation(
         self,
@@ -839,6 +891,18 @@ class WorkflowService:
             ),
         )
         task.output_file_ids = [str(file_record.id)]
+
+        # ── Update Story with chapter outline ──────────────────────────
+        from ..db.story_crud import story_crud
+        from ..schemas.story import StoryUpdate as StoryUpdateSchema
+
+        existing = story_crud.get_by_project(self.db, task.project_id)
+        if existing:
+            story_crud.update(self.db, existing.id, StoryUpdateSchema(
+                chapter_outline=outline_data.get("chapters", []),
+            ))
+            self.db.commit()
+        # ────────────────────────────────────────────────────────────────
 
     async def _execute_script_generation(
         self,
