@@ -166,7 +166,7 @@ export default function ProjectPage() {
       </div>
 
       {/* Tabs: Workflow / Character Cards */}
-      <Tabs defaultValue="workflow" className="flex-1 flex flex-col min-h-0">
+      <Tabs defaultValue="story" className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-2 max-w-4xl mx-auto w-full">
           <TabsList className="w-full">
             <TabsTrigger value="workflow" className="gap-1.5">
