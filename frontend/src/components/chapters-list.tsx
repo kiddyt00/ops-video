@@ -327,7 +327,7 @@ export function ChaptersList({ projectId, className }: ChaptersListProps) {
             章节
           </h3>
           {chapters && (
-            <Badge variant="outline" className="text-xs">{chapters.length}</Badge>
+            <Badge variant="outline" className="text-xs">{chapters?.length ?? 0}</Badge>
           )}
         </div>
         <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
