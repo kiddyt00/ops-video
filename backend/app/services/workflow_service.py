@@ -709,6 +709,12 @@ class WorkflowService:
         )
         task.output_file_ids = [str(file_record.id)]
 
+        # Auto-select the generated file in variant_group
+        if variant_group:
+            variant_group.selected_file_id = file_record.id
+            self.db.add(variant_group)
+            self.db.flush()
+
         # ── Create or update the Story DB record ────────────────────────
         from ..db.story_crud import story_crud
         from ..schemas.story import StoryCreate as StoryCreateSchema, StoryUpdate as StoryUpdateSchema
