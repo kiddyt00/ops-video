@@ -14,6 +14,10 @@ from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from enum import Enum
 
+from ..core.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 from ..models.task import Task, TaskStage, TaskStatus
 from ..models.file import File, FileType, VariantGroup
 from ..models.project import Project
