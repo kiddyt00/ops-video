@@ -35,10 +35,13 @@ class WorkflowService:
     """
     Workflow engine for managing generation pipeline
 
-    Stage order: script -> storyboard -> image -> audio -> video
+    Stage order: inspiration -> story -> chapter_outline -> script -> storyboard -> image -> audio -> video
     """
 
     STAGE_ORDER: List[TaskStage] = [
+        TaskStage.INSPIRATION,
+        TaskStage.STORY,
+        TaskStage.CHAPTER_OUTLINE,
         TaskStage.SCRIPT,
         TaskStage.STORYBOARD,
         TaskStage.IMAGE,
@@ -47,6 +50,9 @@ class WorkflowService:
     ]
 
     STAGE_GENERATOR_MAP: Dict[TaskStage, str] = {
+        TaskStage.INSPIRATION: "inspiration",
+        TaskStage.STORY: "story",
+        TaskStage.CHAPTER_OUTLINE: "chapter_outline",
         TaskStage.SCRIPT: "script",
         TaskStage.STORYBOARD: "storyboard",
         TaskStage.IMAGE: "image",
@@ -108,7 +114,7 @@ class WorkflowService:
 
     def can_advance_to(self, project_id: UUID, target_stage: TaskStage) -> bool:
         """Check if workflow can advance to target stage"""
-        if target_stage == TaskStage.SCRIPT:
+        if target_stage == TaskStage.INSPIRATION:
             return True
 
         target_index = self.STAGE_ORDER.index(target_stage)
@@ -178,7 +184,7 @@ class WorkflowService:
             else:
                 current_stage = self.get_current_stage(project_id)
                 if current_stage is None:
-                    target_stage = TaskStage.SCRIPT
+                    target_stage = TaskStage.INSPIRATION
                 else:
                     target_stage = self.get_next_stage(current_stage)
 
@@ -235,6 +241,12 @@ class WorkflowService:
             try:
                 if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
                     await self._execute_generation(target_stage, task, parameters)
+                elif target_stage == TaskStage.INSPIRATION:
+                    await self._execute_inspiration_generation(task, parameters)
+                elif target_stage == TaskStage.STORY:
+                    await self._execute_story_generation(task, parameters)
+                elif target_stage == TaskStage.CHAPTER_OUTLINE:
+                    await self._execute_chapter_outline_generation(task, parameters)
                 elif target_stage == TaskStage.SCRIPT:
                     await self._execute_script_generation(task, parameters)
                 elif target_stage == TaskStage.STORYBOARD:
@@ -618,6 +630,199 @@ class WorkflowService:
 
         self.db.flush()
         self.db.commit()
+
+    async def _execute_inspiration_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute inspiration capture using StoryGeneratorService."""
+        from .generator_services.story_generator_service import StoryGeneratorService
+        from ..schemas.file import FileCreate
+
+        inspiration = parameters.get("inspiration")
+        if not inspiration:
+            if settings.MOCK_MODE:
+                inspiration = "A lone wanderer discovers an ancient library beneath a ruined city."
+            else:
+                raise WorkflowError("Inspiration stage requires 'inspiration' parameter")
+
+        genre = parameters.get("genre", "")
+        tone = parameters.get("tone", "")
+        target_length = parameters.get("target_length", "")
+        extra_context = parameters.get("extra_context", "")
+
+        service = StoryGeneratorService()
+        story_data = await service.generate_story(
+            inspiration=inspiration,
+            project_id=str(task.project_id),
+            genre=genre,
+            tone=tone,
+            target_length=target_length,
+            extra_context=extra_context,
+        )
+
+        # Create file record for the inspiration output
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
+
+        # The service already saves to disk; create DB record
+        output_path = Path(settings.storage_path) / f"story_{task.project_id}.json"
+        if output_path.exists():
+            rel_path = str(output_path.relative_to(settings.storage_path))
+        else:
+            # Fallback: write it ourselves
+            import json
+            output_dir = settings.storage_path / "scripts"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_path = output_dir / f"inspiration_{task.id}.json"
+            output_path.write_text(json.dumps(story_data, indent=2, ensure_ascii=False), encoding="utf-8")
+            rel_path = str(output_path.relative_to(settings.storage_path))
+
+        file_record = file_crud.create(
+            self.db,
+            obj_in=FileCreate(
+                project_id=task.project_id,
+                task_id=task.id,
+                variant_group_id=variant_group.id if variant_group else None,
+                file_path=rel_path,
+                file_type=FileType.TEXT,
+                generation_params={"type": "inspiration", "inspiration": inspiration},
+            ),
+        )
+        task.output_file_ids = [str(file_record.id)]
+
+    async def _execute_story_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute story expansion using StoryGeneratorService."""
+        from .generator_services.story_generator_service import StoryGeneratorService
+        from ..schemas.file import FileCreate
+
+        stages_status = self.get_project_stages(task.project_id)
+        inspiration_files = stages_status.get("inspiration", {}).get("selected_files", [])
+        if not inspiration_files:
+            raise WorkflowError(
+                "Story generation requires a completed inspiration stage with a selected file"
+            )
+
+        # Load inspiration data
+        inspiration_file_id = UUID(inspiration_files[0]["file_id"])
+        file_record = file_crud.get(self.db, file_id=inspiration_file_id)
+        if not file_record:
+            raise WorkflowError("Inspiration file not found")
+
+        inspiration_path = settings.storage_path / file_record.file_path
+        if not inspiration_path.exists():
+            raise WorkflowError(f"Inspiration file not found on disk: {inspiration_path}")
+
+        import json
+        inspiration_data = json.loads(inspiration_path.read_text(encoding="utf-8"))
+        inspiration_text = inspiration_data.get("inspiration", "")
+        if not inspiration_text:
+            # Try to get from parameters
+            inspiration_text = parameters.get("inspiration", "")
+
+        genre = parameters.get("genre", inspiration_data.get("genre", ""))
+        tone = parameters.get("tone", inspiration_data.get("tone", ""))
+        target_length = parameters.get("target_length", "")
+
+        service = StoryGeneratorService()
+        story_data = await service.generate_story(
+            inspiration=inspiration_text,
+            project_id=str(task.project_id),
+            genre=genre,
+            tone=tone,
+            target_length=target_length,
+        )
+
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
+
+        output_dir = settings.storage_path / "scripts"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"story_{task.id}.json"
+        output_path.write_text(json.dumps(story_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        rel_path = str(output_path.relative_to(settings.storage_path))
+
+        file_record = file_crud.create(
+            self.db,
+            obj_in=FileCreate(
+                project_id=task.project_id,
+                task_id=task.id,
+                variant_group_id=variant_group.id if variant_group else None,
+                file_path=rel_path,
+                file_type=FileType.TEXT,
+                generation_params={"type": "story"},
+            ),
+        )
+        task.output_file_ids = [str(file_record.id)]
+
+    async def _execute_chapter_outline_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute chapter outline generation using StoryGeneratorService."""
+        from .generator_services.story_generator_service import StoryGeneratorService
+        from ..schemas.file import FileCreate
+
+        stages_status = self.get_project_stages(task.project_id)
+        story_files = stages_status.get("story", {}).get("selected_files", [])
+        if not story_files:
+            raise WorkflowError(
+                "Chapter outline generation requires a completed story stage with a selected file"
+            )
+
+        # Load story data
+        story_file_id = UUID(story_files[0]["file_id"])
+        file_record = file_crud.get(self.db, file_id=story_file_id)
+        if not file_record:
+            raise WorkflowError("Story file not found")
+
+        story_path = settings.storage_path / file_record.file_path
+        if not story_path.exists():
+            raise WorkflowError(f"Story file not found on disk: {story_path}")
+
+        import json
+        story_data = json.loads(story_path.read_text(encoding="utf-8"))
+
+        chapter_count = parameters.get("chapter_count", None)
+        if chapter_count is not None:
+            chapter_count = int(chapter_count)
+
+        service = StoryGeneratorService()
+        outline_data = await service.generate_chapter_outline(
+            story_data=story_data,
+            chapter_count=chapter_count,
+        )
+
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
+
+        output_dir = settings.storage_path / "scripts"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"chapter_outline_{task.id}.json"
+        output_path.write_text(json.dumps(outline_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        rel_path = str(output_path.relative_to(settings.storage_path))
+
+        file_record = file_crud.create(
+            self.db,
+            obj_in=FileCreate(
+                project_id=task.project_id,
+                task_id=task.id,
+                variant_group_id=variant_group.id if variant_group else None,
+                file_path=rel_path,
+                file_type=FileType.TEXT,
+                generation_params={"type": "chapter_outline"},
+            ),
+        )
+        task.output_file_ids = [str(file_record.id)]
 
     async def _execute_script_generation(
         self,

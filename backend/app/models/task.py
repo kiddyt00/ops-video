@@ -15,6 +15,9 @@ from .base import BaseModel
 
 class TaskStage(str, Enum):
     """Task stage enumeration"""
+    INSPIRATION = "inspiration"
+    STORY = "story"
+    CHAPTER_OUTLINE = "chapter_outline"
     SCRIPT = "script"
     STORYBOARD = "storyboard"
     IMAGE = "image"
