@@ -391,11 +391,30 @@
   - `backend/app/db/migrations/versions/013_add_ai_model_is_active.py`
 - **Commit**: `a004edc`
 
-### Phase 19: 其他优化
-- 用户项目管理（我的项目列表）
-- 项目分享与协作
-- 生成参数预设模板
-- 历史记录与回收站
+### Phase 19: 技术债务清理 ✅
+- **datetime.utcnow() 弃用修复**:
+  - 5 个文件：logging_config.py, security.py, user_crud.py, storage_provider_crud.py
+  - `datetime.utcnow()` → `datetime.now(timezone.utc)`
+  - `fromtimestamp()` 添加 `tz=timezone.utc` 修复时区比较
+- **SQLite FK 依赖循环**:
+  - file.py: parent_file_id + selected_file_id 添加 `use_alter=True`
+- **预设模板完善**:
+  - 模型添加 `is_system` 字段
+  - API 系统预设保护（修改/删除 403）
+  - 23 套系统预设种子（6 风格 × 3-4 阶段）
+  - `main.py` 启动时自动种子
+- **CharacterCard + StorageProvider 模型对齐**:
+  - 重写模型匹配 migration 010/011
+  - 添加 `StorageProviderType` 枚举
+  - 修复 `models/__init__.py` 导入链
+- **依赖安装**: oss2, boto3, edge-tts
+- **Commit**: `008f0b8`
+
+### Phase 20: 待定
+- 前端预设选择器 + 管理器组件
+- 前端项目回收站（软删除 UI）
+- LoRA 角色一致性
+- 多 Provider 路由
 
 ---
 
@@ -448,8 +467,8 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: `addf242` - Phase 17 NovelForge 工作流扩展完成
-- **分支**: main + novelforge
-- **总测试数**: 231
-- **已完成阶段**: Phase 1 ~ Phase 17
-- **下一阶段**: Phase 18 - 功能优化与用户体验
+- **最新 Commit**: `008f0b8` - Phase 19 技术债务清理
+- **分支**: main + novelforge（当前活跃）
+- **总测试数**: 231+ (preset 11 passed)
+- **已完成阶段**: Phase 1 ~ Phase 19
+- **下一阶段**: Phase 20 - 前端预设 + 回收站
