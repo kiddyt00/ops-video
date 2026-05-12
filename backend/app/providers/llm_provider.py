@@ -151,7 +151,7 @@ class LLMProvider(BaseProvider):
         if response_format:
             payload["response_format"] = response_format
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(
                 f"{self.api_base_url}/chat/completions",
                 headers=headers,
