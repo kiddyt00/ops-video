@@ -51,7 +51,6 @@ export default function ProjectPage() {
         const data = await resp.json()
         throw new Error(data.detail || '推进工作流失败')
       }
-      // Force re-fetch by reloading
       window.location.reload()
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '推进工作流失败')
@@ -165,14 +164,10 @@ export default function ProjectPage() {
         />
       </div>
 
-      {/* Tabs: Workflow / Character Cards */}
+      {/* Tabs: 故事 → 章节 → 角色卡 → 工作流 */}
       <Tabs defaultValue="story" className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-2 max-w-4xl mx-auto w-full">
           <TabsList className="w-full">
-            <TabsTrigger value="workflow" className="gap-1.5">
-              <Workflow className="w-3.5 h-3.5" />
-              工作流
-            </TabsTrigger>
             <TabsTrigger value="story" className="gap-1.5">
               <BookOpen className="w-3.5 h-3.5" />
               故事
@@ -185,8 +180,30 @@ export default function ProjectPage() {
               <Users className="w-3.5 h-3.5" />
               角色卡
             </TabsTrigger>
+            <TabsTrigger value="workflow" className="gap-1.5">
+              <Workflow className="w-3.5 h-3.5" />
+              工作流
+            </TabsTrigger>
           </TabsList>
         </div>
+
+        <TabsContent value="story" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-4xl mx-auto w-full h-full">
+            <StoryEditor projectId={projectId} className="h-full" />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-6xl mx-auto w-full h-full">
+            <ChaptersList projectId={projectId} className="h-full" />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-4xl mx-auto w-full h-full">
+            <CharacterCardManager projectId={projectId} className="h-full" />
+          </div>
+        </TabsContent>
 
         <TabsContent value="workflow" className="flex-1 min-h-0 mt-3">
           <ScrollArea className="h-full">
@@ -204,24 +221,6 @@ export default function ProjectPage() {
               }}
             />
           </ScrollArea>
-        </TabsContent>
-
-        <TabsContent value="story" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-4xl mx-auto w-full h-full">
-            <StoryEditor projectId={projectId} className="h-full" />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-4xl mx-auto w-full h-full">
-            <CharacterCardManager projectId={projectId} className="h-full" />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-6xl mx-auto w-full h-full">
-            <ChaptersList projectId={projectId} className="h-full" />
-          </div>
         </TabsContent>
       </Tabs>
     </AppShell>
