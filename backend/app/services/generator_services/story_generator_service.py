@@ -124,54 +124,54 @@ def _build_story_prompt(inspiration: str, **kwargs) -> str:
     worldbuilding_hints = kwargs.get("worldbuilding_hints", "")
     extra = kwargs.get("extra_context", "")
 
-    prompt = f"""你是一位专业的故事开发者。请将以下灵感扩展为完整的故事大纲。
+    prompt = f"""你是一位专业的中文故事开发者。请将以下灵感扩展为完整的故事大纲。所有输出必须使用中文。
 
 灵感：{inspiration}
 """
     if genre:
-        prompt += f"Genre: {genre}\n"
+        prompt += f"类型：{genre}\n"
     if tone:
-        prompt += f"Tone: {tone}\n"
+        prompt += f"基调：{tone}\n"
     if target_length:
-        prompt += f"Target length: {target_length}\n"
+        prompt += f"目标篇幅：{target_length}\n"
     if golden_finger:
-        prompt += f"Protagonist's special ability / golden finger: {golden_finger}\n"
+        prompt += f"主角金手指：{golden_finger}\n"
     if protagonist:
-        prompt += f"Protagonist profile: {protagonist}\n"
+        prompt += f"主角设定：{protagonist}\n"
     if relationship:
-        prompt += f"Character relationships: {relationship}\n"
+        prompt += f"人物关系：{relationship}\n"
     if worldbuilding_hints:
-        prompt += f"Worldbuilding hints: {worldbuilding_hints}\n"
+        prompt += f"世界观提示：{worldbuilding_hints}\n"
     if extra:
-        prompt += f"Additional context: {extra}\n"
+        prompt += f"补充信息：{extra}\n"
 
     prompt += """
-Return a JSON object with the following structure:
+返回以下结构的 JSON 对象（所有字段内容必须使用中文）：
 {
-  "logline": "A one-sentence summary of the story",
-  "synopsis": "A detailed paragraph summarising the full story arc",
+  "logline": "一句话概括整个故事",
+  "synopsis": "详细的故事梗概",
   "worldbuilding": {
-    "setting": "Where the story takes place",
-    "time_period": "When the story takes place",
-    "rules": "Key world rules, magic systems, technology, etc."
+    "setting": "故事发生的世界背景",
+    "time_period": "故事发生的时代",
+    "rules": "这个世界的基本规则和力量体系"
   },
   "characters": [
     {
-      "name": "Character name",
-      "role": "Protagonist / Antagonist / Supporting / etc.",
-      "description": "Brief character description",
-      "arc": "Character arc summary"
+      "name": "角色姓名",
+      "role": "角色定位（如：主角/反派/导师/伙伴）",
+      "description": "角色外貌和性格描述",
+      "arc": "角色成长弧线简述"
     }
   ],
-  "themes": ["Theme 1", "Theme 2", ...],
+  "themes": ["故事主题1", "故事主题2"],
   "plot_points": [
-    {"act": "Act 1", "description": "Inciting incident / setup"},
-    {"act": "Act 2", "description": "Rising action / confrontation"},
-    {"act": "Act 3", "description": "Climax / resolution"}
+    {"act": "第一幕", "description": "开篇设定和冲突引入"},
+    {"act": "第二幕", "description": "主要冲突展开"},
+    {"act": "第三幕", "description": "高潮与结局"}
   ]
-}
+}"""
 
-Return ONLY valid JSON. No markdown, no explanation."""
+    prompt += "\n请只返回有效的 JSON，不要包含 markdown 或解释。"
     return prompt
 
 
@@ -179,34 +179,35 @@ def _build_chapter_prompt(story_data: Dict[str, Any], chapter_count: int) -> str
     """Build the prompt for dividing a story into chapter outlines."""
     story_json = json.dumps(story_data, indent=2, ensure_ascii=False)
 
-    prompt = f"""你是一位专业的叙事结构师。请将以下故事大纲拆分为恰好 {chapter_count} 个章节。
+    prompt = f"""你是一位专业的叙事结构师。请将以下故事大纲拆分为恰好 {chapter_count} 个章节。所有输出必须使用中文。
 
 故事大纲：
 {story_json}
 
-Return a JSON object with the following structure:
+返回以下结构的 JSON 对象（所有字段内容必须使用中文）：
 {{
   "chapters": [
     {{
       "chapter_number": 1,
-      "title": "Chapter title",
-      "summary": "Brief summary of this chapter",
-      "key_scenes": ["Scene 1 description", "Scene 2 description", ...],
-      "characters": ["Character names appearing in this chapter"],
+      "title": "章节标题",
+      "summary": "本章简短概要",
+      "key_scenes": ["场景1描述", "场景2描述"],
+      "characters": ["本章出现的角色姓名"],
       "duration": 5.0
     }}
   ]
 }}
 
-Requirements:
-1. Each chapter must have a clear narrative purpose
-2. Distribute plot points evenly across chapters
-3. key_scenes should be descriptive scene summaries
-4. characters should list character names (not full descriptions)
-5. duration is the estimated reading/viewing time in minutes
-6. Total chapters must be exactly {chapter_count}
+要求：
+1. 每个章节必须有清晰的叙事目的
+2. 将情节点均匀分布到各章节
+3. key_scenes 应该是描述性的场景概要
+4. characters 列出角色姓名（不需要完整描述）
+5. duration 是预估的阅读/观看时间（分钟）
+6. 总章节数必须恰好为 {chapter_count}
+7. 所有章节标题和内容必须使用中文
 
-Return ONLY valid JSON. No markdown, no explanation."""
+请只返回有效的 JSON，不要包含 markdown 或解释。"""
     return prompt
 
 
