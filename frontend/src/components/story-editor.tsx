@@ -301,7 +301,7 @@ function ChapterOutlineEditor({
 /* Structured worldbuilding display                                    */
 /* ------------------------------------------------------------------ */
 
-function WorldbuildingDisplay({ data }: { data: unknown }) {
+function WorldbuildingDisplay({ data }: { data: any }) {
   if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无世界观设定</p>
   if (typeof data === 'string') {
     try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
@@ -333,7 +333,7 @@ function WorldbuildingDisplay({ data }: { data: unknown }) {
 /* Structured characters display                                       */
 /* ------------------------------------------------------------------ */
 
-function CharactersDisplay({ data }: { data: unknown }) {
+function CharactersDisplay({ data }: { data: any }) {
   if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
   if (typeof data === 'string') {
     try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }

@@ -14,8 +14,8 @@ export interface Story {
   project_id: string
   logline: string
   synopsis: string
-  worldbuilding: unknown  // object from API, string from user edit
-  characters: unknown      // array from API, string from user edit
+  worldbuilding: any  // object from API, string from user edit
+  characters: any      // array from API, string from user edit
   chapter_outline: ChapterOutlineItem[]
   created_at: string
   updated_at: string
