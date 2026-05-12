@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { StoryWizard } from './story-wizard'
 import {
   BookOpen, Sparkles, Loader2, AlertCircle, Save, Pencil, RotateCcw,
-  ChevronDown, ChevronUp, Clock, FileText,
+  ChevronDown, ChevronUp, Clock, FileText, Globe, MapPin, Users, ScrollText,
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -298,6 +298,76 @@ function ChapterOutlineEditor({
 }
 
 /* ------------------------------------------------------------------ */
+/* Structured worldbuilding display                                    */
+/* ------------------------------------------------------------------ */
+
+function WorldbuildingDisplay({ data }: { data: unknown }) {
+  if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无世界观设定</p>
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
+  }
+  if (typeof data !== 'object' || data === null) return null
+  const wb = data as Record<string, string>
+  const items = [
+    { key: 'setting', icon: Globe, label: '世界背景', value: wb.setting },
+    { key: 'time_period', icon: Clock, label: '时代设定', value: wb.time_period },
+    { key: 'rules', icon: ScrollText, label: '世界规则', value: wb.rules },
+  ].filter(i => i.value)
+  if (!items.length) return <p className="text-xs text-muted-foreground py-4 text-center">暂无世界观设定</p>
+  return (
+    <div className="grid grid-cols-1 gap-2">
+      {items.map(({ key, icon: Icon, label, value }) => (
+        <div key={key} className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5">
+          <Icon className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-sm text-zinc-300 leading-relaxed">{value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Structured characters display                                       */
+/* ------------------------------------------------------------------ */
+
+function CharactersDisplay({ data }: { data: unknown }) {
+  if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
+  if (typeof data === 'string') {
+    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
+  }
+  if (!Array.isArray(data) || data.length === 0)
+    return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
+  return (
+    <div className="space-y-2">
+      {data.map((char: Record<string, unknown>, idx: number) => (
+        <div key={idx} className="p-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5 space-y-2">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0">
+              <Users className="w-4 h-4 text-violet-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-white/90">{String(char.name || `角色 ${idx + 1}`)}</p>
+              {char.role && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">{String(char.role)}</Badge>
+              )}
+            </div>
+          </div>
+          {char.description && (
+            <p className="text-xs text-zinc-400 leading-relaxed pl-10">{String(char.description)}</p>
+          )}
+          {char.arc && (
+            <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Main Story Editor                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -317,19 +387,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
 
   useEffect(() => {
     if (story) {
-      const normalized = { ...story }
-      // Normalize fields that may be objects from API
-      if (normalized.worldbuilding && typeof normalized.worldbuilding === 'object') {
-        try {
-          normalized.worldbuilding = JSON.stringify(normalized.worldbuilding, null, 2)
-        } catch { /* keep as-is */ }
-      }
-      if (normalized.characters && typeof normalized.characters === 'object') {
-        try {
-          normalized.characters = JSON.stringify(normalized.characters, null, 2)
-        } catch { /* keep as-is */ }
-      }
-      setDraft(normalized)
+      setDraft({ ...story })
       setHasChanges(false)
     }
   }, [story])
@@ -553,31 +611,19 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
               {/* Worldbuilding */}
               <CollapsibleSection
                 title="世界观"
-                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                icon={<Globe className="w-4 h-4 text-muted-foreground" />}
                 defaultOpen={false}
               >
-                <EditableField
-                  label="Worldbuilding"
-                  value={draft.worldbuilding}
-                  onChange={(v) => setField('worldbuilding', v)}
-                  placeholder="描述故事发生的世界、规则、时代背景..."
-                  rows={6}
-                />
+                <WorldbuildingDisplay data={draft.worldbuilding} />
               </CollapsibleSection>
 
               {/* Characters */}
               <CollapsibleSection
                 title="角色设定"
-                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                icon={<Users className="w-4 h-4 text-muted-foreground" />}
                 defaultOpen={false}
               >
-                <EditableField
-                  label="Characters"
-                  value={draft.characters}
-                  onChange={(v) => setField('characters', v)}
-                  placeholder="主要角色描述、性格特征、人物关系..."
-                  rows={6}
-                />
+                <CharactersDisplay data={draft.characters} />
               </CollapsibleSection>
 
               <Separator />
