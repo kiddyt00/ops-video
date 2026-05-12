@@ -1,4 +1,12 @@
-export type TaskStage = 'script' | 'storyboard' | 'image' | 'audio' | 'video'
+export type TaskStage =
+  | 'inspiration'
+  | 'story'
+  | 'chapter_outline'
+  | 'script'
+  | 'storyboard'
+  | 'image'
+  | 'audio'
+  | 'video'
 
 export type TaskStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 

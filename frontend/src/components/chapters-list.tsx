@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Trash2, Loader2, AlertCircle, Film, Clock,
-  PlayCircle, ChevronRight,
+  PlayCircle, ChevronRight, Workflow,
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader,
@@ -39,7 +39,9 @@ const statusCfg: Record<string, { label: string; variant: 'default' | 'secondary
 }
 
 function formatDate(dateStr: string): string {
+  if (!dateStr) return '--'
   const d = new Date(dateStr)
+  if (isNaN(d.getTime())) return '--'
   const now = new Date()
   const diff = now.getTime() - d.getTime()
   if (diff < 60_000) return '刚刚'
@@ -210,9 +212,11 @@ function DeleteConfirmDialog({
 function ChapterCard({
   chapter,
   onDelete,
+  onWorkflow,
 }: {
   chapter: Chapter
   onDelete: (c: Chapter) => void
+  onWorkflow?: (c: Chapter) => void
 }) {
   const router = useRouter()
   const cfg = statusCfg[chapter.status] ?? statusCfg.pending
@@ -298,6 +302,17 @@ function ChapterCard({
           <Clock className="w-3 h-3" />
           <span>{formatDate(chapter.updated_at)}</span>
         </div>
+        {onWorkflow && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full text-xs gap-1.5 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+            onClick={(e) => { e.stopPropagation(); onWorkflow(chapter) }}
+          >
+            <Workflow className="w-3.5 h-3.5" />
+            推进工作流
+          </Button>
+        )}
       </CardContent>
     </Card>
   )
@@ -310,9 +325,10 @@ function ChapterCard({
 interface ChaptersListProps {
   projectId: string
   className?: string
+  onSelectChapter?: (chapter: Chapter) => void
 }
 
-export function ChaptersList({ projectId, className }: ChaptersListProps) {
+export function ChaptersList({ projectId, className, onSelectChapter }: ChaptersListProps) {
   const { data: chapters, isLoading, error } = useChapters(projectId)
   const [addOpen, setAddOpen] = useState(false)
   const [deleteChapter, setDeleteChapter] = useState<Chapter | null>(null)
@@ -376,6 +392,7 @@ export function ChaptersList({ projectId, className }: ChaptersListProps) {
                   key={chapter.id}
                   chapter={chapter}
                   onDelete={setDeleteChapter}
+                  onWorkflow={onSelectChapter}
                 />
               ))}
             </div>

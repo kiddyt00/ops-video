@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Play, Loader2, AlertCircle, Circle, Sparkles, FileText, Image as ImageIcon, Music, Film, Download } from 'lucide-react'
+import { ChevronDown, Play, Loader2, AlertCircle, Circle, Sparkles, FileText, Image as ImageIcon, Music, Film, Download, Lightbulb, BookOpen, ListTree } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,7 +15,10 @@ import type { FileRecord } from '@/lib/api/files'
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
 const STAGES: { key: TaskStage; label: string; desc: string; icon: typeof Sparkles; fileType: string }[] = [
-  { key: 'script', label: '剧本', desc: 'AI 编剧创作故事', icon: FileText, fileType: 'script' },
+  { key: 'inspiration', label: '灵感', desc: 'AI 创意发散', icon: Lightbulb, fileType: 'inspiration' },
+  { key: 'story', label: '故事', desc: '故事大纲创作', icon: BookOpen, fileType: 'story' },
+  { key: 'chapter_outline', label: '章节', desc: '章节大纲拆解', icon: ListTree, fileType: 'chapter_outline' },
+  { key: 'script', label: '剧本', desc: 'AI 编剧创作剧本', icon: FileText, fileType: 'script' },
   { key: 'storyboard', label: '分镜', desc: '拆解为视觉分镜', icon: Sparkles, fileType: 'storyboard' },
   { key: 'image', label: '生图', desc: 'Wan2.6 文生图', icon: ImageIcon, fileType: 'image' },
   { key: 'audio', label: '配音', desc: 'Qwen3-TTS 旁白音效', icon: Music, fileType: 'audio' },
@@ -39,9 +42,12 @@ interface Props {
   onAdvance: () => void
   isLoading?: boolean
   onFilesChange?: () => void
+  /** If set, show chapter context banner and pass to onGenerate */
+  chapterId?: string
+  chapterName?: string
 }
 
-export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, isLoading, onFilesChange }: Props) {
+export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, isLoading, onFilesChange, chapterId, chapterName }: Props) {
   const [expanded, setExpanded] = useState<TaskStage | null>(null)
 
   const stageMap = new Map(workflowStatus?.stages.map(s => [s.stage, s.status]) ?? [])
@@ -79,6 +85,15 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
           <div className="text-center mb-8">
             <h2 className="text-lg font-semibold text-white/90 tracking-wide">生成流水线</h2>
             <p className="text-xs text-zinc-500 mt-1">点击阶段展开查看制品与参数</p>
+            {chapterId && chapterName && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
+                <Film className="w-3.5 h-3.5 text-violet-400" />
+                <span className="text-sm text-violet-300 font-medium">{chapterName}</span>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-violet-500/10 text-violet-300 border-violet-500/20">
+                  当前章节
+                </Badge>
+              </div>
+            )}
           </div>
 
           <div className="relative">

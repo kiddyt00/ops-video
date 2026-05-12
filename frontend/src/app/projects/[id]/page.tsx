@@ -25,6 +25,8 @@ export default function ProjectPage() {
   const router = useRouter()
   const projectId = params.id as string
   const [apiError, setApiError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState('story')
+  const [selectedChapter, setSelectedChapter] = useState<{ id: string; name: string } | null>(null)
 
   const queryClient = useQueryClient()
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
@@ -63,6 +65,7 @@ export default function ProjectPage() {
       const token = localStorage.getItem('ops-video-tokens')
       const accessToken = token ? JSON.parse(token).access_token : null
       const stageMap: Record<string, string> = {
+        inspiration: 'inspiration', story: 'story', chapter_outline: 'chapter_outline',
         script: 'script', storyboard: 'storyboard', image: 'image', audio: 'audio', video: 'video'
       }
       const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance/${stageMap[stage] || stage}`, {
@@ -81,6 +84,11 @@ export default function ProjectPage() {
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '生成任务失败')
     }
+  }
+
+  const handleSelectChapter = (chapter: { id: string; name: string }) => {
+    setSelectedChapter(chapter)
+    setActiveTab('workflow')
   }
 
   const handleRetry = () => {
@@ -165,7 +173,7 @@ export default function ProjectPage() {
       </div>
 
       {/* Tabs: 故事 → 章节 → 角色卡 → 工作流 */}
-      <Tabs defaultValue="story" className="flex-1 flex flex-col min-h-0">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
         <div className="px-4 pt-2 max-w-4xl mx-auto w-full">
           <TabsList className="w-full">
             <TabsTrigger value="story" className="gap-1.5">
@@ -201,7 +209,7 @@ export default function ProjectPage() {
 
         <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
           <div className="max-w-6xl mx-auto w-full h-full">
-            <ChaptersList projectId={projectId} className="h-full" />
+            <ChaptersList projectId={projectId} className="h-full" onSelectChapter={handleSelectChapter} />
           </div>
         </TabsContent>
 
@@ -215,6 +223,8 @@ export default function ProjectPage() {
               onGenerate={handleGenerate}
               onAdvance={handleAdvance}
               isLoading={loadingTasks}
+              chapterId={selectedChapter?.id}
+              chapterName={selectedChapter?.name}
               onFilesChange={() => {
                 queryClient.invalidateQueries({ queryKey: ['files'] })
                 queryClient.invalidateQueries({ queryKey: ['workflow'] })
