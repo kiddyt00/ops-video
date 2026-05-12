@@ -330,6 +330,20 @@ function ProjectsOverview() {
         description: `灵感创作: ${topic}`,
       })
       setInspiration('')
+      // Auto-start inspiration stage
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${project.id}/advance/inspiration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({
+          execute: true,
+          parameters: { inspiration: topic },
+        }),
+      })
       router.push(`/projects/${project.id}`)
     } catch (e) {
       alert(e instanceof Error ? e.message : '创建失败')

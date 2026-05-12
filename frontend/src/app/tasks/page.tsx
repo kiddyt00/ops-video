@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ListTodo, Filter, Loader2, CheckCircle2, AlertCircle, Circle, Play } from 'lucide-react'
+import { ListTodo, Filter, Loader2, CheckCircle2, AlertCircle, Circle, Play, ExternalLink } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { AppShell } from '@/components/app-shell'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,11 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useTasks } from '@/hooks/use-tasks'
 import { useProjects } from '@/hooks/use-projects'
@@ -44,18 +40,17 @@ export default function TasksPage() {
   const router = useRouter()
   const { data: tasks, isLoading } = useTasks()
   const { data: projects } = useProjects()
-  const [statusFilter, setStatusFilter] = useState<string | null>('all')
-  const [stageFilter, setStageFilter] = useState<string | null>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [stageFilter, setStageFilter] = useState<string>('all')
 
   const projectMap = new Map(projects?.map(p => [p.id, p.name]) ?? [])
 
   const filteredTasks = (tasks ?? []).filter((task: Task) => {
-    if (statusFilter && statusFilter !== 'all' && task.status !== statusFilter) return false
-    if (stageFilter && stageFilter !== 'all' && task.stage !== stageFilter) return false
+    if (statusFilter !== 'all' && task.status !== statusFilter) return false
+    if (stageFilter !== 'all' && task.stage !== stageFilter) return false
     return true
   })
 
-  // Sort by created_at descending
   filteredTasks.sort((a: Task, b: Task) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
@@ -63,32 +58,29 @@ export default function TasksPage() {
       <ScrollArea className="h-full">
         <div className="p-6 max-w-5xl mx-auto">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold flex items-center gap-2">
-              <ListTodo className="w-6 h-6" />
-              任务管理
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-semibold flex items-center gap-2">
+                <ListTodo className="w-6 h-6" />
+                任务管理
+              </h2>
+              {tasks && tasks.length > 0 && (
+                <Badge variant="outline" className="text-xs">{tasks.length} 个任务</Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Filter className="w-3.5 h-3.5" />
-                <span>筛选</span>
-              </div>
+              <Filter className="w-3.5 h-3.5 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="状态" />
-                </SelectTrigger>
+                <SelectTrigger className="w-[110px]"><SelectValue placeholder="状态" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部状态</SelectItem>
                   <SelectItem value="pending">待执行</SelectItem>
                   <SelectItem value="running">运行中</SelectItem>
                   <SelectItem value="completed">已完成</SelectItem>
                   <SelectItem value="failed">失败</SelectItem>
-                  <SelectItem value="cancelled">已取消</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={stageFilter} onValueChange={setStageFilter}>
-                <SelectTrigger className="w-[120px]">
-                  <SelectValue placeholder="阶段" />
-                </SelectTrigger>
+                <SelectTrigger className="w-[110px]"><SelectValue placeholder="阶段" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">全部阶段</SelectItem>
                   {Object.entries(STAGE_LABELS).map(([key, label]) => (
@@ -101,7 +93,7 @@ export default function TasksPage() {
 
           {isLoading ? (
             <div className="space-y-2">
-              {Array.from({ length: 8 }).map((_, i) => (
+              {Array.from({ length: 6 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
@@ -110,7 +102,7 @@ export default function TasksPage() {
               {filteredTasks.map((task: Task) => {
                 const statusConf = STATUS_CONFIG[task.status]
                 const StatusIcon = statusConf?.icon ?? Circle
-                const projectName = projectMap.get(task.project_id) ?? '未知项目'
+                const projectName = projectMap.get(task.project_id)
 
                 return (
                   <Card
@@ -125,10 +117,14 @@ export default function TasksPage() {
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="font-medium">{STAGE_LABELS[task.stage] ?? task.stage}</span>
-                              <Badge variant="secondary" className="text-xs">{task.generator_type}</Badge>
+                              <Badge variant="secondary" className="text-[10px]">{task.generator_type}</Badge>
                             </div>
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                              <span className="truncate">{projectName}</span>
+                              {projectName ? (
+                                <span className="truncate max-w-[200px]">{projectName}</span>
+                              ) : (
+                                <span className="text-destructive italic">项目已删除</span>
+                              )}
                               <span>·</span>
                               <span>{formatRelativeTime(task.created_at)}</span>
                             </div>
@@ -140,19 +136,17 @@ export default function TasksPage() {
                           </Badge>
                           {task.status === 'pending' && (
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
+                              variant="ghost" size="icon" className="h-7 w-7"
                               title="查看项目"
                               onClick={(e) => { e.stopPropagation(); router.push(`/projects/${task.project_id}`) }}
                             >
-                              <Play className="w-3.5 h-3.5" />
+                              <ExternalLink className="w-3.5 h-3.5" />
                             </Button>
                           )}
                         </div>
                       </div>
                       {task.error_message && (
-                        <p className="text-xs text-destructive mt-1 ml-8">{task.error_message}</p>
+                        <p className="text-xs text-destructive mt-1 ml-8">{task.error_message.slice(0, 200)}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -161,8 +155,16 @@ export default function TasksPage() {
             </div>
           ) : (
             <div className="text-center py-20">
-              <ListTodo className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">暂无任务</p>
+              <ListTodo className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+              <p className="text-muted-foreground mb-1">暂无任务</p>
+              <p className="text-xs text-muted-foreground mb-4">
+                {tasks && tasks.length === 0
+                  ? '去项目页面创建工作流后，任务将显示在这里'
+                  : '当前没有匹配筛选条件的任务'}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => router.push('/')}>
+                返回项目总览
+              </Button>
             </div>
           )}
         </div>
