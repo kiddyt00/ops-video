@@ -322,7 +322,50 @@
   - `backend/app/services/i2v_composer.py`
 - **Commit**: `b39d3de`
 
-### Phase 17: 其他优化
+### Phase 17: NovelForge 工作流扩展 ✅
+- **灵感→故事→章节→剧本→分镜→图片→音频→视频完整工作流**
+- **Story 数据模型**:
+  - `Story` 模型：inspiration, logline, synopsis, worldbuilding, characters, themes, plot_points, chapter_outline
+  - `StoryStatus` 枚举：draft/completed/archived
+  - Project 与 Story 一对多关系
+- **数据库迁移**:
+  - `012_add_stories.py` — stories 表
+- **Story API**:
+  - `GET/POST/PUT/DELETE /api/v1/projects/{project_id}/story`
+  - StoryCRUD 完整实现
+- **StoryGeneratorService**:
+  - `generate_story()` — 灵感扩展为完整故事大纲
+  - `generate_chapter_outline()` — 故事划分为章节
+  - JSON Schema 校验（STORY_SCHEMA, CHAPTER_OUTLINE_SCHEMA）
+  - 更新 llm_provider 支持 response_format
+- **工作流集成**:
+  - TaskStage 新增 INSPIRATION, STORY, CHAPTER_OUTLINE
+  - STAGE_ORDER 更新：INSPIRATION → STORY → CHAPTER_OUTLINE → SCRIPT → ...
+  - 新增阶段处理方法：_execute_inspiration_generation, _execute_story_generation, _execute_chapter_outline_generation
+- **前端故事界面**:
+  - Story 编辑器组件（logline, synopsis, worldbuilding, characters 可编辑）
+  - AI 生成栏（灵感输入 → 生成故事 → 生成章节）
+  - 章节大纲列表编辑
+  - 项目详情页新增"故事" tab
+- **新增文件**:
+  - `backend/app/models/story.py`
+  - `backend/app/db/migrations/versions/012_add_stories.py`
+  - `backend/app/schemas/story.py`
+  - `backend/app/db/story_crud.py`
+  - `backend/app/api/routes/stories.py`
+  - `backend/app/services/generator_services/story_generator_service.py`
+  - `frontend/src/types/story.ts`
+  - `frontend/src/lib/api/stories.ts`
+  - `frontend/src/hooks/use-stories.ts`
+  - `frontend/src/components/story-editor.tsx`
+- **修改文件**:
+  - `backend/app/models/task.py` (TaskStage 扩展)
+  - `backend/app/services/workflow_service.py` (阶段处理)
+  - `backend/app/providers/llm_provider.py` (response_format 支持)
+  - `frontend/src/app/projects/[id]/page.tsx` (故事 tab)
+- **Commit 范围**: `fbd71b9` → `addf242` (6 commits)
+
+### Phase 18: 其他优化
 - 用户项目管理（我的项目列表）
 - 项目分享与协作
 - 生成参数预设模板
@@ -379,7 +422,8 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: `b39d3de` - Phase 16 尾帧延长完成
-- **总测试数**: 231 (Phase 15 新增 38 个, Phase 16 新增 14 个)
-- **已完成阶段**: Phase 1 ~ Phase 16
-- **下一阶段**: Phase 17 - 功能优化与用户体验
+- **最新 Commit**: `addf242` - Phase 17 NovelForge 工作流扩展完成
+- **分支**: main + novelforge
+- **总测试数**: 231
+- **已完成阶段**: Phase 1 ~ Phase 17
+- **下一阶段**: Phase 18 - 功能优化与用户体验
