@@ -301,7 +301,7 @@ function ChapterOutlineEditor({
 /* Structured worldbuilding display                                    */
 /* ------------------------------------------------------------------ */
 
-function WorldbuildingDisplay({ data }: { data: any }) {
+function WorldbuildingDisplay({ data, onChange }: { data: any; onChange?: (v: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
 
@@ -310,12 +310,22 @@ function WorldbuildingDisplay({ data }: { data: any }) {
     setEditing(true)
   }
 
+  const handleSave = () => {
+    try {
+      JSON.parse(editText) // validate JSON
+      onChange?.(editText)
+      setEditing(false)
+    } catch {
+      // keep editing, JSON invalid
+    }
+  }
+
   if (editing) {
     return (
       <div className="space-y-2">
         <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={8} className="text-sm font-mono" />
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => { try { const parsed = JSON.parse(editText); /* validate */ } catch { } setEditing(false) }}>确定</Button>
+          <Button size="sm" onClick={handleSave}>保存</Button>
           <Button size="sm" variant="outline" onClick={() => setEditing(false)}>取消</Button>
         </div>
       </div>
@@ -363,7 +373,7 @@ function WorldbuildingDisplay({ data }: { data: any }) {
 /* Structured characters display                                       */
 /* ------------------------------------------------------------------ */
 
-function CharactersDisplay({ data }: { data: any }) {
+function CharactersDisplay({ data, onChange }: { data: any; onChange?: (v: string) => void }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
 
@@ -372,12 +382,22 @@ function CharactersDisplay({ data }: { data: any }) {
     setEditing(true)
   }
 
+  const handleSave = () => {
+    try {
+      JSON.parse(editText)
+      onChange?.(editText)
+      setEditing(false)
+    } catch {
+      // invalid JSON, stay in edit mode
+    }
+  }
+
   if (editing) {
     return (
       <div className="space-y-2">
         <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={10} className="text-sm font-mono" />
         <div className="flex gap-2">
-          <Button size="sm" onClick={() => setEditing(false)}>确定</Button>
+          <Button size="sm" onClick={handleSave}>保存</Button>
           <Button size="sm" variant="outline" onClick={() => setEditing(false)}>取消</Button>
         </div>
       </div>
@@ -418,6 +438,11 @@ function CharactersDisplay({ data }: { data: any }) {
           )}
         </div>
       ))}
+      <div className="flex justify-end mt-2">
+        <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={startEdit}>
+          <Pencil className="w-3 h-3" />编辑
+        </Button>
+      </div>
     </div>
   )
 }
@@ -462,8 +487,12 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
       await updateMutation.mutateAsync({
         logline: draft.logline,
         synopsis: draft.synopsis,
-        worldbuilding: draft.worldbuilding,
-        characters: draft.characters,
+        worldbuilding: typeof draft.worldbuilding === 'string'
+          ? (() => { try { return JSON.parse(draft.worldbuilding) } catch { return draft.worldbuilding } })()
+          : draft.worldbuilding,
+        characters: typeof draft.characters === 'string'
+          ? (() => { try { return JSON.parse(draft.characters) } catch { return draft.characters } })()
+          : draft.characters,
         chapter_outline: draft.chapter_outline,
       })
       setHasChanges(false)
@@ -669,7 +698,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 icon={<Globe className="w-4 h-4 text-muted-foreground" />}
                 defaultOpen={false}
               >
-                <WorldbuildingDisplay data={draft.worldbuilding} />
+                <WorldbuildingDisplay data={draft.worldbuilding} onChange={(v) => setField('worldbuilding', v)} />
               </CollapsibleSection>
 
               {/* Characters */}
@@ -678,7 +707,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 icon={<Users className="w-4 h-4 text-muted-foreground" />}
                 defaultOpen={false}
               >
-                <CharactersDisplay data={draft.characters} />
+                <CharactersDisplay data={draft.characters} onChange={(v) => setField('characters', v)} />
               </CollapsibleSection>
 
               <Separator />
