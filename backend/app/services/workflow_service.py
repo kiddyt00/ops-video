@@ -900,6 +900,8 @@ class WorkflowService:
         )
         task.output_file_ids = [str(file_record.id)]
 
+        self._auto_select_first_file(task.id)
+
         # ── Update Story with chapter outline ──────────────────────────
         from ..db.story_crud import story_crud
         from ..schemas.story import StoryUpdate as StoryUpdateSchema
