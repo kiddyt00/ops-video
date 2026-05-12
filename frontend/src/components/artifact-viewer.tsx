@@ -13,6 +13,9 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/a
 const BACKEND_ORIGIN = API_BASE_URL.replace('/api/v1', '')
 
 const STAGE_FILE_TYPE_MAP: Record<TaskStage, string> = {
+  inspiration: 'inspiration',
+  story: 'story',
+  chapter_outline: 'chapter_outline',
   script: 'script',
   storyboard: 'storyboard',
   image: 'image',
@@ -21,6 +24,9 @@ const STAGE_FILE_TYPE_MAP: Record<TaskStage, string> = {
 }
 
 const FILE_TYPE_ICONS: Record<string, typeof FileText> = {
+  inspiration: FileText,
+  story: FileJson,
+  chapter_outline: FileJson,
   script: FileText,
   storyboard: FileJson,
   image: ImageIcon,

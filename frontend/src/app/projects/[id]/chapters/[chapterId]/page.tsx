@@ -70,6 +70,7 @@ export default function ChapterPage() {
       const token = localStorage.getItem('ops-video-tokens')
       const accessToken = token ? JSON.parse(token).access_token : null
       const stageMap: Record<string, string> = {
+        inspiration: 'inspiration', story: 'story', chapter_outline: 'chapter_outline',
         script: 'script', storyboard: 'storyboard', image: 'image', audio: 'audio', video: 'video'
       }
       const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/${projectId}/advance/${stageMap[stage] || stage}`, {

@@ -41,7 +41,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 import type { Task } from '@/types/task'
 import type { Project } from '@/types/project'
 
-const STAGE_ORDER = ['script', 'storyboard', 'image', 'audio', 'video']
+const STAGE_ORDER = ['inspiration', 'story', 'chapter_outline', 'script', 'storyboard', 'image', 'audio', 'video']
 
 type TabKey = 'mine' | 'shared' | 'recycle'
 

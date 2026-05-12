@@ -16,6 +16,9 @@ import type { Preset } from '@/types/preset'
 import type { TaskStage } from '@/types/task'
 
 const STAGE_TO_GENERATOR: Record<TaskStage, string> = {
+  inspiration: 'inspiration',
+  story: 'story',
+  chapter_outline: 'chapter_outline',
   script: 'script',
   storyboard: 'storyboard',
   image: 'image',
