@@ -163,6 +163,7 @@ export default function ProjectPage() {
         workflowStatus: workflowStatus ?? undefined,
       }}
     >
+      <div className="flex flex-col h-full min-h-0">
       {apiError && (
         <div className="absolute top-14 left-0 right-0 z-50 p-4">
           <div className="max-w-2xl mx-auto flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3">
@@ -244,6 +245,7 @@ export default function ProjectPage() {
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      </div>
     </AppShell>
   )
 }
