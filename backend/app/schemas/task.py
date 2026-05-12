@@ -9,6 +9,9 @@ from enum import Enum
 
 
 class TaskStage(str, Enum):
+    INSPIRATION = "inspiration"
+    STORY = "story"
+    CHAPTER_OUTLINE = "chapter_outline"
     SCRIPT = "script"
     STORYBOARD = "storyboard"
     IMAGE = "image"
