@@ -1,0 +1,599 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import {
+  BookOpen, Sparkles, Loader2, AlertCircle, Save, Pencil, RotateCcw,
+  ChevronDown, ChevronUp, Clock, FileText,
+} from 'lucide-react'
+import {
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+} from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
+import {
+  useStory,
+  useUpdateStory,
+  useGenerateInspiration,
+  useGenerateStory,
+  useGenerateChapterOutline,
+} from '@/hooks/use-stories'
+import type { Story, ChapterOutlineItem } from '@/types/story'
+
+/* ------------------------------------------------------------------ */
+/* Props                                                                */
+/* ------------------------------------------------------------------ */
+
+interface StoryEditorProps {
+  projectId: string
+  className?: string
+}
+
+/* ------------------------------------------------------------------ */
+/* Duration formatter                                                   */
+/* ------------------------------------------------------------------ */
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  if (m === 0) return `${s}秒`
+  if (s === 0) return `${m}分钟`
+  return `${m}分${s}秒`
+}
+
+/* ------------------------------------------------------------------ */
+/* Collapsible Section                                                  */
+/* ------------------------------------------------------------------ */
+
+function CollapsibleSection({
+  title,
+  icon,
+  children,
+  defaultOpen = true,
+  badge,
+}: {
+  title: string
+  icon?: React.ReactNode
+  children: React.ReactNode
+  defaultOpen?: boolean
+  badge?: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-sm font-medium">{title}</span>
+          {badge}
+        </div>
+        {open ? (
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        )}
+      </button>
+      {open && (
+        <div className="px-3 pb-3">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Editable Text Field                                                  */
+/* ------------------------------------------------------------------ */
+
+function EditableField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline = true,
+  rows = 4,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  multiline?: boolean
+  rows?: number
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  useEffect(() => {
+    setDraft(value)
+  }, [value])
+
+  const handleSave = () => {
+    onChange(draft)
+    setEditing(false)
+  }
+
+  const handleCancel = () => {
+    setDraft(value)
+    setEditing(false)
+  }
+
+  if (!editing && !value) {
+    return (
+      <div
+        className="flex items-center justify-between p-2 rounded border border-dashed border-border cursor-pointer hover:border-violet-500/50 transition-colors"
+        onClick={() => setEditing(true)}
+      >
+        <span className="text-xs text-muted-foreground">{label} — 点击添加</span>
+        <Pencil className="w-3 h-3 text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!editing) {
+    return (
+      <div
+        className="p-2 rounded cursor-pointer hover:bg-muted/50 transition-colors group"
+        onClick={() => setEditing(true)}
+      >
+        <div className="text-xs text-muted-foreground mb-1">{label}</div>
+        <div className="text-sm whitespace-pre-wrap">{value || <span className="text-muted-foreground italic">未设置</span>}</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-muted-foreground">{label}</div>
+      {multiline ? (
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          rows={rows}
+          className="text-sm"
+        />
+      ) : (
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder={placeholder}
+          className="text-sm"
+        />
+      )}
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={handleCancel}>
+          取消
+        </Button>
+        <Button size="sm" onClick={handleSave}>
+          <Save className="w-3 h-3 mr-1" />
+          保存
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Chapter Outline Editor                                               */
+/* ------------------------------------------------------------------ */
+
+function ChapterOutlineEditor({
+  chapters,
+  onChange,
+}: {
+  chapters: ChapterOutlineItem[]
+  onChange: (chapters: ChapterOutlineItem[]) => void
+}) {
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [draft, setDraft] = useState<ChapterOutlineItem | null>(null)
+
+  const startEdit = (idx: number) => {
+    setEditingIndex(idx)
+    setDraft({ ...chapters[idx] })
+  }
+
+  const cancelEdit = () => {
+    setEditingIndex(null)
+    setDraft(null)
+  }
+
+  const saveEdit = () => {
+    if (editingIndex === null || !draft) return
+    const updated = [...chapters]
+    updated[editingIndex] = draft
+    onChange(updated)
+    setEditingIndex(null)
+    setDraft(null)
+  }
+
+  if (chapters.length === 0) {
+    return (
+      <div className="text-center py-6">
+        <FileText className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">暂无章节大纲</p>
+        <p className="text-xs text-muted-foreground mt-1">使用 AI 生成或手动添加</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      {chapters.map((ch, idx) => (
+        <div key={idx} className="border border-border rounded-lg overflow-hidden">
+          {editingIndex === idx && draft ? (
+            <div className="p-3 space-y-2">
+              <Input
+                value={draft.title}
+                onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                placeholder="章节标题"
+                className="text-sm"
+              />
+              <Textarea
+                value={draft.summary}
+                onChange={(e) => setDraft({ ...draft, summary: e.target.value })}
+                placeholder="章节摘要"
+                rows={2}
+                className="text-sm"
+              />
+              <div className="flex items-center gap-2">
+                <Clock className="w-3 h-3 text-muted-foreground" />
+                <Input
+                  type="number"
+                  value={draft.estimated_duration}
+                  onChange={(e) => setDraft({ ...draft, estimated_duration: parseInt(e.target.value) || 0 })}
+                  className="w-24 text-sm"
+                  min={0}
+                />
+                <span className="text-xs text-muted-foreground">{formatDuration(draft.estimated_duration)}</span>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" size="sm" onClick={cancelEdit}>取消</Button>
+                <Button size="sm" onClick={saveEdit}>
+                  <Save className="w-3 h-3 mr-1" />
+                  保存
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
+              onClick={() => startEdit(idx)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-[10px]">
+                      第 {ch.chapter_number} 章
+                    </Badge>
+                    <span className="text-sm font-medium truncate">{ch.title}</span>
+                  </div>
+                  {ch.summary && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{ch.summary}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {formatDuration(ch.estimated_duration)}
+                  </span>
+                  <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/* Main Story Editor                                                    */
+/* ------------------------------------------------------------------ */
+
+export function StoryEditor({ projectId, className }: StoryEditorProps) {
+  const { data: story, isLoading, error, refetch } = useStory(projectId)
+  const updateMutation = useUpdateStory(projectId)
+  const inspirationMutation = useGenerateInspiration(projectId)
+  const generateStoryMutation = useGenerateStory(projectId)
+  const generateOutlineMutation = useGenerateChapterOutline(projectId)
+
+  const [inspiration, setInspiration] = useState('')
+  const [apiError, setApiError] = useState<string | null>(null)
+
+  // Local edit buffer for batch save
+  const [draft, setDraft] = useState<Story | null>(null)
+  const [hasChanges, setHasChanges] = useState(false)
+
+  useEffect(() => {
+    if (story) {
+      setDraft({ ...story })
+      setHasChanges(false)
+    }
+  }, [story])
+
+  const setField = (key: keyof Story, value: string | ChapterOutlineItem[]) => {
+    setDraft(prev => {
+      if (!prev) return prev
+      return { ...prev, [key]: value }
+    })
+    setHasChanges(true)
+  }
+
+  const handleSave = async () => {
+    if (!draft) return
+    setApiError(null)
+    try {
+      await updateMutation.mutateAsync({
+        logline: draft.logline,
+        synopsis: draft.synopsis,
+        worldbuilding: draft.worldbuilding,
+        characters: draft.characters,
+        chapter_outline: draft.chapter_outline,
+      })
+      setHasChanges(false)
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : '保存失败')
+    }
+  }
+
+  const handleGenerateInspiration = async () => {
+    if (!inspiration.trim()) return
+    setApiError(null)
+    try {
+      await inspirationMutation.mutateAsync({ inspiration: inspiration.trim() })
+      setInspiration('')
+      await refetch()
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : '生成灵感失败')
+    }
+  }
+
+  const handleGenerateStory = async () => {
+    setApiError(null)
+    try {
+      await generateStoryMutation.mutateAsync()
+      await refetch()
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : '生成故事失败')
+    }
+  }
+
+  const handleGenerateOutline = async () => {
+    setApiError(null)
+    try {
+      await generateOutlineMutation.mutateAsync()
+      await refetch()
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : '生成大纲失败')
+    }
+  }
+
+  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending
+  const isSaving = updateMutation.isPending
+
+  return (
+    <div className={cn('flex flex-col h-full', className)}>
+      {/* Header */}
+      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <BookOpen className="w-4 h-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            故事
+          </h3>
+          {story && (
+            <Badge variant="outline" className="text-xs">已创建</Badge>
+          )}
+        </div>
+        {hasChanges && draft && (
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+            <Save className="w-3.5 h-3.5 mr-1" />
+            保存更改
+          </Button>
+        )}
+      </div>
+
+      {/* Content */}
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4">
+          {/* API Error */}
+          {apiError && (
+            <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-3">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{apiError}</span>
+            </div>
+          )}
+
+          {/* Loading */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Query Error */}
+          {error && !isLoading && (
+            <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-3">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{error instanceof Error ? error.message : '加载失败'}</span>
+            </div>
+          )}
+
+          {/* No story yet — Inspiration & Generate */}
+          {!isLoading && !story && !error && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    AI 灵感生成
+                  </CardTitle>
+                  <CardDescription>
+                    输入你的想法，AI 将帮助生成故事概念
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Textarea
+                    value={inspiration}
+                    onChange={(e) => setInspiration(e.target.value)}
+                    placeholder="例如：一个关于时间旅行的科幻故事，主角发现可以通过梦境穿越时空..."
+                    rows={3}
+                    className="text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleGenerateInspiration}
+                      disabled={!inspiration.trim() || inspirationMutation.isPending}
+                      size="sm"
+                    >
+                      {inspirationMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      <Sparkles className="w-3.5 h-3.5 mr-1" />
+                      生成故事
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleGenerateStory}
+                      disabled={generateStoryMutation.isPending}
+                      size="sm"
+                    >
+                      {generateStoryMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      <BookOpen className="w-3.5 h-3.5 mr-1" />
+                      使用默认模板
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Story content */}
+          {!isLoading && draft && (
+            <div className="space-y-3">
+              {/* AI Generation bar */}
+              <Card className="border-dashed border-violet-500/30">
+                <CardContent className="pt-4">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span className="text-xs text-muted-foreground">AI 辅助：</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateInspiration}
+                      disabled={!inspiration.trim() || isGenerating}
+                    >
+                      {generateStoryMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                      重新生成故事
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateOutline}
+                      disabled={isGenerating}
+                    >
+                      {generateOutlineMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                      生成章节大纲
+                    </Button>
+                    <Input
+                      value={inspiration}
+                      onChange={(e) => setInspiration(e.target.value)}
+                      placeholder="输入灵感描述..."
+                      className="text-xs h-8 w-48"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Logline */}
+              <CollapsibleSection
+                title="一句话简介"
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+              >
+                <EditableField
+                  label="Logline"
+                  value={draft.logline}
+                  onChange={(v) => setField('logline', v)}
+                  placeholder="用一句话概括故事核心..."
+                  multiline={false}
+                />
+              </CollapsibleSection>
+
+              {/* Synopsis */}
+              <CollapsibleSection
+                title="故事概要"
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+              >
+                <EditableField
+                  label="Synopsis"
+                  value={draft.synopsis}
+                  onChange={(v) => setField('synopsis', v)}
+                  placeholder="详细描述故事背景、主要情节和发展方向..."
+                  rows={6}
+                />
+              </CollapsibleSection>
+
+              {/* Worldbuilding */}
+              <CollapsibleSection
+                title="世界观"
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                defaultOpen={false}
+              >
+                <EditableField
+                  label="Worldbuilding"
+                  value={draft.worldbuilding}
+                  onChange={(v) => setField('worldbuilding', v)}
+                  placeholder="描述故事发生的世界、规则、时代背景..."
+                  rows={6}
+                />
+              </CollapsibleSection>
+
+              {/* Characters */}
+              <CollapsibleSection
+                title="角色设定"
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                defaultOpen={false}
+              >
+                <EditableField
+                  label="Characters"
+                  value={draft.characters}
+                  onChange={(v) => setField('characters', v)}
+                  placeholder="主要角色描述、性格特征、人物关系..."
+                  rows={6}
+                />
+              </CollapsibleSection>
+
+              <Separator />
+
+              {/* Chapter Outline */}
+              <CollapsibleSection
+                title="章节大纲"
+                icon={<FileText className="w-4 h-4 text-muted-foreground" />}
+                badge={
+                  draft.chapter_outline.length > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      {draft.chapter_outline.length} 章
+                    </Badge>
+                  )
+                }
+              >
+                <ChapterOutlineEditor
+                  chapters={draft.chapter_outline}
+                  onChange={(chapters) => setField('chapter_outline', chapters)}
+                />
+              </CollapsibleSection>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}

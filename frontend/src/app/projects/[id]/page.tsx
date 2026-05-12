@@ -11,9 +11,10 @@ import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
 import { CharacterCardManager } from '@/components/character-card-manager'
 import { ChaptersList } from '@/components/chapters-list'
+import { StoryEditor } from '@/components/story-editor'
 import { ShareDialog } from '@/components/share-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { AlertCircle, RefreshCw, Share2, Workflow, Users, Film } from 'lucide-react'
+import { AlertCircle, RefreshCw, Share2, Workflow, Users, Film, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -172,6 +173,10 @@ export default function ProjectPage() {
               <Workflow className="w-3.5 h-3.5" />
               工作流
             </TabsTrigger>
+            <TabsTrigger value="story" className="gap-1.5">
+              <BookOpen className="w-3.5 h-3.5" />
+              故事
+            </TabsTrigger>
             <TabsTrigger value="chapters" className="gap-1.5">
               <Film className="w-3.5 h-3.5" />
               章节
@@ -199,6 +204,12 @@ export default function ProjectPage() {
               }}
             />
           </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="story" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-4xl mx-auto w-full h-full">
+            <StoryEditor projectId={projectId} className="h-full" />
+          </div>
         </TabsContent>
 
         <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
