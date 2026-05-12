@@ -42,6 +42,7 @@ class LLMProvider(BaseProvider):
         system_prompt = parameters.get("system_prompt", "")
         temperature = parameters.get("temperature", 0.7)
         max_tokens = parameters.get("max_tokens", 2000)
+        response_format = parameters.get("response_format")
 
         try:
             response = await self._call_llm(
@@ -49,6 +50,7 @@ class LLMProvider(BaseProvider):
                 system_prompt=system_prompt,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                response_format=response_format,
             )
 
             # Save result to file
@@ -78,6 +80,7 @@ class LLMProvider(BaseProvider):
         system_prompt: str = "",
         temperature: float = 0.7,
         max_tokens: int = 2000,
+        response_format: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Call LLM API"""
         headers = {
@@ -92,12 +95,15 @@ class LLMProvider(BaseProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        payload = {
+        payload: Dict[str, Any] = {
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
         }
+
+        if response_format:
+            payload["response_format"] = response_format
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
