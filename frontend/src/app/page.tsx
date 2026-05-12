@@ -36,6 +36,7 @@ import {
   usePermanentDeleteProject,
 } from '@/hooks/use-projects'
 import { useTasks } from '@/hooks/use-tasks'
+import { useWorkflowStatus } from '@/hooks/use-workflow'
 import { useAuth } from '@/hooks/use-auth'
 import { ErrorBoundary } from '@/components/error-boundary'
 import type { Task } from '@/types/task'
@@ -64,9 +65,12 @@ function ProjectCard({
 }) {
   const router = useRouter()
   const deleteProject = useDeleteProject()
+  const { data: workflowStatus } = useWorkflowStatus(project.id)
   const { data: tasks } = useTasks(project.id, { enabled: !showRestore && !showPermanentDelete })
 
-  const completedCount = (tasks ?? []).filter((t: Task) => t.status === 'completed').length
+  const stages = workflowStatus?.stages ?? []
+  const completedStages = stages.filter(s => s.status === 'completed').length
+  const progress = stages.length > 0 ? Math.round((completedStages / stages.length) * 100) : 0
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -123,17 +127,25 @@ function ProjectCard({
         <CardDescription>{project.description || '暂无描述'}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            <span>{formatRelativeTime(project.created_at)}</span>
-          </div>
-          {!showRestore && !showPermanentDelete && (
-            <div className="flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3" />
-              <span>已完成 {completedCount}/{STAGE_ORDER.length}</span>
+        <div className="space-y-2">
+          {!showRestore && !showPermanentDelete && stages.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                <span>进度</span>
+                <span>{completedStages}/{stages.length} 阶段</span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-sky-400 transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
             </div>
           )}
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="w-3 h-3" />
+            <span>{formatRelativeTime(project.updated_at || project.created_at)}</span>
+          </div>
         </div>
       </CardContent>
     </Card>
