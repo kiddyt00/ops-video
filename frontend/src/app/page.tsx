@@ -69,7 +69,7 @@ function ProjectCard({
   const { data: tasks } = useTasks(project.id, { enabled: !showRestore && !showPermanentDelete })
 
   const stages = workflowStatus?.stages ?? []
-  const completedStages = stages.filter(s => s.status === 'completed').length
+  const completedStages = stages.filter((s: { status: string }) => s.status === 'completed').length
   const progress = stages.length > 0 ? Math.round((completedStages / stages.length) * 100) : 0
 
   const handleDelete = async (e: React.MouseEvent) => {
