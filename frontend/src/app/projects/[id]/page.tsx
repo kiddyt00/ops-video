@@ -172,13 +172,13 @@ export default function ProjectPage() {
               <BookOpen className="w-3.5 h-3.5" />
               故事
             </TabsTrigger>
-            <TabsTrigger value="chapters" className="gap-1.5">
-              <Film className="w-3.5 h-3.5" />
-              章节
-            </TabsTrigger>
             <TabsTrigger value="character-cards" className="gap-1.5">
               <Users className="w-3.5 h-3.5" />
               角色卡
+            </TabsTrigger>
+            <TabsTrigger value="chapters" className="gap-1.5">
+              <Film className="w-3.5 h-3.5" />
+              章节
             </TabsTrigger>
             <TabsTrigger value="workflow" className="gap-1.5">
               <Workflow className="w-3.5 h-3.5" />
@@ -193,15 +193,15 @@ export default function ProjectPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
-          <div className="max-w-6xl mx-auto w-full h-full">
-            <ChaptersList projectId={projectId} className="h-full" />
-          </div>
-        </TabsContent>
-
         <TabsContent value="character-cards" className="flex-1 min-h-0 mt-3">
           <div className="max-w-4xl mx-auto w-full h-full">
             <CharacterCardManager projectId={projectId} className="h-full" />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-6xl mx-auto w-full h-full">
+            <ChaptersList projectId={projectId} className="h-full" />
           </div>
         </TabsContent>
 
