@@ -10,7 +10,7 @@ import uuid
 
 from .config import settings
 from .db.session import get_db
-from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics, presets, users, ai_models, character_cards, storage_providers, stories
+from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics, presets, users, ai_models, character_cards, storage_providers, stories, chapters
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
 from .middleware.security import setup_security, XSSProtectionMiddleware
@@ -235,4 +235,5 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(ai_models.router, prefix="/api/v1/models", tags=["ai_models"])
 app.include_router(character_cards.router, prefix="/api/v1/projects/{project_id}/character-cards", tags=["character_cards"])
 app.include_router(stories.router, prefix="/api/v1/projects/{project_id}/story", tags=["stories"])
+app.include_router(chapters.router, prefix="/api/v1/projects/{project_id}/chapters", tags=["chapters"])
 app.include_router(storage_providers.router, prefix="/api/v1/storage-providers", tags=["storage_providers"])
