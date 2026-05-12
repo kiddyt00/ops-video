@@ -815,6 +815,8 @@ class WorkflowService:
         )
         task.output_file_ids = [str(file_record.id)]
 
+        self._auto_select_first_file(task.id)
+
         # ── Update Story DB record ──────────────────────────────────────
         from ..db.story_crud import story_crud
         from ..schemas.story import StoryCreate as StoryCreateSchema, StoryUpdate as StoryUpdateSchema
