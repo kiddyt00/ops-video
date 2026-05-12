@@ -317,7 +317,19 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
 
   useEffect(() => {
     if (story) {
-      setDraft({ ...story })
+      const normalized = { ...story }
+      // Normalize fields that may be objects from API
+      if (normalized.worldbuilding && typeof normalized.worldbuilding === 'object') {
+        try {
+          normalized.worldbuilding = JSON.stringify(normalized.worldbuilding, null, 2)
+        } catch { /* keep as-is */ }
+      }
+      if (normalized.characters && typeof normalized.characters === 'object') {
+        try {
+          normalized.characters = JSON.stringify(normalized.characters, null, 2)
+        } catch { /* keep as-is */ }
+      }
+      setDraft(normalized)
       setHasChanges(false)
     }
   }, [story])
