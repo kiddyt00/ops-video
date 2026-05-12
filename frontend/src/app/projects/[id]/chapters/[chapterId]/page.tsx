@@ -58,7 +58,10 @@ export default function ChapterPage() {
         const data = await resp.json()
         throw new Error(data.detail || '推进工作流失败')
       }
-      window.location.reload()
+      // Refresh data instead of full page reload
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['files', projectId] })
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '推进工作流失败')
     }
@@ -85,7 +88,10 @@ export default function ChapterPage() {
         const data = await resp.json()
         throw new Error(data.detail || '生成任务失败')
       }
-      window.location.reload()
+      // Refresh data instead of full page reload
+      queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['workflow', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['files', projectId] })
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '生成任务失败')
     }
@@ -93,7 +99,9 @@ export default function ChapterPage() {
 
   const handleRetry = () => {
     setApiError(null)
-    window.location.reload()
+    queryClient.invalidateQueries({ queryKey: ['tasks', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['workflow', projectId] })
+    queryClient.invalidateQueries({ queryKey: ['files', projectId] })
   }
 
   const queryError = projectError || chapterError || tasksError || workflowError
