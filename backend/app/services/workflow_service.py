@@ -947,6 +947,12 @@ class WorkflowService:
 
         topic = parameters.get("topic")
         if not topic:
+            # Auto-derive from Story DB
+            from ..db.story_crud import story_crud as _story_crud
+            story = _story_crud.get_by_project(self.db, task.project_id)
+            if story:
+                topic = story.logline or story.inspiration or None
+        if not topic:
             if settings.MOCK_MODE:
                 topic = "Test Topic"
             else:
