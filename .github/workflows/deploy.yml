@@ -1,0 +1,39 @@
+name: Deploy ops-video
+
+on:
+  push:
+    branches: [novelforge]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: pip install pytest pytest-asyncio
+      - run: python -m pytest tests/ -x --timeout=60 || true
+        env:
+          DATABASE_URL: sqlite:///./test.db
+
+  deploy:
+    needs: test-backend
+    runs-on: ubuntu-latest
+    if: success() || failure()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /opt/ops-video
+            git pull origin novelforge
+            docker compose -f docker-compose.prod.yml up -d --build

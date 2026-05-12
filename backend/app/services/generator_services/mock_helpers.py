@@ -97,3 +97,42 @@ def mock_image_result(prompt: str = "", variant_index: int = 0, **_) -> MockGene
         parameters={"prompt": prompt, "variant_index": variant_index},
         metadata={"mock": True, "provider": "mock_wanx"},
     )
+
+
+def mock_story_data(inspiration: str = "", **_) -> dict:
+    """Return fake story generation data for MOCK_MODE."""
+    return {
+        "inspiration": inspiration or "A mysterious artifact is discovered beneath an ancient city.",
+        "logline": "A lone explorer discovers a secret that changes everything.",
+        "synopsis": "In a world where ancient technology lies dormant, one discovery awakens a forgotten power.",
+        "worldbuilding": {
+            "setting": "A post-apocalyptic Earth where nature has reclaimed civilization",
+            "time_period": "Near future",
+            "technology_level": "Advanced but decaying",
+        },
+        "characters": [
+            {"name": "Kai", "role": "Protagonist", "description": "A curious young explorer"},
+            {"name": "Lena", "role": "Mentor", "description": "A wise elder with hidden knowledge"},
+        ],
+        "themes": ["Discovery", "Identity", "Technology vs Nature"],
+        "plot_points": [
+            {"act": "Setup", "description": "Kai finds the artifact"},
+            {"act": "Confrontation", "description": "Forces are awakened"},
+            {"act": "Resolution", "description": "A new balance is found"},
+        ],
+    }
+
+
+def mock_chapter_outline_data(story_data: dict | None = None, chapter_count: int = 6) -> dict:
+    """Return fake chapter outline data for MOCK_MODE."""
+    chapters = []
+    for i in range(chapter_count):
+        chapters.append({
+            "chapter_number": i + 1,
+            "title": f"Chapter {i + 1}: The Beginning",
+            "summary": f"The story unfolds in chapter {i + 1} as events take an unexpected turn.",
+            "key_scenes": [f"Scene {i*2 + 1}: Setup", f"Scene {i*2 + 2}: Climax"],
+            "characters": ["Kai", "Lena"],
+            "duration": 5.0,
+        })
+    return {"chapters": chapters}

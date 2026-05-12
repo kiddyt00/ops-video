@@ -54,17 +54,28 @@ function ImageGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id:
 /* ------------------------------------------------------------------ */
 
 function VideoGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id: string) => void }) {
+  const [fullscreen, setFullscreen] = useState<string | null>(null)
+
   return (
     <div className="space-y-3">
       <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">最终视频</p>
       {files.map(f => {
         const src = `${API_BASE}/files/${f.id}/download`
         return (
-          <div key={f.id} className="rounded-xl overflow-hidden bg-black ring-1 ring-white/5">
-            <video controls src={src} className="w-full max-h-[360px] object-contain" preload="metadata" />
+          <div key={f.id} className="rounded-xl overflow-hidden bg-black ring-1 ring-white/5 group">
+            <video
+              controls
+              src={src}
+              className="w-full max-h-[360px] object-contain cursor-pointer"
+              preload="metadata"
+              onClick={() => setFullscreen(src)}
+            />
             <div className="flex items-center justify-between px-3 py-2 bg-zinc-900">
               <span className="text-xs text-zinc-400 truncate">{f.file_path.split('/').pop()}</span>
               <div className="flex gap-1">
+                <button onClick={() => setFullscreen(src)} className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-1 px-2">
+                  <Maximize2 className="w-3 h-3" />全屏
+                </button>
                 <a href={src} download className="text-xs text-zinc-500 hover:text-white flex items-center gap-1 px-2"><Download className="w-3 h-3" />下载</a>
                 <button onClick={() => onDelete(f.id)} className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1 px-2"><Trash2 className="w-3 h-3" />删除</button>
               </div>
@@ -72,6 +83,20 @@ function VideoGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id:
           </div>
         )
       })}
+      {fullscreen && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center" onClick={() => setFullscreen(null)}>
+          <video
+            controls
+            autoPlay
+            src={fullscreen}
+            className="max-w-[95vw] max-h-[95vh] rounded-lg"
+            onClick={e => e.stopPropagation()}
+          />
+          <button onClick={() => setFullscreen(null)} className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -245,6 +270,19 @@ function StoryboardCard({ file, onDelete }: { file: FileRecord; onDelete: (id: s
 }
 
 /* ------------------------------------------------------------------ */
+/* Generic text/JSON preview for inspiration/story/chapter_outline   */
+/* ------------------------------------------------------------------ */
+
+function TextGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id: string) => void }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] text-zinc-500 uppercase tracking-wider px-1">生成文件 · {files.length} 份</p>
+      {files.map(f => <ScriptCard key={f.id} file={f} onDelete={onDelete} />)}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Main export                                                        */
 /* ------------------------------------------------------------------ */
 
@@ -267,6 +305,9 @@ export function StageArtifacts({ fileType, files, onFilesChange }: Props) {
   if (fileType === 'audio') return <AudioGallery files={files} onDelete={handleDelete} />
   if (fileType === 'script') return <ScriptGallery files={files} onDelete={handleDelete} />
   if (fileType === 'storyboard') return <StoryboardGallery files={files} onDelete={handleDelete} />
+  // New stage file types — use generic text preview
+  if (['inspiration', 'story', 'chapter_outline'].includes(fileType))
+    return <TextGallery files={files} onDelete={handleDelete} />
 
   return (
     <div className="space-y-1">

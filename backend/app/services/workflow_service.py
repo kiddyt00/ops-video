@@ -238,40 +238,53 @@ class WorkflowService:
 
         # Execute generation for all stages if requested
         if execute:
-            try:
-                if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
-                    await self._execute_generation(target_stage, task, parameters)
-                elif target_stage == TaskStage.INSPIRATION:
-                    await self._execute_inspiration_generation(task, parameters)
-                elif target_stage == TaskStage.STORY:
-                    await self._execute_story_generation(task, parameters)
-                elif target_stage == TaskStage.CHAPTER_OUTLINE:
-                    await self._execute_chapter_outline_generation(task, parameters)
-                elif target_stage == TaskStage.SCRIPT:
-                    await self._execute_script_generation(task, parameters)
-                elif target_stage == TaskStage.STORYBOARD:
-                    await self._execute_storyboard_generation(task, parameters)
-                elif target_stage == TaskStage.IMAGE:
-                    await self._execute_image_generation(task, parameters)
+            max_retries = 2
+            last_error = None
+            for attempt in range(max_retries + 1):
+                try:
+                    if target_stage in [TaskStage.AUDIO, TaskStage.VIDEO]:
+                        await self._execute_generation(target_stage, task, parameters)
+                    elif target_stage == TaskStage.INSPIRATION:
+                        await self._execute_inspiration_generation(task, parameters)
+                    elif target_stage == TaskStage.STORY:
+                        await self._execute_story_generation(task, parameters)
+                    elif target_stage == TaskStage.CHAPTER_OUTLINE:
+                        await self._execute_chapter_outline_generation(task, parameters)
+                    elif target_stage == TaskStage.SCRIPT:
+                        await self._execute_script_generation(task, parameters)
+                    elif target_stage == TaskStage.STORYBOARD:
+                        await self._execute_storyboard_generation(task, parameters)
+                    elif target_stage == TaskStage.IMAGE:
+                        await self._execute_image_generation(task, parameters)
 
-                # Mark task as completed after successful generation
-                task_crud.update_status(
-                    self.db,
-                    task_id=task.id,
-                    obj_in=TaskStatusUpdate(status=TaskStatus.COMPLETED),
-                )
-                self.db.commit()
-            except Exception as e:
-                task_crud.update_status(
-                    self.db,
-                    task_id=task.id,
-                    obj_in=TaskStatusUpdate(
-                        status=TaskStatus.FAILED,
-                        reason=str(e),
-                    ),
-                )
-                self.db.commit()
-                raise
+                    # Mark task as completed after successful generation
+                    task_crud.update_status(
+                        self.db,
+                        task_id=task.id,
+                        obj_in=TaskStatusUpdate(status=TaskStatus.COMPLETED),
+                    )
+                    self.db.commit()
+                    break  # success — exit retry loop
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries:
+                        logger.warning(
+                            "Stage %s failed (attempt %d/%d), retrying in 2s: %s",
+                            target_stage.value, attempt + 1, max_retries + 1, str(e)[:200]
+                        )
+                        import asyncio
+                        await asyncio.sleep(2)
+                    else:
+                        task_crud.update_status(
+                            self.db,
+                            task_id=task.id,
+                            obj_in=TaskStatusUpdate(
+                                status=TaskStatus.FAILED,
+                                reason=str(e),
+                            ),
+                        )
+                        self.db.commit()
+                        raise
 
         return task
 
@@ -655,28 +668,24 @@ class WorkflowService:
             else:
                 raise WorkflowError("Inspiration stage requires 'inspiration' parameter")
 
-        genre = parameters.get("genre", "")
-        tone = parameters.get("tone", "")
-        target_length = parameters.get("target_length", "")
-        golden_finger = parameters.get("golden_finger", "")
-        protagonist = parameters.get("protagonist", "")
-        relationship = parameters.get("relationship", "")
-        worldbuilding_hints = parameters.get("worldbuilding_hints", "")
-        extra_context = parameters.get("extra_context", "")
-
-        service = StoryGeneratorService()
-        story_data = await service.generate_story(
-            inspiration=inspiration,
-            project_id=str(task.project_id),
-            genre=genre,
-            tone=tone,
-            target_length=target_length,
-            golden_finger=golden_finger,
-            protagonist=protagonist,
-            relationship=relationship,
-            worldbuilding_hints=worldbuilding_hints,
-            extra_context=extra_context,
-        )
+        # MOCK_MODE fast path — skip LLM call
+        if settings.MOCK_MODE:
+            from .generator_services.mock_helpers import mock_story_data
+            story_data = mock_story_data(inspiration=inspiration)
+        else:
+            service = StoryGeneratorService()
+            story_data = await service.generate_story(
+                inspiration=inspiration,
+                project_id=str(task.project_id),
+                genre=parameters.get("genre", ""),
+                tone=parameters.get("tone", ""),
+                target_length=parameters.get("target_length", ""),
+                golden_finger=parameters.get("golden_finger", ""),
+                protagonist=parameters.get("protagonist", ""),
+                relationship=parameters.get("relationship", ""),
+                worldbuilding_hints=parameters.get("worldbuilding_hints", ""),
+                extra_context=parameters.get("extra_context", ""),
+            )
 
         # Create file record for the inspiration output
         variant_group = self.db.query(VariantGroup).filter(
@@ -779,18 +788,23 @@ class WorkflowService:
         relationship = parameters.get("relationship", "")
         worldbuilding_hints = parameters.get("worldbuilding_hints", "")
 
-        service = StoryGeneratorService()
-        story_data = await service.generate_story(
-            inspiration=inspiration_text,
-            project_id=str(task.project_id),
-            genre=genre,
-            tone=tone,
-            target_length=target_length,
-            golden_finger=golden_finger,
-            protagonist=protagonist,
-            relationship=relationship,
-            worldbuilding_hints=worldbuilding_hints,
-        )
+        # MOCK_MODE fast path
+        if settings.MOCK_MODE:
+            from .generator_services.mock_helpers import mock_story_data
+            story_data = mock_story_data(inspiration=inspiration_text)
+        else:
+            service = StoryGeneratorService()
+            story_data = await service.generate_story(
+                inspiration=inspiration_text,
+                project_id=str(task.project_id),
+                genre=genre,
+                tone=tone,
+                target_length=target_length,
+                golden_finger=golden_finger,
+                protagonist=protagonist,
+                relationship=relationship,
+                worldbuilding_hints=worldbuilding_hints,
+            )
 
         variant_group = self.db.query(VariantGroup).filter(
             VariantGroup.task_id == task.id
@@ -871,11 +885,16 @@ class WorkflowService:
         if chapter_count is not None:
             chapter_count = int(chapter_count)
 
-        service = StoryGeneratorService()
-        outline_data = await service.generate_chapter_outline(
-            story_data=story_data,
-            chapter_count=chapter_count,
-        )
+        # MOCK_MODE fast path
+        if settings.MOCK_MODE:
+            from .generator_services.mock_helpers import mock_chapter_outline_data
+            outline_data = mock_chapter_outline_data(story_data, chapter_count or 6)
+        else:
+            service = StoryGeneratorService()
+            outline_data = await service.generate_chapter_outline(
+                story_data=story_data,
+                chapter_count=chapter_count,
+            )
 
         variant_group = self.db.query(VariantGroup).filter(
             VariantGroup.task_id == task.id

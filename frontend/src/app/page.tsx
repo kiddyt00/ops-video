@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Loader2, Trash2, AlertCircle, Clock, CheckCircle2, RotateCcw, ShieldBan } from 'lucide-react'
+import { Plus, Loader2, Trash2, AlertCircle, Clock, CheckCircle2, RotateCcw, ShieldBan, Sparkles, ArrowRight, Wand2 } from 'lucide-react'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { AppShell } from '@/components/app-shell'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -303,6 +303,28 @@ function ProjectsOverview() {
   const { isAuthenticated } = useAuth()
   const [activeTab, setActiveTab] = useState<TabKey>('mine')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [inspiration, setInspiration] = useState('')
+  const [isQuickCreating, setIsQuickCreating] = useState(false)
+
+  const createProjectMutation = useCreateProject()
+
+  const handleQuickCreate = async () => {
+    const topic = inspiration.trim()
+    if (!topic || isQuickCreating) return
+    setIsQuickCreating(true)
+    try {
+      const project = await createProjectMutation.mutateAsync({
+        name: topic.slice(0, 30),
+        description: `灵感创作: ${topic}`,
+      })
+      setInspiration('')
+      router.push(`/projects/${project.id}`)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '创建失败')
+    } finally {
+      setIsQuickCreating(false)
+    }
+  }
 
   const { data: myProjects, isLoading: mineLoading, error: mineError } = useMyProjects()
   const { data: sharedProjects, isLoading: sharedLoading, error: sharedError } = useSharedProjects()
@@ -348,6 +370,37 @@ function ProjectsOverview() {
             </div>
           ) : (
             <>
+              {/* ── Inspiration quick-create ── */}
+              <div className="mb-6 p-6 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-transparent to-sky-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <Wand2 className="w-5 h-5 text-violet-400" />
+                  <h3 className="text-sm font-semibold text-white/80">灵感一键创作</h3>
+                </div>
+                <p className="text-xs text-zinc-500 mb-4">输入一个创意主题，AI 将自动为你生成完整故事</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={inspiration}
+                    onChange={(e) => setInspiration(e.target.value)}
+                    placeholder="例如：赛博朋克世界的花店少女、修仙界的程序员..."
+                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-zinc-600"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleQuickCreate() }}
+                  />
+                  <Button
+                    onClick={handleQuickCreate}
+                    disabled={!inspiration.trim() || isQuickCreating}
+                    className="gap-1.5 bg-violet-600 hover:bg-violet-500"
+                  >
+                    {isQuickCreating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                    开始创作
+                    {!isQuickCreating && <ArrowRight className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+
               <Tabs value={activeTab} onValueChange={v => setActiveTab(v as TabKey)} className="w-full">
                 <TabsList className="mb-6">
                   <TabsTrigger value="mine">我的项目</TabsTrigger>
