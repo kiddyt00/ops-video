@@ -365,7 +365,33 @@
   - `frontend/src/app/projects/[id]/page.tsx` (故事 tab)
 - **Commit 范围**: `fbd71b9` → `addf242` (6 commits)
 
-### Phase 18: 其他优化
+### Phase 18: LLM 配置数据库化 ✅
+- **架构改进**：LLM Provider 从数据库读取模型配置，替代硬编码环境变量
+- **AIModel 模型扩展**：
+  - 新增 `is_active` 字段（每个类别只有一个活跃模型）
+  - 数据库迁移 `013_add_ai_model_is_active.py`
+- **ai_model_crud 增强**：
+  - `get_active(category)` — 获取活跃模型
+  - `activate(model_id)` — 激活模型（同类别其他自动停用）
+  - `toggle()` 标记为 deprecated
+- **LLMProvider 重构**：
+  - 移除 `settings.LLM_API_KEY` 等硬编码 fallback
+  - `async _load_model_config()` — 每次调用动态从数据库加载
+  - 无活跃模型时抛出明确错误提示
+- **API 路由更新**：
+  - `/toggle` 端点改为 activate 语义
+  - 新增 `/activate` 端点作为显式别名
+- **config.py 清理**：删除 `LLM_API_KEY`, `LLM_API_BASE_URL`, `LLM_MODEL`
+- **修改文件**：
+  - `backend/app/models/ai_model.py`
+  - `backend/app/db/ai_model_crud.py`
+  - `backend/app/providers/llm_provider.py`
+  - `backend/app/config.py`
+  - `backend/app/api/routes/ai_models.py`
+  - `backend/app/db/migrations/versions/013_add_ai_model_is_active.py`
+- **Commit**: `a004edc`
+
+### Phase 19: 其他优化
 - 用户项目管理（我的项目列表）
 - 项目分享与协作
 - 生成参数预设模板
