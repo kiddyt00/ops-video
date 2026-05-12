@@ -180,7 +180,7 @@ export function AppShell({ projectHeader, rightPanel, showSidebar = true, childr
         )}
 
         {/* Main content */}
-        <main className="flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden flex flex-col">
           {children}
         </main>
 
