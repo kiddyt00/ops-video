@@ -4,9 +4,9 @@ import type { TaskCreate, TaskStatusUpdate } from '@/types/task'
 
 export function useTasks(projectId?: string, opts?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['tasks', projectId],
+    queryKey: ['tasks', projectId ?? 'all'],
     queryFn: () => taskApi.list(projectId),
-    enabled: (opts?.enabled ?? true) && !!projectId,
+    enabled: opts?.enabled ?? true,
   })
 }
 

@@ -302,7 +302,32 @@ function ChapterOutlineEditor({
 /* ------------------------------------------------------------------ */
 
 function WorldbuildingDisplay({ data }: { data: any }) {
-  if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无世界观设定</p>
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
+
+  const startEdit = () => {
+    setEditText(typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data ?? ''))
+    setEditing(true)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2">
+        <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={8} className="text-sm font-mono" />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => { try { const parsed = JSON.parse(editText); /* validate */ } catch { } setEditing(false) }}>确定</Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(false)}>取消</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-muted-foreground mb-2">暂无世界观设定</p>
+      <Button size="sm" variant="outline" onClick={startEdit}>手动添加</Button>
+    </div>
+  )
   if (typeof data === 'string') {
     try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
   }
@@ -325,6 +350,11 @@ function WorldbuildingDisplay({ data }: { data: any }) {
           </div>
         </div>
       ))}
+      <div className="flex justify-end mt-2">
+        <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={startEdit}>
+          <Pencil className="w-3 h-3" />编辑
+        </Button>
+      </div>
     </div>
   )
 }
@@ -334,7 +364,32 @@ function WorldbuildingDisplay({ data }: { data: any }) {
 /* ------------------------------------------------------------------ */
 
 function CharactersDisplay({ data }: { data: any }) {
-  if (!data) return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
+
+  const startEdit = () => {
+    setEditText(typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data ?? ''))
+    setEditing(true)
+  }
+
+  if (editing) {
+    return (
+      <div className="space-y-2">
+        <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={10} className="text-sm font-mono" />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setEditing(false)}>确定</Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(false)}>取消</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!data) return (
+    <div className="text-center py-4">
+      <p className="text-xs text-muted-foreground mb-2">暂无角色设定</p>
+      <Button size="sm" variant="outline" onClick={startEdit}>手动添加</Button>
+    </div>
+  )
   if (typeof data === 'string') {
     try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
   }

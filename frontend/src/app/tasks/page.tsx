@@ -30,11 +30,14 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Circle; color:
 }
 
 const STAGE_LABELS: Record<string, string> = {
-  script: '脚本',
+  inspiration: '灵感',
+  story: '故事',
+  chapter_outline: '章节大纲',
+  script: '剧本',
   storyboard: '分镜',
-  image: '图片',
-  audio: '音频',
-  video: '视频',
+  image: '生图',
+  audio: '配音',
+  video: '成片',
 }
 
 export default function TasksPage() {
@@ -136,7 +139,13 @@ export default function TasksPage() {
                             {statusConf?.label ?? task.status}
                           </Badge>
                           {task.status === 'pending' && (
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              title="查看项目"
+                              onClick={(e) => { e.stopPropagation(); router.push(`/projects/${task.project_id}`) }}
+                            >
                               <Play className="w-3.5 h-3.5" />
                             </Button>
                           )}
