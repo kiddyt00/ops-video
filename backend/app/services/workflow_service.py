@@ -658,6 +658,10 @@ class WorkflowService:
         genre = parameters.get("genre", "")
         tone = parameters.get("tone", "")
         target_length = parameters.get("target_length", "")
+        golden_finger = parameters.get("golden_finger", "")
+        protagonist = parameters.get("protagonist", "")
+        relationship = parameters.get("relationship", "")
+        worldbuilding_hints = parameters.get("worldbuilding_hints", "")
         extra_context = parameters.get("extra_context", "")
 
         service = StoryGeneratorService()
@@ -667,6 +671,10 @@ class WorkflowService:
             genre=genre,
             tone=tone,
             target_length=target_length,
+            golden_finger=golden_finger,
+            protagonist=protagonist,
+            relationship=relationship,
+            worldbuilding_hints=worldbuilding_hints,
             extra_context=extra_context,
         )
 
