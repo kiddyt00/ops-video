@@ -53,7 +53,7 @@ class LLMProvider(BaseProvider):
                     "api_key": m.api_key or "",
                     "api_base_url": m.api_base_url or "",
                     "model_name": m.model_name or "",
-                    "display_name": m.display_name or m.name or m.model_name or "unknown",
+                    "display_name": getattr(m, 'display_name', None) or getattr(m, 'name', None) or m.model_name or "unknown",
                 }
                 for m in enabled
             ]
