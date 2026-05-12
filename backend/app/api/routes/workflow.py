@@ -135,6 +135,9 @@ async def advance_to_stage(
     from ...models.task import TaskStage
 
     stage_map = {
+        "inspiration": TaskStage.INSPIRATION,
+        "story": TaskStage.STORY,
+        "chapter_outline": TaskStage.CHAPTER_OUTLINE,
         "script": TaskStage.SCRIPT,
         "storyboard": TaskStage.STORYBOARD,
         "image": TaskStage.IMAGE,
@@ -188,6 +191,9 @@ async def rollback_to_stage(
     from ...models.task import TaskStage
 
     stage_map = {
+        "inspiration": TaskStage.INSPIRATION,
+        "story": TaskStage.STORY,
+        "chapter_outline": TaskStage.CHAPTER_OUTLINE,
         "script": TaskStage.SCRIPT,
         "storyboard": TaskStage.STORYBOARD,
         "image": TaskStage.IMAGE,
