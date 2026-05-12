@@ -253,6 +253,14 @@ class WorkflowService:
                     await self._execute_storyboard_generation(task, parameters)
                 elif target_stage == TaskStage.IMAGE:
                     await self._execute_image_generation(task, parameters)
+
+                # Mark task as completed after successful generation
+                task_crud.update_status(
+                    self.db,
+                    task_id=task.id,
+                    obj_in=TaskStatusUpdate(status=TaskStatus.COMPLETED),
+                )
+                self.db.commit()
             except Exception as e:
                 task_crud.update_status(
                     self.db,

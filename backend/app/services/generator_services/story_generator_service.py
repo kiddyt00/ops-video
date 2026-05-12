@@ -118,6 +118,10 @@ def _build_story_prompt(inspiration: str, **kwargs) -> str:
     genre = kwargs.get("genre", "")
     tone = kwargs.get("tone", "")
     target_length = kwargs.get("target_length", "")
+    golden_finger = kwargs.get("golden_finger", "")
+    protagonist = kwargs.get("protagonist", "")
+    relationship = kwargs.get("relationship", "")
+    worldbuilding_hints = kwargs.get("worldbuilding_hints", "")
     extra = kwargs.get("extra_context", "")
 
     prompt = f"""You are a professional story developer. Expand the following inspiration into a complete story outline.
@@ -130,6 +134,14 @@ Inspiration: {inspiration}
         prompt += f"Tone: {tone}\n"
     if target_length:
         prompt += f"Target length: {target_length}\n"
+    if golden_finger:
+        prompt += f"Protagonist's special ability / golden finger: {golden_finger}\n"
+    if protagonist:
+        prompt += f"Protagonist profile: {protagonist}\n"
+    if relationship:
+        prompt += f"Character relationships: {relationship}\n"
+    if worldbuilding_hints:
+        prompt += f"Worldbuilding hints: {worldbuilding_hints}\n"
     if extra:
         prompt += f"Additional context: {extra}\n"
 
