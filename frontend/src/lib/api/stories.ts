@@ -3,12 +3,7 @@ import type { Story, StoryCreate, StoryUpdate, InspirationRequest } from '@/type
 
 export const storyApi = {
   get: (projectId: string) =>
-    api.get<Story>(`/projects/${projectId}/story`)
-      .then(r => r.data)
-      .catch(err => {
-        if (err?.response?.status === 404) return null
-        throw err
-      }),
+    api.get<Story | null>(`/projects/${projectId}/story`).then(r => r.data),
 
   create: (projectId: string, data: StoryCreate) =>
     api.post<Story>(`/projects/${projectId}/story`, data).then(r => r.data),

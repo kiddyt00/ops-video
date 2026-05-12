@@ -15,6 +15,7 @@ export function useStory(projectId: string) {
     queryKey: QUERY_KEYS.story(projectId),
     queryFn: () => storyApi.get(projectId),
     enabled: !!projectId,
+    retry: false,
   })
 }
 
