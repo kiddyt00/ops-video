@@ -227,7 +227,7 @@ function ChapterOutlineEditor({
   }
 
   return (
-    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+    <div className="space-y-2">
       {chapters.map((ch, idx) => (
         <div key={idx} className="border border-border rounded-lg overflow-hidden">
           {editingIndex === idx && draft ? (
@@ -559,7 +559,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
           {/* API Error */}
           {apiError && (
@@ -732,7 +732,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   )
 }
