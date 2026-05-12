@@ -583,7 +583,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 }
               >
                 <ChapterOutlineEditor
-                  chapters={draft.chapter_outline}
+                  chapters={draft.chapter_outline ?? []}
                   onChange={(chapters) => setField('chapter_outline', chapters)}
                 />
               </CollapsibleSection>
