@@ -1,6 +1,6 @@
 """
 LLM Provider for script and storyboard generation
-Supports both local LLM (Ollama) and API (OpenAI-compatible)
+Supports multiple providers with automatic fallback (qwen → glm → kimi → ...)
 Configuration is loaded dynamically from the database (AIModel with category='llm' and is_active=True)
 """
 import json
@@ -13,10 +13,10 @@ from .base_provider import BaseProvider, GenerationResult
 
 
 class LLMProvider(BaseProvider):
-    """LLM Provider for text generation.
+    """LLM Provider for text generation with multi-model fallback.
 
-    Configuration is loaded dynamically from the database on each generate() call.
-    Requires an AIModel with category='llm' and is_active=True to be configured.
+    Loads ALL active LLM models from database and tries them in order.
+    Falls through to next model on any error.
     """
 
     def __init__(
@@ -25,33 +25,40 @@ class LLMProvider(BaseProvider):
         api_base_url: Optional[str] = None,
         model: Optional[str] = None,
     ):
-        # Config is loaded dynamically from DB; constructor params are only for testing/mocking
+        # Constructor params are for testing/mocking; real config from DB
         self._api_key = api_key
         self._api_base_url = api_base_url
         self._model = model
         self._loaded = False
+        self._fallback_models: List[Dict[str, str]] = []  # [{api_key, api_base_url, model_name}]
 
-    async def _load_model_config(self) -> None:
-        """Load active LLM model configuration from the database.
-
-        Must be called before generate(). Cached for the lifetime of the instance
-        unless explicitly reset.
-        """
-        if self._loaded and self._api_key and self._api_base_url and self._model:
-            return
+    async def _load_fallback_models(self) -> List[Dict[str, str]]:
+        """Load ALL enabled LLM models from DB, sorted by priority."""
+        if self._loaded and self._fallback_models:
+            return self._fallback_models
 
         db = SessionLocal()
         try:
-            active_model = ai_model_crud.get_active(db, category="llm")
-            if not active_model:
+            all_models = ai_model_crud.get_all(db, category="llm")
+            enabled = [m for m in all_models if m.is_enabled and m.api_base_url and m.model_name]
+            if not enabled:
                 from ..services.workflow_service import WorkflowError
                 raise WorkflowError(
-                    "No active LLM model configured. Please enable one in AI Models settings."
+                    "No enabled LLM model configured. Please enable one in AI Models settings."
                 )
-            self._api_key = active_model.api_key or ""
-            self._api_base_url = active_model.api_base_url or ""
-            self._model = active_model.model_name or ""
+            # Prefer is_active first, then by creation order
+            enabled.sort(key=lambda m: (not m.is_active, m.created_at or ""))
+            self._fallback_models = [
+                {
+                    "api_key": m.api_key or "",
+                    "api_base_url": m.api_base_url or "",
+                    "model_name": m.model_name or "",
+                    "display_name": m.display_name or m.name or m.model_name or "unknown",
+                }
+                for m in enabled
+            ]
             self._loaded = True
+            return self._fallback_models
         finally:
             db.close()
 
@@ -76,65 +83,74 @@ class LLMProvider(BaseProvider):
         return "Large Language Model for script and storyboard generation"
 
     def validate_parameters(self, parameters: Dict[str, Any]) -> bool:
-        """Validate LLM parameters"""
         required_fields = ["prompt"]
         return all(field in parameters for field in required_fields)
 
     async def generate(self, parameters: Dict[str, Any]) -> GenerationResult:
-        """Generate text using LLM"""
-        await self._load_model_config()
-
+        """Generate text using LLM with multi-model fallback."""
         prompt = parameters.get("prompt", "")
         system_prompt = parameters.get("system_prompt", "")
         temperature = parameters.get("temperature", 0.7)
         max_tokens = parameters.get("max_tokens", 2000)
         response_format = parameters.get("response_format")
 
-        try:
-            response = await self._call_llm(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                response_format=response_format,
-            )
+        models = await self._load_fallback_models()
+        last_error = None
 
-            # Save result to file
-            output_path = self._save_result(response, parameters)
+        for i, cfg in enumerate(models):
+            try:
+                response = await self._call_llm_with_config(
+                    cfg=cfg,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    response_format=response_format,
+                )
 
-            return GenerationResult(
-                file_paths=[output_path],
-                parameters=parameters,
-                metadata={
-                    "model": self.model,
-                    "temperature": temperature,
-                    "completion_tokens": len(response.split()),
-                },
-            )
+                output_path = self._save_result(response, parameters)
 
-        except Exception as e:
-            return GenerationResult(
-                file_paths=[],
-                parameters=parameters,
-                success=False,
-                error_message=str(e),
-            )
+                return GenerationResult(
+                    file_paths=[output_path],
+                    parameters=parameters,
+                    metadata={
+                        "model": cfg["model_name"],
+                        "temperature": temperature,
+                        "completion_tokens": len(response.split()),
+                        "fallback_attempt": i + 1,
+                    },
+                )
 
-    async def _call_llm(
+            except Exception as e:
+                last_error = str(e)
+                from ..core.logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.warning(
+                    "LLM model '%s' failed (attempt %d/%d): %s",
+                    cfg.get("display_name"), i + 1, len(models), str(e)[:200]
+                )
+                continue
+
+        return GenerationResult(
+            file_paths=[],
+            parameters=parameters,
+            success=False,
+            error_message=f"All {len(models)} LLM providers failed. Last error: {last_error}",
+        )
+
+    async def _call_llm_with_config(
         self,
+        cfg: Dict[str, str],
         prompt: str,
         system_prompt: str = "",
         temperature: float = 0.7,
         max_tokens: int = 2000,
         response_format: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Call LLM API"""
-        headers = {
-            "Content-Type": "application/json",
-        }
-
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
+        """Call a specific LLM API with the given config."""
+        headers = {"Content-Type": "application/json"}
+        if cfg["api_key"]:
+            headers["Authorization"] = f"Bearer {cfg['api_key']}"
 
         messages = []
         if system_prompt:
@@ -142,7 +158,7 @@ class LLMProvider(BaseProvider):
         messages.append({"role": "user", "content": prompt})
 
         payload: Dict[str, Any] = {
-            "model": self.model,
+            "model": cfg["model_name"],
             "messages": messages,
             "temperature": temperature,
             "max_tokens": max_tokens,
@@ -153,7 +169,7 @@ class LLMProvider(BaseProvider):
 
         async with httpx.AsyncClient(timeout=180.0) as client:
             response = await client.post(
-                f"{self.api_base_url}/chat/completions",
+                f"{cfg['api_base_url']}/chat/completions",
                 headers=headers,
                 json=payload,
             )
@@ -164,19 +180,13 @@ class LLMProvider(BaseProvider):
     def _save_result(self, content: str, parameters: Dict[str, Any]) -> Path:
         """Save generated text to file"""
         from ..config import STORAGE_DIRS
-
         output_dir = STORAGE_DIRS["scripts"]
         output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Generate filename
         import hashlib
         prompt_hash = hashlib.md5(content[:50].encode()).hexdigest()[:8]
         filename = f"script_{prompt_hash}.txt"
         output_path = output_dir / filename
-
-        # Save content
         output_path.write_text(content, encoding="utf-8")
-
         return output_path
 
     async def generate_script(
@@ -208,15 +218,13 @@ class LLMProvider(BaseProvider):
 
         prompt += "\n请输出完整的剧本内容。"
 
-        parameters = {
+        return await self.generate({
             "prompt": prompt,
             "system_prompt": system_prompt,
             "topic": topic,
             "style": style,
             "duration": duration,
-        }
-
-        return await self.generate(parameters)
+        })
 
     async def generate_storyboard(
         self,
@@ -240,19 +248,12 @@ class LLMProvider(BaseProvider):
 
 请输出 JSON 格式的分镜数据。"""
 
-        parameters = {
+        return await self.generate({
             "prompt": prompt,
             "system_prompt": system_prompt,
             "script": script,
             "panel_count": panel_count,
-        }
-
-        result = await self.generate(parameters)
-
-        # Try to parse JSON from result
-        content = result.file_paths[0].read_text() if result.file_paths else ""
-
-        return result
+        })
 
 
 llm_provider = LLMProvider()
