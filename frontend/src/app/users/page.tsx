@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Select,
   SelectContent,
@@ -51,6 +52,8 @@ export default function UsersPage() {
     queryFn: fetchUsers,
   })
 
+  const [confirmTarget, setConfirmTarget] = useState<{ user: User; action: 'disable' | 'enable' | 'role'; role?: string } | null>(null)
+
   const updateRole = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: string }) => updateUserRole(userId, role),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
@@ -60,6 +63,23 @@ export default function UsersPage() {
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) => toggleUserActive(userId, isActive),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   })
+
+  const handleConfirm = () => {
+    if (!confirmTarget) return
+    const { user, action, role } = confirmTarget
+    if (action === 'disable') toggleActive.mutate({ userId: user.id, isActive: false })
+    else if (action === 'enable') toggleActive.mutate({ userId: user.id, isActive: true })
+    else if (action === 'role' && role) updateRole.mutate({ userId: user.id, role })
+    setConfirmTarget(null)
+  }
+
+  const requestToggle = (user: User) => {
+    setConfirmTarget({ user, action: user.is_active ? 'disable' : 'enable' })
+  }
+
+  const requestRoleChange = (user: User, role: string) => {
+    setConfirmTarget({ user, action: 'role', role })
+  }
 
   return (
     <AppShell>
@@ -123,7 +143,7 @@ export default function UsersPage() {
                       <div className="flex items-center gap-2">
                         <Select
                           value={user.role ?? 'user'}
-                          onValueChange={(v) => { if (v) updateRole.mutate({ userId: user.id, role: v }) }}
+                          onValueChange={(v) => { if (v && v !== user.role) requestRoleChange(user, v) }}
                         >
                           <SelectTrigger className="w-[100px]">
                             <SelectValue />
@@ -136,7 +156,7 @@ export default function UsersPage() {
                         <Button
                           variant={user.is_active ? 'outline' : 'default'}
                           size="sm"
-                          onClick={() => toggleActive.mutate({ userId: user.id, isActive: !user.is_active })}
+                          onClick={() => requestToggle(user)}
                         >
                           {user.is_active ? (
                             <UserX className="w-3.5 h-3.5" />
@@ -158,6 +178,21 @@ export default function UsersPage() {
           )}
         </div>
       </ScrollArea>
+      <ConfirmDialog
+        open={!!confirmTarget}
+        onOpenChange={(o) => { if (!o) setConfirmTarget(null) }}
+        onConfirm={handleConfirm}
+        title={confirmTarget?.action === 'disable' ? '确认禁用用户' : confirmTarget?.action === 'enable' ? '确认启用用户' : '确认修改角色'}
+        description={
+          confirmTarget?.action === 'disable'
+            ? `确定要禁用用户「${confirmTarget.user.username}」吗？禁用后该用户将无法登录。`
+            : confirmTarget?.action === 'enable'
+            ? `确定要启用用户「${confirmTarget.user.username}」吗？`
+            : `确定将用户「${confirmTarget?.user.username}」的角色改为${confirmTarget?.role === 'admin' ? '管理员' : '普通用户'}吗？`
+        }
+        confirmText={confirmTarget?.action === 'disable' ? '禁用' : confirmTarget?.action === 'enable' ? '启用' : '修改'}
+        loading={toggleActive.isPending || updateRole.isPending}
+      />
     </AppShell>
   )
 }
