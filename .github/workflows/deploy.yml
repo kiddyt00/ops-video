@@ -26,16 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     if: success() || failure()
     steps:
-      - uses: actions/checkout@v4
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: root
-          key: ${{ secrets.SSH_KEY }}
-          port: 22
-          script_stop: true
-          script: |
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@${{ secrets.SSH_HOST }} "
             cd /opt/ops-video
             git pull origin novelforge
             docker compose -f docker-compose.prod.yml up -d --build
+          "
