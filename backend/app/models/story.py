@@ -37,6 +37,17 @@ class Story(BaseModel):
     themes = Column(JSON, nullable=True, default=list)
     plot_points = Column(JSON, nullable=True, default=list)
     chapter_outline = Column(JSON, nullable=True, default=list)
+
+    # Phase A: 知识库扩展字段
+    title_suggestions = Column(JSON, nullable=True, default=list)
+    target_audience = Column(String, nullable=True)
+    style_tags = Column(JSON, nullable=True, default=list)
+    word_count_estimate = Column(JSON, nullable=True)  # stored as number via JSON
+    golden_finger_detail = Column(String, nullable=True)
+    power_system = Column(JSON, nullable=True, default=dict)
+    world_map_hints = Column(String, nullable=True)
+    prologue_preview = Column(String, nullable=True)
+
     status = Column(
         Enum(StoryStatus, name="story_status"),
         nullable=False,
