@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  Brain, Paintbrush, Mic, Music, Clapperboard, Cpu,
+import { Brain, Paintbrush, Mic, Music, Clapperboard, Cpu,
   Plus, Pencil, Trash2, Play, Loader2, AlertCircle,
   Power, PowerOff, Images, Zap, ExternalLink, Check
 } from 'lucide-react'
@@ -12,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
@@ -68,6 +68,7 @@ export default function ModelsPage() {
   const { data: models, isLoading } = useQuery({ queryKey: ['ai-models'], queryFn: api_.list })
 
   const [dialog, setDialog] = useState<{ open: boolean; id?: string }>({ open: false })
+  const [confirmTarget, setConfirmTarget] = useState<AIModel | null>(null)
   const [form, setForm] = useState<ModelForm>(emptyForm)
   const [formErr, setFormErr] = useState('')
   const [tests, setTests] = useState<Record<string, { running: boolean; ok?: boolean; msg?: string; ms?: number }>>({})
@@ -215,7 +216,7 @@ export default function ModelsPage() {
                                 <Pencil className="w-3 h-3" />编辑
                               </Button>
                               {!m.is_builtin && (
-                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-white/40 hover:text-red-400" onClick={() => { if (confirm('确定删除？')) delMut.mutate(m.id) }}>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-white/40 hover:text-red-400" onClick={() => setConfirmTarget(m)}>
                                   <Trash2 className="w-3 h-3" />删除
                                 </Button>
                               )}
@@ -298,6 +299,21 @@ export default function ModelsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Confirm Delete ──────────────────────────────────────────── */}
+      <ConfirmDialog
+        open={!!confirmTarget}
+        onOpenChange={(o) => { if (!o) setConfirmTarget(null) }}
+        onConfirm={() => {
+          if (confirmTarget) delMut.mutate(confirmTarget.id);
+          setConfirmTarget(null)
+        }}
+        title="确认删除"
+        description={`确定要删除「${confirmTarget?.name || ''}」吗？此操作不可撤销。`}
+        confirmText="删除"
+        variant="destructive"
+        loading={delMut.isPending}
+      />
     </AppShell>
   )
 }

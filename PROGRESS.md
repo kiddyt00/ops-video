@@ -410,6 +410,29 @@
 - **依赖安装**: oss2, boto3, edge-tts
 - **Commit**: `008f0b8`
 
+### Phase B: SSE 流式生成 + Neo4j + GenerationPanel (novelforge) ✅
+- **SSE 流式端点（后端）**:
+  - `llm_provider.py` 新增 `generate_stream()` 方法，逐 token 推送
+  - `POST /api/v1/workflow/stream/{project_id}/advance/{stage}` 返回 `text/event-stream`
+  - 事件格式：`event: thinking|instruction|partial|complete|error`
+- **GenerationPanel + SSE Hook（前端）**:
+  - `use-event-stream.ts` — ReadableStream 解析 SSE
+  - `generation-panel.tsx` — 浮动面板显示流式消息
+  - `workflow-waterfall.tsx` — 面板集成
+- **Neo4j GraphProvider**:
+  - `GraphProvider` 抽象接口（`__init__.py`）
+  - `SQLiteGraphProvider` — 包装现有 relation_crud + character_state_crud
+  - `Neo4jGraphProvider` — 用 neo4j async driver
+  - Docker Compose 含 Neo4j 配置（默认注释）
+- **自动记忆提取**:
+  - `memory_extractor.py` — 生成成功后自动提取角色状态/关系
+- **架构改进**:
+  - nginx 配置修复（events 块、http 包装）
+  - Dockerfile 构建上下文路径修正
+  - ConfirmDialog 组件 + 用户管理危险操作确认
+- **Commit 范围**: `2fbe162` → `d5a4537` (15 commits)
+- **测试**: 49 passed
+
 ### Phase 20: 待定
 - 前端预设选择器 + 管理器组件
 - 前端项目回收站（软删除 UI）

@@ -5,12 +5,15 @@
 完整测试从项目创建到视频生成的全流程，所有外部服务均使用 Mock 数据。
 
 阶段:
-1. 创建项目 "小猫的奇幻冒险"
-2. 脚本阶段 - 手动创建 Mock 文件
-3. 分镜阶段 - 手动创建 Mock JSON
-4. 图片阶段 - 手动创建 Mock 图片
-5. 音频阶段 - Mock TTS + 真实 BGM (scipy)
-6. 视频阶段 - Mock FFmpeg
+1. 创建项目
+2. 灵感阶段 - 手动创建 Mock 文本
+3. 故事阶段 - 手动创建 Mock JSON
+4. 章节大纲阶段 - 手动创建 Mock JSON
+5. 脚本阶段 - 手动创建 Mock 文件
+6. 分镜阶段 - 手动创建 Mock JSON
+7. 图片阶段 - 手动创建 Mock 图片
+8. 音频阶段 - Mock TTS + 真实 BGM (scipy)
+9. 视频阶段 - Mock FFmpeg
 
 运行: pytest tests/test_e2e_manga.py -v -s
 """
@@ -213,15 +216,18 @@ def create_project(client, name="小猫的奇幻冒险", description="一只橘�
     return resp.json()
 
 
-def advance_stage(client, project_id, stage):
-    resp = client.post(f"/api/v1/workflow/{project_id}/advance/{stage}")
+def advance_stage(client, project_id, stage, parameters=None):
+    payload = None
+    if parameters:
+        payload = {"parameters": parameters}
+    resp = client.post(f"/api/v1/workflow/{project_id}/advance/{stage}", json=payload)
     assert resp.status_code == 200, f"推进到 {stage} 失败: {resp.text}"
     return resp.json()
 
 
-def complete_stage(client, project_id, stage):
+def complete_stage(client, project_id, stage, parameters=None):
     """完成阶段：创建任务 + 标记完成 + 创建文件 + 选择变体"""
-    task = advance_stage(client, project_id, stage)
+    task = advance_stage(client, project_id, stage, parameters=parameters)
     task_id = task["id"]
 
     resp = client.put(
@@ -238,6 +244,9 @@ def complete_stage(client, project_id, stage):
     vg_id = vg_resp.json()["id"]
 
     file_path_map = {
+        "inspiration": "inspirations/inspiration_cat.json",
+        "story": "stories/story_cat.json",
+        "chapter_outline": "chapters/chapters_cat.json",
         "script": "scripts/test_script.txt",
         "storyboard": "storyboards/test_storyboard.json",
         "image": "images/test_image.png",
@@ -282,7 +291,11 @@ class TestE2EMangaWorkflow:
         # Ensure DB tables exist
         clear_test_db()
 
-        for key in ("images", "audio", "video", "scripts", "storyboards"):
+        # Enable MOCK_MODE for all generation (avoids real LLM/DB calls)
+        import app.config
+        monkeypatch.setattr(app.config.settings, "MOCK_MODE", True)
+
+        for key in ("images", "audio", "video", "scripts", "storyboards", "stories", "chapters", "inspirations"):
             (tmp_path / key).mkdir(parents=True, exist_ok=True)
 
         # Save and patch STORAGE_DIRS dict
@@ -321,11 +334,14 @@ class TestE2EMangaWorkflow:
         """
         完整工作流测试：
         1. 创建项目
-        2. 脚本阶段 (Mock 文件)
-        3. 分镜阶段 (Mock JSON)
-        4. 图片阶段 (Mock 图片)
-        5. 音频阶段 (Mock TTS + 真实 BGM)
-        6. 视频阶段 (Mock FFmpeg)
+        2. 灵感阶段 (Mock 文本)
+        3. 故事阶段 (Mock JSON)
+        4. 章节大纲阶段 (Mock JSON)
+        5. 脚本阶段 (Mock 文件)
+        6. 分镜阶段 (Mock JSON)
+        7. 图片阶段 (Mock 图片)
+        8. 音频阶段 (Mock TTS + 真实 BGM)
+        9. 视频阶段 (Mock FFmpeg)
         """
         checkpoints = []
         errors = []
@@ -357,10 +373,71 @@ class TestE2EMangaWorkflow:
         for s in status["stages"]:
             assert s["status"] == "pending"
         print(f"   初始状态: 所有阶段 pending ✅")
-        checkpoint("1. 完成", {"project_id": project_id, "stages": 5})
+        checkpoint("1. 完成", {"project_id": project_id, "stages": 8})
 
-        # ── Step 2: 脚本阶段 ──
-        checkpoint("2. 脚本阶段开始")
+        # ── Step 2: 灵感阶段 ──
+        checkpoint("2. 灵感阶段开始")
+        mock_inspiration_path = tmp_path / "inspirations" / "inspiration_cat.json"
+        mock_inspiration_path.parent.mkdir(parents=True, exist_ok=True)
+        mock_inspiration_data = json.dumps({
+            "inspiration": "一只橘猫的奇幻冒险故事，关于勇气和友谊。",
+        }, ensure_ascii=False)
+        mock_inspiration_path.write_text(mock_inspiration_data, encoding="utf-8")
+        assert mock_inspiration_path.exists()
+
+        task_id, vg_id, file_id = complete_stage(client, project_id, "inspiration",
+            parameters={"inspiration": "一只橘猫的奇幻冒险故事，关于勇气和友谊。"})
+        stage_results["inspiration"] = {"task_id": task_id, "file_id": file_id}
+
+        status = get_workflow_status(client, project_id)
+        insp_stage = [s for s in status["stages"] if s["stage"] == "inspiration"][0]
+        assert insp_stage["status"] == "completed"
+        print(f"   ✅ Step 2: 灵感阶段完成 (task: {task_id})")
+        checkpoint("2. 灵感阶段完成", {"task_id": task_id})
+
+        # ── Step 3: 故事阶段 ──
+        checkpoint("3. 故事阶段开始")
+        mock_story_path = tmp_path / "stories" / "story_cat.json"
+        mock_story_path.parent.mkdir(parents=True, exist_ok=True)
+        mock_story = {
+            "logline": "一只小橘猫意外闯入奇幻世界，为了回家展开了一场冒险。",
+            "synopsis": "在平凡的小镇上，一只名叫小橘的猫咪发现了一扇神秘的门...",
+            "characters": [{"name": "小橘", "role": "主角", "description": "一只好奇勇敢的橘猫"}],
+            "themes": ["勇气", "友谊", "成长"],
+        }
+        mock_story_path.write_text(json.dumps(mock_story, ensure_ascii=False), encoding="utf-8")
+
+        task_id, vg_id, file_id = complete_stage(client, project_id, "story")
+        stage_results["story"] = {"task_id": task_id, "file_id": file_id}
+
+        status = get_workflow_status(client, project_id)
+        story_stage = [s for s in status["stages"] if s["stage"] == "story"][0]
+        assert story_stage["status"] == "completed"
+        print(f"   ✅ Step 3: 故事阶段完成 (task: {task_id})")
+        checkpoint("3. 故事阶段完成", {"task_id": task_id})
+
+        # ── Step 4: 章节大纲阶段 ──
+        checkpoint("4. 章节大纲阶段开始")
+        mock_chapter_path = tmp_path / "chapters" / "chapters_cat.json"
+        mock_chapter_path.parent.mkdir(parents=True, exist_ok=True)
+        mock_chapters = [
+            {"title": "平凡的一天", "summary": "小橘的日常生活"},
+            {"title": "神秘的门", "summary": "小橘发现了一扇发光的门"},
+            {"title": "奇幻世界", "summary": "小橘来到了猫咪王国"},
+        ]
+        mock_chapter_path.write_text(json.dumps(mock_chapters, ensure_ascii=False), encoding="utf-8")
+
+        task_id, vg_id, file_id = complete_stage(client, project_id, "chapter_outline")
+        stage_results["chapter_outline"] = {"task_id": task_id, "file_id": file_id}
+
+        status = get_workflow_status(client, project_id)
+        ch_stage = [s for s in status["stages"] if s["stage"] == "chapter_outline"][0]
+        assert ch_stage["status"] == "completed"
+        print(f"   ✅ Step 4: 章节大纲阶段完成 (task: {task_id})")
+        checkpoint("4. 章节大纲阶段完成", {"task_id": task_id})
+
+        # ── Step 5: 脚本阶段 ──
+        checkpoint("5. 脚本阶段开始")
         # 创建脚本文件
         script_path = tmp_path / "scripts" / "script_xiaomao.txt"
         script_path.write_text(MOCK_SCRIPT_CONTENT, encoding="utf-8")
@@ -374,11 +451,11 @@ class TestE2EMangaWorkflow:
         script_stage = [s for s in status["stages"] if s["stage"] == "script"][0]
         assert script_stage["status"] == "completed"
         assert script_stage["completed_tasks"] >= 1
-        print(f"   ✅ Step 2: 脚本阶段完成 (task: {task_id}, file: {file_id})")
-        checkpoint("2. 脚本阶段完成", {"task_id": task_id, "file_size": script_path.stat().st_size})
+        print(f"   ✅ Step 5: 脚本阶段完成 (task: {task_id}, file: {file_id})")
+        checkpoint("5. 脚本阶段完成", {"task_id": task_id, "file_size": script_path.stat().st_size})
 
-        # ── Step 3: 分镜阶段 ──
-        checkpoint("3. 分镜阶段开始")
+        # ── Step 6: 分镜阶段 ──
+        checkpoint("6. 分镜阶段开始")
         # 创建分镜 JSON 文件
         sb_path = tmp_path / "storyboards" / "storyboard_xiaomao.json"
         sb_path.write_text(json.dumps(MOCK_STORYBOARD, ensure_ascii=False), encoding="utf-8")
@@ -390,11 +467,11 @@ class TestE2EMangaWorkflow:
         status = get_workflow_status(client, project_id)
         sb_stage = [s for s in status["stages"] if s["stage"] == "storyboard"][0]
         assert sb_stage["status"] == "completed"
-        print(f"   ✅ Step 3: 分镜阶段完成 (task: {task_id}, panels: {len(MOCK_STORYBOARD['panels'])})")
-        checkpoint("3. 分镜阶段完成", {"task_id": task_id, "panel_count": len(MOCK_STORYBOARD["panels"])})
+        print(f"   ✅ Step 6: 分镜阶段完成 (task: {task_id}, panels: {len(MOCK_STORYBOARD['panels'])})")
+        checkpoint("6. 分镜阶段完成", {"task_id": task_id, "panel_count": len(MOCK_STORYBOARD["panels"])})
 
-        # ── Step 4: 图片阶段 ──
-        checkpoint("4. 图片阶段开始")
+        # ── Step 7: 图片阶段 ──
+        checkpoint("7. 图片阶段开始")
         # 创建模拟图片文件（每个分镜一张）
         img_dir = tmp_path / "images"
         for panel in MOCK_STORYBOARD["panels"]:
@@ -407,11 +484,11 @@ class TestE2EMangaWorkflow:
         status = get_workflow_status(client, project_id)
         img_stage = [s for s in status["stages"] if s["stage"] == "image"][0]
         assert img_stage["status"] == "completed"
-        print(f"   ✅ Step 4: 图片阶段完成 (task: {task_id}, images: {len(MOCK_STORYBOARD['panels'])})")
-        checkpoint("4. 图片阶段完成", {"task_id": task_id, "image_count": 5})
+        print(f"   ✅ Step 7: 图片阶段完成 (task: {task_id}, images: {len(MOCK_STORYBOARD['panels'])}")
+        checkpoint("7. 图片阶段完成", {"task_id": task_id, "image_count": 5})
 
-        # ── Step 5: 音频阶段 (Mock TTS + 真实 BGM) ──
-        checkpoint("5. 音频阶段开始")
+        # ── Step 8: 音频阶段 (Mock TTS + 真实 BGM) ──
+        checkpoint("8. 音频阶段开始")
 
         audio_dir = tmp_path / "audio"
         audio_dir.mkdir(parents=True, exist_ok=True)
@@ -447,19 +524,19 @@ class TestE2EMangaWorkflow:
         status = get_workflow_status(client, project_id)
         audio_stage = [s for s in status["stages"] if s["stage"] == "audio"][0]
         assert audio_stage["status"] == "completed"
-        print(f"   ✅ Step 5: 音频阶段完成 (task: {task_id})")
-        checkpoint("5. 音频阶段完成", {"task_id": task_id})
+        print(f"   ✅ Step 8: 音频阶段完成 (task: {task_id})")
+        checkpoint("8. 音频阶段完成", {"task_id": task_id})
 
-        # ── Step 6: 视频阶段 (Mock FFmpeg) ──
-        checkpoint("6. 视频阶段开始")
+        # ── Step 9: 视频阶段 (Mock FFmpeg) ──
+        checkpoint("9. 视频阶段开始")
 
         video_dir = tmp_path / "video"
         video_dir.mkdir(parents=True, exist_ok=True)
         video_output = video_dir / "final_video.mp4"
 
-        with patch("app.services.video_synthesis_service.video_synthesis_service") as mock_video_svc:
+        with patch("app.services.i2v_composer.i2v_composer.compose", new_callable=AsyncMock) as mock_compose:
             video_output.write_bytes(b'\x00' * 100)
-            mock_video_svc.compose = MagicMock(return_value=video_output)
+            mock_compose.return_value = video_output
 
             task_id, vg_id, file_id = complete_stage(client, project_id, "video")
 
@@ -468,8 +545,8 @@ class TestE2EMangaWorkflow:
         status = get_workflow_status(client, project_id)
         video_stage = [s for s in status["stages"] if s["stage"] == "video"][0]
         assert video_stage["status"] == "completed"
-        print(f"   ✅ Step 6: 视频阶段完成 (task: {task_id})")
-        checkpoint("6. 视频阶段完成", {"task_id": task_id})
+        print(f"   ✅ Step 9: 视频阶段完成 (task: {task_id})")
+        checkpoint("9. 视频阶段完成", {"task_id": task_id})
 
         # ── 最终验证 ──
         print(f"\n{'='*60}")
@@ -486,7 +563,7 @@ class TestE2EMangaWorkflow:
             if s["status"] == "completed":
                 completed_count += 1
 
-        assert completed_count == 5, f"应有 5 个完成的阶段，实际 {completed_count}"
+        assert completed_count == 8, f"应有 8 个完成的阶段，实际 {completed_count}"
 
         # 工作流历史
         history_resp = client.get(f"/api/v1/workflow/{project_id}/history")

@@ -15,6 +15,9 @@ from .base import BaseModel
 
 class FileType(str, Enum):
     """File type enumeration"""
+    INSPIRATION = "inspiration"
+    STORY = "story"
+    CHAPTER_OUTLINE = "chapter_outline"
     IMAGE = "image"
     AUDIO = "audio"
     VIDEO = "video"

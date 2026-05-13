@@ -9,6 +9,9 @@ from enum import Enum
 
 
 class FileType(str, Enum):
+    INSPIRATION = "inspiration"
+    STORY = "story"
+    CHAPTER_OUTLINE = "chapter_outline"
     IMAGE = "image"
     AUDIO = "audio"
     VIDEO = "video"

@@ -25,12 +25,15 @@ class TestWorkflowServiceImport:
         from app.services.workflow_service import WorkflowService
         from app.models.task import TaskStage
 
-        assert len(WorkflowService.STAGE_ORDER) == 5
-        assert WorkflowService.STAGE_ORDER[0] == TaskStage.SCRIPT
-        assert WorkflowService.STAGE_ORDER[1] == TaskStage.STORYBOARD
-        assert WorkflowService.STAGE_ORDER[2] == TaskStage.IMAGE
-        assert WorkflowService.STAGE_ORDER[3] == TaskStage.AUDIO
-        assert WorkflowService.STAGE_ORDER[4] == TaskStage.VIDEO
+        assert len(WorkflowService.STAGE_ORDER) == 8
+        assert WorkflowService.STAGE_ORDER[0] == TaskStage.INSPIRATION
+        assert WorkflowService.STAGE_ORDER[1] == TaskStage.STORY
+        assert WorkflowService.STAGE_ORDER[2] == TaskStage.CHAPTER_OUTLINE
+        assert WorkflowService.STAGE_ORDER[3] == TaskStage.SCRIPT
+        assert WorkflowService.STAGE_ORDER[4] == TaskStage.STORYBOARD
+        assert WorkflowService.STAGE_ORDER[5] == TaskStage.IMAGE
+        assert WorkflowService.STAGE_ORDER[6] == TaskStage.AUDIO
+        assert WorkflowService.STAGE_ORDER[7] == TaskStage.VIDEO
 
     def test_workflow_service_generator_map(self):
         """Test STAGE_GENERATOR_MAP is correctly defined"""

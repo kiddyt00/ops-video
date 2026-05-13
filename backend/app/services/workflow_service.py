@@ -500,7 +500,10 @@ class WorkflowService:
         for i, text in enumerate(texts):
             if text:
                 tts_path = await tts_service.synthesize(text, voice=voice)
-                rel_path = str(tts_path.relative_to(settings.storage_path)) if tts_path.is_absolute() else str(tts_path)
+                try:
+                    rel_path = str(tts_path.relative_to(settings.storage_path)) if tts_path.is_absolute() else str(tts_path)
+                except ValueError:
+                    rel_path = tts_path.name
                 file_record = file_crud.create(
                     self.db,
                     obj_in=FileCreate(
@@ -522,7 +525,10 @@ class WorkflowService:
                 mood=bgm_mood,
             )
             try:
-                rel_path = str(bgm_path.relative_to(settings.storage_path)) if bgm_path.is_absolute() else str(bgm_path)
+                try:
+                    rel_path = str(bgm_path.relative_to(settings.storage_path)) if bgm_path.is_absolute() else str(bgm_path)
+                except ValueError:
+                    rel_path = bgm_path.name
             except ValueError:
                 # BGM file is outside storage_path (e.g. test tmpdir); use just the filename
                 rel_path = bgm_path.name
@@ -549,7 +555,11 @@ class WorkflowService:
                 duration=panel_duration,
                 output_filename=f"sfx_panel_{i}_{sfx_type}_{task.id}.wav",
             )
-            rel_path = str(sfx_path.relative_to(settings.storage_path)) if sfx_path.is_absolute() else str(sfx_path)
+            try:
+                rel_path = str(sfx_path.relative_to(settings.storage_path)) if sfx_path.is_absolute() else str(sfx_path)
+            except ValueError:
+                rel_path = sfx_path.name
+
             file_record = file_crud.create(
                 self.db,
                 obj_in=FileCreate(
@@ -621,7 +631,10 @@ class WorkflowService:
             fps=fps,
         )
 
-        rel_path = str(video_path.relative_to(settings.storage_path)) if video_path.is_absolute() else str(video_path)
+        try:
+            rel_path = str(video_path.relative_to(settings.storage_path)) if video_path.is_absolute() else str(video_path)
+        except ValueError:
+            rel_path = video_path.name
         file_record = file_crud.create(
             self.db,
             obj_in=FileCreate(
