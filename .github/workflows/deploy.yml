@@ -33,6 +33,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: root
           key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script_stop: true
           script: |
             cd /opt/ops-video
             git pull origin novelforge
