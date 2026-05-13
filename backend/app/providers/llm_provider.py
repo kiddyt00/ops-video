@@ -5,7 +5,7 @@ Configuration is loaded dynamically from the database (AIModel with category='ll
 """
 import json
 import httpx
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, AsyncIterator
 from pathlib import Path
 from ..models.declarative import SessionLocal
 from ..db.ai_model_crud import ai_model_crud
@@ -176,6 +176,114 @@ class LLMProvider(BaseProvider):
             response.raise_for_status()
             result = response.json()
             return result["choices"][0]["message"]["content"]
+
+    async def generate_stream(self, parameters: Dict[str, Any]) -> AsyncIterator[Dict[str, Any]]:
+        """Stream generate text from LLM, yielding events asynchronously.
+
+        Yields dicts with keys:
+          type: 'thinking' | 'content' | 'complete' | 'error'
+          text: str
+        """
+        prompt = parameters.get("prompt", "")
+        system_prompt = parameters.get("system_prompt", "")
+        temperature = parameters.get("temperature", 0.7)
+        max_tokens = parameters.get("max_tokens", 2000)
+        response_format = parameters.get("response_format")
+
+        models = await self._load_fallback_models()
+        last_error = None
+
+        yield {"type": "thinking", "text": "准备调用 LLM..."}
+
+        for i, cfg in enumerate(models):
+            try:
+                model_display = cfg.get("display_name", cfg["model_name"])
+                yield {"type": "thinking", "text": f"正在使用 {model_display} 生成..."}
+
+                content_accumulated = ""
+                async for chunk in self._call_llm_stream(
+                    cfg=cfg, prompt=prompt, system_prompt=system_prompt,
+                    temperature=temperature, max_tokens=max_tokens,
+                    response_format=response_format,
+                ):
+                    content_accumulated += chunk
+                    yield {"type": "content", "text": chunk}
+
+                # Save result
+                output_path = self._save_result(content_accumulated, parameters)
+                result = GenerationResult(
+                    file_paths=[output_path],
+                    parameters=parameters,
+                    metadata={"model": cfg["model_name"], "temperature": temperature},
+                )
+                yield {"type": "complete", "text": "生成完成", "result": result.to_dict() if hasattr(result, 'to_dict') else {
+                    "file_paths": [str(p) for p in result.file_paths],
+                    "success": True,
+                    "metadata": result.metadata,
+                }}
+                return
+
+            except Exception as e:
+                last_error = str(e)
+                yield {"type": "error", "text": f"模型 '{cfg.get('display_name')}' 失败: {str(e)[:100]}"}
+                continue
+
+        yield {"type": "error", "text": f"所有 {len(models)} 个模型都失败。最后错误: {last_error}"}
+
+    async def _call_llm_stream(
+        self,
+        cfg: Dict[str, str],
+        prompt: str,
+        system_prompt: str = "",
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+        response_format: Optional[Dict[str, Any]] = None,
+    ) -> AsyncIterator[str]:
+        """Stream tokens from a specific LLM API."""
+        headers = {"Content-Type": "application/json", "Accept": "text/event-stream"}
+        if cfg["api_key"]:
+            headers["Authorization"] = f"Bearer {cfg['api_key']}"
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+
+        payload: Dict[str, Any] = {
+            "model": cfg["model_name"],
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "stream": True,
+        }
+        if response_format:
+            payload["response_format"] = response_format
+
+        from ..core.logging_config import get_logger
+        logger = get_logger(__name__)
+
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            async with client.stream(
+                "POST",
+                f"{cfg['api_base_url']}/chat/completions",
+                headers=headers,
+                json=payload,
+            ) as response:
+                response.raise_for_status()
+                async for line in response.aiter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == "[DONE]":
+                        return
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content", "")
+                        if content:
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
 
     def _save_result(self, content: str, parameters: Dict[str, Any]) -> Path:
         """Save generated text to file"""

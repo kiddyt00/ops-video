@@ -31,3 +31,4 @@ email-validator==2.1.0
 
 # Phase 14: Video Analysis
 mutagen==1.47.0
+neo4j

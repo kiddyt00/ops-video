@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     # Mock Mode — skip real API calls, return fake data
     MOCK_MODE: bool = False
 
+    # Graph provider (sqlite | neo4j)
+    GRAPH_PROVIDER: str = "sqlite"
+    NEO4J_URI: str = "bolt://localhost:7687"
+    NEO4J_USER: str = "neo4j"
+    NEO4J_PASSWORD: str = "password"
+
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"  # json or text
