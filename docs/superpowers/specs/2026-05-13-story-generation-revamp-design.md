@@ -144,58 +144,75 @@ Prompt {
 
 ---
 
-## 四、角色关系图谱（轻量 SQLite 方案）
+## 四、角色关系 + 状态追踪（防情节矛盾）
 
-参考 NovelForge v0.9.1 起的关系图设计，用 SQLite 表存储角色、地点、组织之间的关联。后续多集联动时可直接升级 Neo4j。
+核心需求：第一章张三死了，第二章不能复活；李四在 A 城，不能凭空出现在 B 城。用两张轻量表解决。
 
-### 数据模型
+### 4a. 角色关系表
 
 ```
 Relation {
     id: UUID
     project_id: UUID (FK → projects)
-    source_type: str    # "character" | "location" | "organization" | "item"
-    source_id: UUID      # 可以是 character_card.id 或 story characters 数组中的索引
-    relation_type: str   # 见下方枚举
+    source_type: str    # "character" | "location" | "organization"
+    source_name: str     # 角色名（冗余存，方便查询不 join）
+    relation_type: str   # mentor_of/rival_of/lover_of/friend_of/enemy_of/family_of/serves
     target_type: str
-    target_id: UUID
-    properties: JSON     # 可选附加属性 {"since_chapter": 3, "detail": "..."}
-    created_at, updated_at
+    target_name: str
+    properties: JSON     # {"since_chapter": 1, "detail": "..."}
+    created_at
 }
 ```
 
-### 关系类型枚举
+### 4b. 角色状态快照表（防矛盾关键）
 
-| relation_type | 含义 | 反向 |
-|---|---|---|
-| `mentor_of` | A 是 B 的师父 | `student_of` |
-| `rival_of` | A 与 B 是竞争关系 | 双向 |
-| `lover_of` | A 与 B 是恋人 | 双向 |
-| `friend_of` | A 与 B 是朋友 | 双向 |
-| `enemy_of` | A 与 B 是仇人 | 双向 |
-| `family_of` | A 是 B 的家人 | 双向 |
-| `serves` | A 效忠于 B (组织/人物) | `commands` |
-| `located_in` | A (人物/组织) 位于 B (地点) | `contains` |
-| `owns` | A 拥有 B (物品) | `owned_by` |
+```
+CharacterState {
+    id: UUID
+    project_id: UUID (FK → projects)
+    character_name: str
+    chapter_number: int         # 第几章
+    status: str                  # alive/dead/injured/missing/imprisoned/ascended
+    location: str                # 当前所在位置（地名）
+    faction: Optional[str]       # 当前所属势力
+    summary: str                 # 该章结束时角色状态简述
+    created_at
+}
+```
+
+### 上下文注入（章节大纲生成时）
+
+```python
+# 在 generate_chapter_outline() 中：
+# 1. 查询所有角色的最新状态快照
+# 2. 查询所有角色关系
+# 3. 组装为 "前情提要" 注入到 prompt 的 context_info
+
+context = f"""
+前情提要（请保持情节连贯性）：
+- 张三: status=alive, location=青云城, faction=青云宗
+- 李四: status=dead (于第3章死亡), location=A城
+- 王五: status=alive, location=B城
+
+角色关系：
+- 张三是王五的师父
+- 李四是张三的仇人（已死亡）
+- 王五效忠于青云宗
+"""
+```
 
 ### API 端点
 
 ```
-GET    /api/v1/projects/{id}/relations                    # 全部关系
-GET    /api/v1/projects/{id}/relations?source_type=character&source_id=xxx  # 某人相关
-POST   /api/v1/projects/{id}/relations                    # 创建
-DELETE /api/v1/projects/{id}/relations/{rel_id}          # 删除
-```
+# 关系
+GET    /api/v1/projects/{id}/relations
+POST   /api/v1/projects/{id}/relations
+DELETE /api/v1/projects/{id}/relations/{rel_id}
 
-### 上下文注入
-
-在生成章节/剧本时，自动注入当前章节涉及角色的关系图：
-
-```
-story_generator_service 的 generate_chapter_outline() 中：
-1. 从 story.characters 中提取角色名
-2. 查询 relations 表找出所有关联关系
-3. 将关系概要注入到章节大纲生成的 context_info 参数中
+# 状态快照
+GET    /api/v1/projects/{id}/character-states?character=张三    # 某人历史
+GET    /api/v1/projects/{id}/character-states?chapter=3         # 某章所有角色
+POST   /api/v1/projects/{id}/character-states                   # 记录状态
 ```
 
 ---
@@ -205,19 +222,20 @@ story_generator_service 的 generate_chapter_outline() 中：
 ### 新增文件
 1. `backend/app/models/knowledge.py` — Knowledge 模型
 2. `backend/app/models/prompt.py` — Prompt 模型
-3. `backend/app/models/relation.py` — Relation 模型
+3. `backend/app/models/relation.py` — Relation + CharacterState 模型
 4. `backend/app/db/knowledge_crud.py` — CRUD
 5. `backend/app/db/prompt_crud.py` — CRUD
-6. `backend/app/db/relation_crud.py` — CRUD
-7. `backend/app/services/knowledge_service.py` — 注入逻辑
-8. `backend/app/services/prompt_service.py` — 模板渲染
-9. `backend/app/api/routes/knowledge.py` — API 路由
-10. `backend/app/api/routes/relations.py` — 关系图 API
-11. `backend/app/db/migrations/versions/014_add_knowledge_prompt_relation.py` — 迁移（合并）
-12. `backend/app/db/seed_data/knowledge_seeds.py` — 种子数据
-13. `backend/tests/test_knowledge.py` — 测试
-14. `backend/tests/test_prompt_template.py` — 测试
-15. `backend/tests/test_relations.py` — 测试
+6. `backend/app/db/relation_crud.py` — Relation CRUD
+7. `backend/app/db/character_state_crud.py` — CharacterState CRUD
+8. `backend/app/services/knowledge_service.py` — 注入逻辑 + 前情提要组装
+9. `backend/app/services/prompt_service.py` — 模板渲染
+10. `backend/app/api/routes/knowledge.py` — API 路由
+11. `backend/app/api/routes/relations.py` — 关系 + 状态 API
+12. `backend/app/db/migrations/versions/014_add_knowledge_prompt_relation.py` — 迁移
+13. `backend/app/db/seed_data/knowledge_seeds.py` — 6 个内置知识库
+14. `backend/tests/test_knowledge.py` — 测试
+15. `backend/tests/test_prompt_template.py` — 测试
+16. `backend/tests/test_relations.py` — Relation + CharacterState 测试
 
 ### 修改文件
 1. `backend/app/models/story.py` — 扩展字段
