@@ -11,6 +11,8 @@ import uuid
 from .config import settings
 from .db.session import get_db
 from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics, presets, users, ai_models, character_cards, storage_providers, stories, chapters
+from .api.routes.knowledge import router as knowledge_router
+from .api.routes.relations import router as relations_router
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
 from .middleware.security import setup_security, XSSProtectionMiddleware
@@ -38,11 +40,19 @@ async def lifespan(app: FastAPI):
     # Seed system presets if not already seeded
     from .db.session import SessionLocal
     from .db.preset_crud import seed_system_presets
+    from .db.seed_data.knowledge_seeds import seed_knowledge as seed_knowledge_base
+    from .services.prompt_service import seed_default_prompts
     db = SessionLocal()
     try:
         count = seed_system_presets(db)
         if count > 0:
             logger.info(f"Seeded {count} system parameter presets")
+        kb_count = seed_knowledge_base(db)
+        if kb_count > 0:
+            logger.info(f"Seeded {kb_count} built-in knowledge bases")
+        prompt_count = seed_default_prompts(db)
+        if prompt_count > 0:
+            logger.info(f"Seeded {prompt_count} built-in prompt templates")
     finally:
         db.close()
 
@@ -237,3 +247,5 @@ app.include_router(character_cards.router, prefix="/api/v1/projects/{project_id}
 app.include_router(stories.router, prefix="/api/v1/projects/{project_id}/story", tags=["stories"])
 app.include_router(chapters.router, prefix="/api/v1/projects/{project_id}/chapters", tags=["chapters"])
 app.include_router(storage_providers.router, prefix="/api/v1/storage-providers", tags=["storage_providers"])
+app.include_router(knowledge_router)
+app.include_router(relations_router)

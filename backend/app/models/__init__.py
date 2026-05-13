@@ -10,6 +10,9 @@ from .project_share import ProjectShare, SharePermission
 from .character_card import CharacterCard
 from .storage_provider import StorageProvider, StorageProviderType
 from .story import Story, StoryStatus
+from .knowledge import Knowledge
+from .prompt import Prompt
+from .relation import Relation, CharacterState
 
 __all__ = [
     "Base",
