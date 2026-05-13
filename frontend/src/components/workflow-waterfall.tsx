@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ParameterPanel } from '@/components/parameter-panel'
 import { StageArtifacts } from '@/components/stage-artifacts'
+import { GenerationPanel } from '@/components/generation-panel'
+import { useEventStream } from '@/hooks/use-event-stream'
 import { type TaskStage, type Task } from '@/types/task'
 import type { FileRecord } from '@/lib/api/files'
 
@@ -51,6 +53,22 @@ interface Props {
 
 export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onGenerate, onAdvance, onRunAll, autoRunning, isLoading, onFilesChange, chapterId, chapterName }: Props) {
   const [expanded, setExpanded] = useState<TaskStage | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [streamingStage, setStreamingStage] = useState<TaskStage | null>(null)
+  const { events, isStreaming, error, startStream, stopStream, clear } = useEventStream()
+
+  const startStreaming = (stage: TaskStage, params?: Record<string, unknown>) => {
+    setStreamingStage(stage)
+    setPanelOpen(true)
+    clear()
+    startStream(`/api/v1/workflow/stream/${projectId}/advance/${stage}`, { parameters: params || {}, execute: true })
+  }
+
+  const handlePanelClose = () => {
+    setPanelOpen(false)
+    setStreamingStage(null)
+    stopStream()
+  }
 
   const stageMap = new Map(workflowStatus?.stages.map(s => [s.stage, s.status]) ?? [])
   const currentStage = workflowStatus?.current_stage as TaskStage | null
@@ -198,11 +216,11 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                               <Button
                                 size="sm" variant="outline"
                                 className="text-xs border-white/10 text-white/70 hover:bg-white/10"
-                                onClick={(e) => { e.stopPropagation(); onGenerate(key, {}) }}
-                                disabled={status === 'running'}
+                                onClick={(e) => { e.stopPropagation(); startStreaming(key, {}) }}
+                                disabled={status === 'running' || isStreaming}
                               >
-                                <Play className="w-3 h-3 mr-1" />
-                                {task ? '重新生成' : '开始生成'}
+                                {status === 'completed' ? <Play className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                                {isStreaming && streamingStage === key ? '流式生成中...' : task ? '重新生成' : '开始生成'}
                               </Button>
                               {status === 'completed' && isCurrent && (
                                 <Button size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onAdvance() }}>
@@ -222,6 +240,16 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
           <div className="h-16" />
         </div>
       </ScrollArea>
+
+      <GenerationPanel
+        visible={panelOpen}
+        events={events}
+        isStreaming={isStreaming}
+        error={error}
+        onClose={handlePanelClose}
+        onStop={stopStream}
+        onRestart={() => streamingStage && startStreaming(streamingStage)}
+      />
     </div>
   )
 }
