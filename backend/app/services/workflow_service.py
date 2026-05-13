@@ -1038,6 +1038,9 @@ class WorkflowService:
             )
 
         storyboard_file_id = UUID(storyboard_files[0]["file_id"])
+        storyboard_file_record = file_crud.get(self.db, file_id=storyboard_file_id)
+        storyboard_rel_path = storyboard_file_record.file_path if storyboard_file_record else None
+
         prompt = parameters.get("prompt", "")
         if not prompt:
             # Try to infer prompt from storyboard content
@@ -1070,6 +1073,19 @@ class WorkflowService:
         steps = int(parameters.get("steps", 20))
         cfg_scale = float(parameters.get("cfg_scale", 7.0))
         seed = int(parameters.get("seed", -1))
+
+        # Enrich prompt with character context from active CharacterCards
+        if storyboard_rel_path:
+            from .character_context import CharacterContextBuilder
+            ctx = CharacterContextBuilder(self.db)
+            enriched = ctx.enrich_storyboard_prompt(
+                prompt=prompt,
+                storyboard_file_path=storyboard_rel_path,
+                project_id=task.project_id,
+            )
+            if enriched != prompt:
+                logger.info("Prompt enriched with character context (original %d chars -> %d chars)", len(prompt), len(enriched))
+                prompt = enriched
 
         service = ImageGeneratorService(self.db, project_id=task.project_id)
         success = await service.generate(

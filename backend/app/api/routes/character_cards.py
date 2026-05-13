@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ...db.session import get_db
 from ...db.character_card_crud import character_card_crud
 from ...schemas.character_card import CharacterCardCreate, CharacterCardUpdate, CharacterCardResponse
+from ...services.character_context import CharacterContextBuilder
 
 router = APIRouter()
 
@@ -76,3 +77,17 @@ def delete_character_card(
     success = character_card_crud.delete(db, card_id)
     if not success:
         raise HTTPException(status_code=404, detail="Character card not found")
+
+
+@router.get("/context", response_model=dict)
+def get_character_context(
+    project_id: UUID,
+    db: Session = Depends(get_db),
+):
+    """Get character context preview — shows how cards will be injected into prompts.
+
+    Useful for debugging: preview the context template that gets prepended
+    to image generation prompts.
+    """
+    ctx = CharacterContextBuilder(db)
+    return ctx.get_character_context_for_project(project_id)

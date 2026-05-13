@@ -448,8 +448,18 @@
   - 显示当前全局默认和项目级覆盖状态
 - **注**: 前端预设选择器 + 回收站在更早的 Phase 中已完成，此处为 PROGRESS.md 修正
 
-### Phase 21: 待定
-- LoRA 角色一致性 — 利用 CharacterCard 的 reference_images 和 traits 在生成时注入角色信息
+### Phase 21: 角色上下文注入 ✅
+- **CharacterContextBuilder 服务** (`backend/app/services/character_context.py`):
+  - `get_character_map(project_id)` — 构建名称→角色卡索引（不区分大小写）
+  - `build_character_context(names, char_map)` — 从 traits/description 生成角色描述
+  - `enrich_storyboard_prompt(prompt, ...)` — 将角色上下文注入到图片 prompt
+  - 输出示例: `角色设定: 小明(17岁男生,黑色短发,校服,性格勇敢开朗); 小红(16岁女生,长辫子,红色发带)。\n场景: 两人在教室相遇...`
+- **workflow_service 集成**: `_execute_image_generation` 生成 prompt 后自动注入角色上下文
+- **Context API**: `GET /projects/{id}/character-cards/context` — 返回角色上下文预览
+- **前端增强**:
+  - CharacterCardManager 新增"角色一致性"面板
+  - 可预览角色上下文模板在生成 prompt 中的效果
+- **实现方式**: 轻量级 prompt 注入（非实际 LoRA 训练），从 storyboard panel 的 characters 字段匹配角色卡
 
 ---
 
@@ -505,5 +515,5 @@ docker-compose -f docker-compose.prod.yml logs -f
 - **最新 Commit**: `c0971a4` - 修复 e2e 测试适配 8 阶段工作流
 - **分支**: main + novelforge（当前活跃）
 - **总测试数**: 231+ (preset 11 passed)
-- **已完成阶段**: Phase 1 ~ Phase 20
-- **下一阶段**: Phase 21 - LoRA 角色一致性
+- **已完成阶段**: Phase 1 ~ Phase 21
+- **下一阶段**: Phase 22 — 待定

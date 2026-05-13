@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
-  Plus, Pencil, Trash2, Loader2, AlertCircle, X, User
+  Plus, Pencil, Trash2, Loader2, AlertCircle, X, User, Eye
 } from 'lucide-react'
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
@@ -303,6 +305,58 @@ function DeleteConfirmDialog({
 }
 
 /* ------------------------------------------------------------------ */
+/* Character Context Preview                                          */
+/* ------------------------------------------------------------------ */
+
+function CharacterContextPreview({ projectId, cards }: { projectId: string; cards: CharacterCard[] }) {
+  const [context, setContext] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [show, setShow] = useState(false)
+
+  useEffect(() => {
+    if (!show || context !== null) return
+    setLoading(true)
+    fetch(`${API_BASE}/projects/${projectId}/character-cards/context`)
+      .then(r => r.json())
+      .then(data => {
+        setContext(data.context_template || '无角色设定')
+      })
+      .catch(() => setContext('获取角色上下文失败'))
+      .finally(() => setLoading(false))
+  }, [show, projectId, context])
+
+  const activeCount = cards.filter(c => c.is_active !== false).length
+
+  return (
+    <div className="border-t px-3 py-2">
+      <button
+        onClick={() => { if (!show) setShow(true); else setShow(!show) }}
+        className="flex items-center gap-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+      >
+        <Eye className="w-3.5 h-3.5" />
+        <span>角色一致性 — {activeCount} 个活跃角色</span>
+        <span className="ml-auto text-[10px]">{show ? '收起' : '预览'}</span>
+      </button>
+
+      {show && (
+        <div className="mt-2">
+          {loading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+          ) : (
+            <div className="bg-muted/30 rounded p-2.5 text-xs leading-relaxed text-muted-foreground">
+              {context || '无角色设定'}
+            </div>
+          )}
+          <p className="mt-1.5 text-[10px] text-muted-foreground">
+            此上下文将在图片生成时自动注入到提示词中，确保角色外观一致
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
 /* Main manager component                                             */
 /* ------------------------------------------------------------------ */
 
@@ -427,6 +481,11 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
           )}
         </div>
       </ScrollArea>
+
+      {/* Character Context Preview */}
+      {cards && cards.length > 0 && (
+        <CharacterContextPreview projectId={projectId} cards={cards} />
+      )}
 
       {/* Dialogs */}
       <CardFormDialog
