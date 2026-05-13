@@ -433,11 +433,23 @@
 - **Commit 范围**: `2fbe162` → `d5a4537` (15 commits)
 - **测试**: 49 passed
 
-### Phase 20: 待定
-- 前端预设选择器 + 管理器组件
-- 前端项目回收站（软删除 UI）
-- LoRA 角色一致性
-- 多 Provider 路由
+### Phase 20: 多 Provider 路由 ✅
+- **ProviderRouter 路由引擎** (`backend/app/services/provider_router.py`):
+  - 三级路由策略：项目级覆盖 → 数据库活跃模型 → 硬编码回退
+  - 通过 AIModel 表（category='text2img'）管理图片 Provider 配置
+  - `resolve(category, project_id)` — 返回正确的 Provider 实例
+- **种子 SiliconFlow** 到 AIModel 表，与通义万相并行可选
+- **ImageGeneratorService 改用动态路由**，替代静态 `get_image_provider()`
+- **workflow_service 传递 project_id**，实现项目级 Provider 覆盖
+- **Provider API** (`GET /api/v1/providers?category=text2img`)
+- **前端 Provider 选择器** (\`ProviderSelector\` 组件 + 项目设置 Tab)
+  - 下拉选择器展示所有可用 Provider
+  - 保存到 `project.settings.image_provider`
+  - 显示当前全局默认和项目级覆盖状态
+- **注**: 前端预设选择器 + 回收站在更早的 Phase 中已完成，此处为 PROGRESS.md 修正
+
+### Phase 21: 待定
+- LoRA 角色一致性 — 利用 CharacterCard 的 reference_images 和 traits 在生成时注入角色信息
 
 ---
 
@@ -490,8 +502,8 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 当前状态
 
 - **GitHub**: https://github.com/kiddyt00/ops-video
-- **最新 Commit**: `008f0b8` - Phase 19 技术债务清理
+- **最新 Commit**: `c0971a4` - 修复 e2e 测试适配 8 阶段工作流
 - **分支**: main + novelforge（当前活跃）
 - **总测试数**: 231+ (preset 11 passed)
-- **已完成阶段**: Phase 1 ~ Phase 19
-- **下一阶段**: Phase 20 - 前端预设 + 回收站
+- **已完成阶段**: Phase 1 ~ Phase 20
+- **下一阶段**: Phase 21 - LoRA 角色一致性

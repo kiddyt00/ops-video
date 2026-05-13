@@ -90,6 +90,10 @@ class AIModelCRUD:
             AIModelCreate(name="通义万相 Wan2.6", category="text2img", provider="DashScope",
                          model_name="wan2.6-t2i", api_base_url="https://dashscope.aliyuncs.com/api/v1",
                          is_builtin=True, is_enabled=False),
+            AIModelCreate(name="SiliconFlow FLUX.1", category="text2img", provider="SiliconFlow",
+                         model_name="black-forest-labs/FLUX.1-schnell",
+                         api_base_url="https://api.siliconflow.cn/v1",
+                         is_builtin=True, is_enabled=False),
             # Text-to-Audio / TTS
             AIModelCreate(name="CosyVoice (百炼)", category="tts", provider="DashScope",
                          model_name="cosyvoice-v1", api_base_url="https://dashscope.aliyuncs.com/api/v1",

@@ -12,6 +12,7 @@ from .config import settings
 from .db.session import get_db
 from .api.routes import projects, tasks, files, variants, generators, workflow, auth, analytics, presets, users, ai_models, character_cards, storage_providers, stories, chapters
 from .api.routes.knowledge import router as knowledge_router
+from .api.routes.providers import router as providers_router
 from .api.routes.relations import router as relations_router
 from .core.logging_config import setup_logging, get_logger
 from .core.redis import init_redis, close_redis, get_redis
@@ -248,4 +249,5 @@ app.include_router(stories.router, prefix="/api/v1/projects/{project_id}/story",
 app.include_router(chapters.router, prefix="/api/v1/projects/{project_id}/chapters", tags=["chapters"])
 app.include_router(storage_providers.router, prefix="/api/v1/storage-providers", tags=["storage_providers"])
 app.include_router(knowledge_router)
+app.include_router(providers_router)
 app.include_router(relations_router)

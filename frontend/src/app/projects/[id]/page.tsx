@@ -13,8 +13,9 @@ import { CharacterCardManager } from '@/components/character-card-manager'
 import { ChaptersList } from '@/components/chapters-list'
 import { StoryEditor } from '@/components/story-editor'
 import { ShareDialog } from '@/components/share-dialog'
+import { ProviderSelector } from '@/components/provider-selector'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { AlertCircle, RefreshCw, Share2, Workflow, Users, Film, BookOpen } from 'lucide-react'
+import { AlertCircle, RefreshCw, Share2, Workflow, Users, Film, BookOpen, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -237,6 +238,10 @@ export default function ProjectPage() {
               <Workflow className="w-3.5 h-3.5" />
               工作流
             </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-1.5">
+              <Settings className="w-3.5 h-3.5" />
+              设置
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -255,6 +260,14 @@ export default function ProjectPage() {
         <TabsContent value="chapters" className="flex-1 min-h-0 mt-3">
           <div className="max-w-6xl mx-auto w-full h-full">
             <ChaptersList projectId={projectId} className="h-full" onSelectChapter={handleSelectChapter} />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="settings" className="flex-1 min-h-0 mt-3">
+          <div className="max-w-2xl mx-auto w-full p-6 space-y-6">
+            <div className="border rounded-lg p-4">
+              <ProviderSelector projectId={projectId} />
+            </div>
           </div>
         </TabsContent>
 

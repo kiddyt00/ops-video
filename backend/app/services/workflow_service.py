@@ -1071,7 +1071,7 @@ class WorkflowService:
         cfg_scale = float(parameters.get("cfg_scale", 7.0))
         seed = int(parameters.get("seed", -1))
 
-        service = ImageGeneratorService(self.db)
+        service = ImageGeneratorService(self.db, project_id=task.project_id)
         success = await service.generate(
             project_id=task.project_id,
             task_id=task.id,

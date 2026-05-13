@@ -1,6 +1,6 @@
 """
 Image Generator Service
-Routes to the configured provider: DASHSCOPE or SILICONFLOW.
+Routes to the configured provider via ProviderRouter (database-driven).
 """
 from uuid import UUID
 from typing import Optional, List, Any
@@ -9,31 +9,26 @@ from pathlib import Path
 
 from ...db.task_crud import task_crud
 from ...db.file_crud import file_crud, variant_group_crud
-from ...db.project_crud import project_crud
 from ...providers.base_provider import BaseProvider, GenerationResult
 from ...providers.wanx_provider import WanxProvider, wanx_provider
 from ...providers.siliconflow_provider import SiliconFlowProvider, siliconflow_provider
 from ...schemas.task import TaskStatusUpdate, TaskStatus
 from ...schemas.file import FileCreate, FileType, VariantGroupCreate
 from ...config import settings
+from ..provider_router import ProviderRouter
 from .mock_helpers import mock_image_result
-
-
-def get_image_provider() -> BaseProvider:
-    """Return the configured image generation provider."""
-    provider_map = {
-        "DASHSCOPE": wanx_provider,
-        "SILICONFLOW": siliconflow_provider,
-    }
-    return provider_map.get(settings.IMAGE_PROVIDER, wanx_provider)
 
 
 class ImageGeneratorService:
     """Service for generating images with pluggable provider routing."""
 
-    def __init__(self, db: Session, provider: Optional[BaseProvider] = None):
+    def __init__(self, db: Session, provider: Optional[BaseProvider] = None, project_id: Optional[UUID] = None):
         self.db = db
-        self.provider = provider or get_image_provider()
+        if provider:
+            self.provider = provider
+        else:
+            router = ProviderRouter(db)
+            self.provider = router.resolve("text2img", project_id=project_id)
 
     async def generate(
         self,
