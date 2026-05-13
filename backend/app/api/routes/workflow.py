@@ -3,9 +3,11 @@ Workflow API routes
 """
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import Any, Dict, List, Optional
 import asyncio
+import json
 
 from ...db.session import get_db
 from ...services.workflow_service import WorkflowService, WorkflowError
@@ -351,3 +353,43 @@ async def rollback_and_regenerate(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.post("/stream/{project_id}/advance/{stage}")
+async def stream_advance_to_stage(
+    project_id: UUID,
+    stage: str,
+    parameters: Optional[Dict[str, Any]] = None,
+    db: Session = Depends(get_db),
+):
+    """SSE streaming endpoint for stage generation."""
+    async def event_generator():
+        from ...services.workflow_service import WorkflowService
+        service = WorkflowService(db)
+        task = await service.advance_stage(
+            project_id=str(project_id),
+            stage=stage,
+            parameters=parameters or {},
+        )
+        if not task:
+            yield f"event: error\ndata: {json.dumps({'message': 'Failed to create task'})}\n\n"
+            return
+
+        yield f"event: thinking\ndata: {json.dumps({'text': f'Task created'})}\n\n"
+
+        from ...db.file_crud import file_crud
+        files = file_crud.get_files_by_task(db, str(task.id))
+        for f in files:
+            if f.file_path and f.file_path.exists():
+                content = f.file_path.read_text(encoding="utf-8")
+                for i in range(0, len(content), 100):
+                    yield f"event: content\ndata: {json.dumps({'text': content[i:i+100]})}\n\n"
+                    await asyncio.sleep(0.01)
+
+        yield f"event: complete\ndata: {json.dumps({'task_id': str(task.id), 'stage': stage})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"},
+    )
