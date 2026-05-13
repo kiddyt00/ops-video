@@ -26,13 +26,26 @@ jobs:
     runs-on: ubuntu-latest
     if: success() || failure()
     steps:
-      - name: Deploy via SSH
+      - uses: actions/checkout@v4
+      - name: Deploy via scp
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
+          # tar the repo (exclude venv, node_modules, .git to save bandwidth)
+          tar czf /tmp/ops-video.tar.gz \
+            --exclude='backend/venv' \
+            --exclude='frontend/node_modules' \
+            --exclude='.git' \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            .
+          # scp to server
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            /tmp/ops-video.tar.gz root@${{ secrets.SSH_HOST }}:/tmp/
+          # extract and rebuild
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no root@${{ secrets.SSH_HOST }} "
             cd /opt/ops-video
-            git pull origin novelforge
+            tar xzf /tmp/ops-video.tar.gz
             docker compose -f docker-compose.prod.yml up -d --build
           "
