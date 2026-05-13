@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="5">
+<title>Phase A 开发进度</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a14;color:#e0e0e0;font-family:'SF Mono','Cascadia Code',monospace;padding:20px}
+.dashboard{max-width:800px;margin:0 auto}
+h1{font-size:18px;color:#a78bfa;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.subtitle{font-size:11px;color:#52525b;margin-bottom:20px}
+.overview{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:#14141f;border-radius:10px;padding:14px;text-align:center}
+.stat-num{font-size:28px;font-weight:700}
+.stat-label{font-size:10px;color:#52525b;margin-top:2px}
+.stat-pending .stat-num{color:#52525b}
+.stat-in-progress .stat-num{color:#38bdf8}
+.stat-done .stat-num{color:#34d399}
+.stat-failed .stat-num{color:#f87171}
+.task-list{display:flex;flex-direction:column;gap:8px}
+.task{background:#14141f;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;border-left:3px solid #27272a;transition:all .2s}
+.task.pending{border-left-color:#27272a;opacity:.5}
+.task.in_progress{border-left-color:#38bdf8;background:#1a1a2e}
+.task.completed{border-left-color:#34d399;opacity:.8}
+.task.failed{border-left-color:#f87171}
+.task-icon{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.task.pending .task-icon{background:#27272a;color:#52525b}
+.task.in_progress .task-icon{background:#38bdf8/15;color:#38bdf8}
+.task.completed .task-icon{background:#34d399/15;color:#34d399}
+.task.failed .task-icon{background:#f87171/15;color:#f87171}
+.task-name{flex:1;font-size:13px;font-weight:500}
+.task-detail{font-size:10px;color:#52525b;margin-top:1px}
+.task-status{font-size:10px;padding:3px 8px;border-radius:20px;font-weight:500}
+.task-status.pending{background:#27272a;color:#52525b}
+.task-status.in_progress{background:#38bdf8/15;color:#38bdf8}
+.task-status.completed{background:#34d399/15;color:#34d399}
+.task-status.failed{background:#f87171/15;color:#f87171}
+.progress-bar{width:100%;height:6px;background:#14141f;border-radius:3px;margin-bottom:16px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#a78bfa,#38bdf8);transition:width .5s ease}
+.progress-label{font-size:10px;color:#52525b;margin-bottom:4px;display:flex;justify-content:space-between}
+.files{background:#14141f;border-radius:10px;padding:12px 16px;margin-top:16px}
+.files h3{font-size:11px;color:#52525b;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.file-item{font-size:11px;padding:4px 0;color:#a1a1aa;display:flex;align-items:center;gap:6px}
+.file-item .check{color:#27272a;font-size:14px}
+.file-item.done .check{color:#34d399}
+.file-item.done{color:#d4d4d8}
+.server-status{background:#14141f;border-radius:10px;padding:12px 16px;margin-top:10px;display:flex;align-items:center;gap:8px}
+.server-status .dot{width:8px;height:8px;border-radius:50%;background:#34d399}
+.refresh-note{text-align:center;font-size:10px;color:#52525b;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="dashboard">
+  <h1>■ Phase A · 故事生成重构</h1>
+  <div class="subtitle">Task execution progress | 2026-05-13</div>
+
+  <div class="progress-bar"><div class="progress-fill" style="width:87%"></div></div>
+  <div class="progress-label"><span>87%</span><span>7 / 8 任务</span></div>
+
+  <div class="overview">
+    <div class="stat stat-pending"><div class="stat-num">0</div><div class="stat-label">待开始</div></div>
+    <div class="stat stat-in-progress"><div class="stat-num">1</div><div class="stat-label">进行中</div></div>
+    <div class="stat stat-done"><div class="stat-num">7</div><div class="stat-label">已完成</div></div>
+    <div class="stat stat-failed"><div class="stat-num">0</div><div class="stat-label">失败</div></div>
+  </div>
+
+  <div class="task-list">
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务1：Knowledge 模型 + 迁移</div><div class="task-detail">knowledge.py / 014_migration ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务2：Prompt 模型</div><div class="task-detail">prompt.py ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务3：Relation + CharacterState 模型</div><div class="task-detail">relation.py ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务4：Knowledge CRUD + 种子数据 + 测试</div><div class="task-detail">10/10 tests ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务5：Prompt CRUD + 模板渲染服务 + 测试</div><div class="task-detail">8/8 tests ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务6：Relation/State CRUD + KB注入 + 前情提要</div><div class="task-detail">9/9 tests ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task completed">
+      <div class="task-icon">✓</div>
+      <div><div class="task-name">任务7：API路由注册 + main.py种子加载</div><div class="task-detail">routes + seed ✅</div></div>
+      <span class="task-status completed">已完成</span>
+    </div>
+    <div class="task in_progress">
+      <div class="task-icon">⚫</div>
+      <div><div class="task-name">任务8：Story Schema扩展 + Generator重构</div><div class="task-detail">model done / migration 015 / generator refactor</div></div>
+      <span class="task-status in_progress">进行中</span>
+    </div>
+  </div>
+
+  <div class="files">
+    <h3>📦 文件清单 (16 new + 5 modified)</h3>
+    <div class="file-item done"><span class="check">✓</span> models/knowledge.py</div>
+    <div class="file-item done"><span class="check">✓</span> models/prompt.py</div>
+    <div class="file-item done"><span class="check">✓</span> models/relation.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/knowledge_crud.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/prompt_crud.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/relation_crud.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/character_state_crud.py</div>
+    <div class="file-item done"><span class="check">✓</span> services/knowledge_service.py</div>
+    <div class="file-item done"><span class="check">✓</span> services/prompt_service.py</div>
+    <div class="file-item done"><span class="check">✓</span> api/routes/knowledge.py</div>
+    <div class="file-item done"><span class="check">✓</span> api/routes/relations.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/seed_data/knowledge_seeds.py</div>
+    <div class="file-item done"><span class="check">✓</span> db/migrations/014_add_knowledge_prompt_relation.py</div>
+    <div class="file-item"><span class="check">✗</span> db/migrations/015_extend_story_fields.py <span style="color:#34d399">(已创建)</span></div>
+    <div class="file-item"><span class="check">✗</span> Story Generator重构 <span style="color:#38bdf8">(进行中)</span></div>
+  </div>
+
+  <div class="server-status">
+    <span class="dot"></span>
+    <span style="font-size:12px">49.235.108.61:8081 — healthy (deployed)</span>
+  </div>
+
+  <div class="refresh-note">⏺ 每 5 秒自动刷新</div>
+</div>
+</body>
+</html>

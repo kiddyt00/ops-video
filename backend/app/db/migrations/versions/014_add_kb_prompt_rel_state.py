@@ -8,7 +8,7 @@ Create Date: 2026-05-13 00:00:00.000000
 from alembic import op
 import sqlalchemy as sa
 
-revision = '014_add_knowledge_prompt_relation'
+revision = '014_add_kb_prompt_rel_state'
 down_revision = '013_add_ai_model_is_active'
 branch_labels = None
 depends_on = None

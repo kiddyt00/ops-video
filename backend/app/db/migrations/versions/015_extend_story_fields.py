@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '015_extend_story_fields'
-down_revision = '014_add_knowledge_prompt_relation'
+down_revision = '014_add_kb_prompt_rel_state'
 branch_labels = None
 depends_on = None
 
