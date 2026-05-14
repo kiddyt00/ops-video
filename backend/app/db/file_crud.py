@@ -161,6 +161,10 @@ class FileCRUD:
         db.refresh(file)
         return file
 
+    def update_oss_url(self, db: Session, file_id: UUID, oss_url: str) -> Optional[File]:
+        """Update the OSS URL for a file record."""
+        return self.update(db, file_id=file_id, obj_in={"oss_url": oss_url})
+
     def delete(self, db: Session, file_id: UUID) -> bool:
         """Delete file"""
         file = self.get(db, file_id=file_id)

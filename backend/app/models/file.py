@@ -54,6 +54,7 @@ class File(BaseModel):
     file_path = Column(Text, nullable=False)
     file_type = Column(SQLEnum(FileType), nullable=False, index=True)
     file_size = Column(BigInteger, nullable=True)
+    oss_url = Column(Text, nullable=True)
 
     # Generation parameters (prompt, seed, model, etc.)
     generation_params = Column(JSON, nullable=False, default=dict)

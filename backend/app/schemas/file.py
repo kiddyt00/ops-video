@@ -40,6 +40,7 @@ class FileCreate(FileBase):
     variant_group_id: Optional[UUID] = None
     task_id: Optional[UUID] = None
     file_size: Optional[int] = None
+    oss_url: Optional[str] = None
     version: str = "1.0.0"
 
 
@@ -58,6 +59,7 @@ class FileResponse(FileBase):
     task_id: Optional[UUID] = None
     file_path: str
     file_size: Optional[int] = None
+    oss_url: Optional[str] = None
     version: str
     parent_file_id: Optional[UUID] = None
     is_selected: bool
