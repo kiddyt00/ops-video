@@ -31,6 +31,7 @@ class StoryboardGeneratorService:
         script_file_id: UUID,
         panel_count: int = 6,
         variant_count: int = 4,
+        additional_context: Optional[str] = None,
     ) -> bool:
         """
         Generate multiple storyboard variants from a script
@@ -82,6 +83,7 @@ class StoryboardGeneratorService:
                     result = await self.llm.generate_storyboard(
                         script=script_content,
                         panel_count=panel_count,
+                        additional_context=additional_context,
                     )
 
                 if result.success and result.file_paths:

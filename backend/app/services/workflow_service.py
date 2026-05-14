@@ -984,9 +984,36 @@ class WorkflowService:
         duration = parameters.get("duration", "1-3 minutes")
         variant_count = int(parameters.get("variant_count", 4))
 
-        # Build continuity context from earlier chapters
+        # Build full context from story + characters + continuity
         from ..services.knowledge_service import build_continuity_context
-        additional_context = build_continuity_context(self.db, str(task.project_id))
+        from ..services.prompt_service import get_rendered_prompt
+        from ..db.story_crud import story_crud as _story_crud
+        from ..services.character_context import CharacterContextBuilder
+
+        continuity_context = build_continuity_context(self.db, str(task.project_id))
+        story = _story_crud.get_by_project(self.db, task.project_id)
+
+        # Try using prompt template for richer generation
+        try:
+            ctx_builder = CharacterContextBuilder(self.db)
+            char_ctx = ctx_builder.get_character_context_for_project(task.project_id)
+            char_summary = char_ctx.get("context_template", "") if char_ctx else ""
+
+            worldbuilding_str = json.dumps(story.worldbuilding, ensure_ascii=False) if story and story.worldbuilding else ""
+            style_tags_str = ", ".join(story.style_tags) if story and story.style_tags else style
+            synopsis_str = story.synopsis if story else ""
+
+            rendered = get_rendered_prompt(self.db, "script-generation", {
+                "topic": topic,
+                "synopsis": synopsis_str,
+                "worldbuilding": worldbuilding_str,
+                "style_tags": style_tags_str,
+                "characters_context": char_summary,
+                "additional_context": continuity_context,
+            })
+            additional_context = rendered
+        except Exception:
+            additional_context = continuity_context
 
         service = ScriptGeneratorService(self.db)
         success = await service.generate(
@@ -1051,6 +1078,44 @@ class WorkflowService:
         panel_count = int(parameters.get("panel_count", 6))
         variant_count = int(parameters.get("variant_count", 4))
 
+        # Build character + story context for storyboard generation
+        from ..services.prompt_service import get_rendered_prompt
+        from ..db.story_crud import story_crud as _story_crud
+        from ..services.character_context import CharacterContextBuilder
+        from ..services.knowledge_service import build_continuity_context
+
+        continuity_context = build_continuity_context(self.db, str(task.project_id))
+        story = _story_crud.get_by_project(self.db, task.project_id)
+
+        # Load script text
+        script_rec = file_crud.get(self.db, file_id=script_file_id)
+        script_text = ""
+        if script_rec:
+            sp = settings.storage_path / script_rec.file_path
+            if sp.exists():
+                script_text = sp.read_text(encoding="utf-8")
+
+        # Try using prompt template
+        try:
+            ctx_builder = CharacterContextBuilder(self.db)
+            char_ctx = ctx_builder.get_character_context_for_project(task.project_id)
+            char_summary = char_ctx.get("context_template", "") if char_ctx else ""
+
+            worldbuilding_str = json.dumps(story.worldbuilding, ensure_ascii=False) if story and story.worldbuilding else ""
+            style_tags_str = ", ".join(story.style_tags) if story and story.style_tags else ""
+            synopsis_str = story.synopsis if story else ""
+
+            rendered = get_rendered_prompt(self.db, "storyboard-generation", {
+                "script": script_text,
+                "synopsis": synopsis_str,
+                "worldbuilding": worldbuilding_str,
+                "style_tags": style_tags_str,
+                "characters_context": char_summary,
+                "panel_count": str(panel_count),
+            })
+        except Exception:
+            rendered = None
+
         service = StoryboardGeneratorService(self.db)
         success = await service.generate(
             project_id=task.project_id,
@@ -1058,6 +1123,7 @@ class WorkflowService:
             script_file_id=script_file_id,
             panel_count=panel_count,
             variant_count=variant_count,
+            additional_context=rendered,
         )
         if not success:
             raise WorkflowError("Storyboard generation failed")

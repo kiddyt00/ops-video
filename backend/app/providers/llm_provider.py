@@ -338,6 +338,7 @@ class LLMProvider(BaseProvider):
         self,
         script: str,
         panel_count: int = 6,
+        additional_context: Optional[str] = None,
     ) -> GenerationResult:
         """Generate storyboard from script"""
         system_prompt = """你是一个专业的分镜师。请根据剧本生成分镜描述。
@@ -355,6 +356,9 @@ class LLMProvider(BaseProvider):
 {script}
 
 请输出 JSON 格式的分镜数据。"""
+
+        if additional_context:
+            prompt = additional_context + f"\n\n=== 以下为分镜生成参考 ===\n\n{prompt}"
 
         return await self.generate({
             "prompt": prompt,

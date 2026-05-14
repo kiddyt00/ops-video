@@ -120,12 +120,63 @@ $relations_context
 请只返回有效的 JSON，不要包含 markdown 或解释。"""
 
 
+_SCRIPT_TEMPLATE = """你是一位专业的漫剧编剧。请根据以下故事设定和角色信息创作剧本。
+
+=== 故事设定 ===
+故事梗概：$synopsis
+世界观：$worldbuilding
+风格：$style_tags
+
+=== 角色信息 ===
+$characters_context
+
+主题：$topic
+
+=== 补充上下文 ===
+$additional_context
+
+要求：
+1. 剧本格式清晰，包含场景描述、角色对话、动作指示
+2. 角色对话符合角色设定，保持性格一致
+3. 适合漫剧风格，时长 1-3 分钟
+4. 对话简洁有力，适合配音
+5. 场景描述详细，便于后续生成分镜
+
+请输出完整的剧本内容。"""
+
+
+_STORYBOARD_TEMPLATE = """你是一位专业的分镜师。请根据以下剧本和故事设定生成分镜描述。
+
+=== 故事设定 ===
+故事梗概：$synopsis
+世界观：$worldbuilding
+风格：$style_tags
+
+=== 角色信息 ===
+$characters_context
+
+=== 剧本 ===
+$script
+
+要求：
+1. 输出 JSON 格式，包含 panels 列表
+2. 每个分镜包含：panel_number, scene_description, camera_angle, characters, emotion, composition
+3. 描述详细，便于后续生图
+4. 考虑镜头语言和画面构图
+5. 角色外貌和行为必须符合角色设定
+6. 分镜数量：$panel_count 个
+
+请输出 JSON 格式的分镜数据。"""
+
+
 def seed_default_prompts(db: Session) -> int:
     """Seed built-in prompt templates. Returns number of newly created items."""
     created = 0
     for name, template, desc in [
         ("story-generation", _STORY_TEMPLATE, "故事大纲生成提示词模板"),
         ("chapter-outline", _CHAPTER_TEMPLATE, "章节大纲拆解提示词模板"),
+        ("script-generation", _SCRIPT_TEMPLATE, "剧本生成提示词模板"),
+        ("storyboard-generation", _STORYBOARD_TEMPLATE, "分镜生成提示词模板"),
     ]:
         existing = prompt_crud.get_by_name(db, name)
         if existing:
