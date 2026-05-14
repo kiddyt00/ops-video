@@ -49,9 +49,6 @@ for model in ALL_MODELS:
 engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-pytestmark = pytest.mark.asyncio
-
-
 @pytest.fixture
 def db_session():
     Base.metadata.create_all(bind=engine)
@@ -63,6 +60,7 @@ def db_session():
     Base.metadata.drop_all(bind=engine)
 
 
+@pytest.mark.asyncio
 class TestCharacterThreeViewService:
 
     async def test_sync_cards_from_story_creates_cards(self, db_session):
@@ -211,3 +209,79 @@ class TestCharacterThreeViewService:
                 result = await svc.generate_all_three_views(pid)
                 assert result["total"] == 2
                 assert result["success"] == 2
+
+
+class TestCharacterThreeViewAPI:
+
+    @pytest.fixture(autouse=True)
+    def setup_app(self):
+        """Wire up TestClient with overridden DB."""
+        from fastapi.testclient import TestClient
+        from app.main import app as _app
+        from app.db.session import get_db
+
+        def _override():
+            session = TestingSessionLocal()
+            try:
+                yield session
+            finally:
+                session.close()
+
+        _app.dependency_overrides[get_db] = _override
+        self.client = TestClient(_app)
+        Base.metadata.create_all(bind=engine)
+        yield
+        Base.metadata.drop_all(bind=engine)
+        _app.dependency_overrides.clear()
+
+    def _create_project(self):
+        from app.models.project import Project
+        pid = uuid4()
+        session = TestingSessionLocal()
+        session.add(Project(id=pid, name="test", description=""))
+        session.commit()
+        session.close()
+        return pid
+
+    def _create_story(self, project_id, characters):
+        from app.models.story import Story, StoryStatus
+        session = TestingSessionLocal()
+        session.add(Story(id=uuid4(), project_id=project_id,
+                          characters=characters, status=StoryStatus.completed))
+        session.commit()
+        session.close()
+
+    def test_sync_endpoint(self):
+        """POST /sync creates CharacterCards from story."""
+        pid = self._create_project()
+        self._create_story(pid, [
+            {"name": "主角A", "role": "主角", "description": "测试"},
+            {"name": "路人甲", "role": "路人", "description": ""},
+        ])
+
+        resp = self.client.post(f"/api/v1/projects/{pid}/character-cards/sync")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["created"] == 1
+        assert data["skipped"] == 0
+
+    def test_sync_endpoint_no_story(self):
+        """POST /sync with no story returns 0."""
+        pid = self._create_project()
+        resp = self.client.post(f"/api/v1/projects/{pid}/character-cards/sync")
+        assert resp.status_code == 200
+        assert resp.json()["created"] == 0
+
+    def test_generate_all_endpoint(self):
+        """POST /generate-all-three-views returns batch result."""
+        from unittest.mock import patch
+        pid = self._create_project()
+
+        resp = self.client.post(
+            f"/api/v1/projects/{pid}/character-cards/generate-all-three-views",
+            json={"style_tags": ["写实"]},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total" in data
+        assert "success" in data
