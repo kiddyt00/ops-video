@@ -54,6 +54,7 @@ Thumbs.db
 storage/
 !frontend/src/app/storage/
 *.log
+*.log.*
 
 # Testing
 .pytest_cache/
