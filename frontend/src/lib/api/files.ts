@@ -7,6 +7,7 @@ export interface FileRecord {
   variant_group_id: string | null
   file_type: string
   file_path: string
+  oss_url: string | null
   version: number
   is_selected: boolean
   generation_params?: Record<string, unknown>
