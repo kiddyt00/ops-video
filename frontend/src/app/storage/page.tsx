@@ -156,15 +156,15 @@ export default function StoragePage() {
     <AppShell>
       <ScrollArea className="h-full">
         {/* Hero */}
-        <div className="relative overflow-hidden border-b border-white/[0.04] bg-gradient-to-b from-primary/[0.03] to-transparent">
+        <div className="relative overflow-hidden border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent">
           <div className="max-w-5xl mx-auto px-6 py-10">
             <div className="flex items-start justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 ring-1 ring-primary/20 text-xs text-primary font-medium mb-4">
                   <HardDrive className="w-3 h-3" /> 存储管理
                 </div>
-                <h2 className="text-3xl font-bold text-white">存储配置</h2>
-                <p className="text-sm text-white/40 mt-2 max-w-md">
+                <h2 className="text-3xl font-bold text-foreground">存储配置</h2>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md">
                   管理对象存储供应商配置，支持 S3、OSS、COS 等多种云存储
                 </p>
               </div>
@@ -182,8 +182,8 @@ export default function StoragePage() {
             </div>
           ) : providers?.length === 0 ? (
             <div className="text-center py-20">
-              <HardDrive className="w-12 h-12 mx-auto text-white/10 mb-4" />
-              <p className="text-white/30 mb-4">暂无存储配置</p>
+              <HardDrive className="w-12 h-12 mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground mb-4">暂无存储配置</p>
               <Button onClick={openNew} variant="outline" size="sm">
                 <Plus className="w-3.5 h-3.5 mr-1.5" />添加第一个存储
               </Button>
@@ -199,7 +199,7 @@ export default function StoragePage() {
                   <div
                     key={p.id}
                     className={cn(
-                      'group relative rounded-xl border bg-white/[0.02] transition-all duration-200',
+                      'group relative rounded-xl border bg-card/50 transition-all duration-200',
                       p.is_active
                         ? 'border-primary/30 bg-primary/[0.03]'
                         : 'border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1]'
@@ -222,8 +222,8 @@ export default function StoragePage() {
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-medium text-white">{p.name}</h4>
-                            <Badge variant="outline" className="text-[10px] border-white/10 text-white/40">
+                            <h4 className="text-sm font-medium text-foreground">{p.name}</h4>
+                            <Badge variant="outline" className="text-[10px] border-border text-muted-foreground">
                               {PROVIDER_TYPES.find(t => t.key === p.provider_type)?.label || p.provider_type}
                             </Badge>
                             {p.is_active && (
@@ -233,7 +233,7 @@ export default function StoragePage() {
                             )}
                           </div>
 
-                          <div className="flex items-center gap-4 mt-1 text-xs text-white/30">
+                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
                             <span className="truncate">{p.bucket}</span>
                             {p.endpoint && (
                               <span className="truncate hidden sm:inline">{p.endpoint}</span>
@@ -255,8 +255,8 @@ export default function StoragePage() {
                                   上次测试失败
                                 </span>
                               ) : null}
-                              <span className="text-white/20">·</span>
-                              <span className="text-white/20">
+                              <span className="text-muted-foreground/40">·</span>
+                              <span className="text-muted-foreground/40">
                                 {new Date(p.last_tested_at).toLocaleString('zh-CN')}
                               </span>
                             </div>
@@ -290,7 +290,7 @@ export default function StoragePage() {
                         <div className="flex items-center gap-1 shrink-0">
                           <Button
                             variant="ghost" size="sm"
-                            className="h-7 text-xs gap-1 text-white/40 hover:text-white"
+                            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
                             onClick={() => doTest(p)}
                             disabled={t?.running}
                           >
@@ -305,7 +305,7 @@ export default function StoragePage() {
                           {!p.is_active ? (
                             <Button
                               variant="ghost" size="sm"
-                              className="h-7 text-xs gap-1 text-white/40 hover:text-emerald-400"
+                              className="h-7 text-xs gap-1 text-muted-foreground hover:text-emerald-500"
                               onClick={() => doActivate(p)}
                               disabled={activateMut.isPending}
                             >
@@ -328,7 +328,7 @@ export default function StoragePage() {
 
                           <Button
                             variant="ghost" size="sm"
-                            className="h-7 text-xs gap-1 text-white/40 hover:text-white"
+                            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
                             onClick={() => openEdit(p)}
                           >
                             <Pencil className="w-3 h-3" />编辑
@@ -360,7 +360,7 @@ export default function StoragePage() {
 
       {/* ─── Dialog ───────────────────────────────────────────────── */}
       <Dialog open={dialog.open} onOpenChange={v => setDialog({ open: v })}>
-        <DialogContent className="max-w-md bg-[#111118] border-white/[0.06]">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-white">{dialog.id ? '编辑存储' : '添加存储'}</DialogTitle>
             <DialogDescription>配置对象存储供应商参数</DialogDescription>
@@ -373,27 +373,27 @@ export default function StoragePage() {
             )}
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">名称</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">名称</label>
               <Input
                 value={form.name}
                 onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                 placeholder="例如: 阿里云主存储"
-                className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
               />
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">存储类型</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">存储类型</label>
               <Select
                 value={form.provider_type}
                 onValueChange={v => { if (v) setForm(p => ({ ...p, provider_type: v })) }}
               >
-                <SelectTrigger className="h-10 bg-white/[0.03] border-white/[0.08] text-white rounded-lg">
+                <SelectTrigger className="h-10 bg-background border-input text-foreground rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#111118] border-white/[0.08]">
+                <SelectContent className="bg-card border-border">
                   {PROVIDER_TYPES.map(t => (
-                    <SelectItem key={t.key} value={t.key} className="text-white focus:bg-white/[0.06]">
+                    <SelectItem key={t.key} value={t.key} className="text-foreground focus:bg-accent">
                       <span className="flex items-center gap-2">
                         {t.label}
                         <span className="text-white/30 text-xs">— {t.desc}</span>
@@ -406,59 +406,59 @@ export default function StoragePage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">Access Key</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">Access Key</label>
                 <Input
                   value={form.access_key}
                   onChange={e => setForm(p => ({ ...p, access_key: e.target.value }))}
                   placeholder="LTAI..."
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
                 />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">
-                  Secret Key{dialog.id && <span className="text-white/20 ml-1">(留空不修改)</span>}
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Secret Key{dialog.id && <span className="text-muted-foreground/40 ml-1">(留空不修改)</span>}
                 </label>
                 <Input
                   value={form.secret_key}
                   onChange={e => setForm(p => ({ ...p, secret_key: e.target.value }))}
                   placeholder={dialog.id ? '••••••••' : 'sk-...'}
                   type="password"
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">Bucket</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">Bucket</label>
               <Input
                 value={form.bucket}
                 onChange={e => setForm(p => ({ ...p, bucket: e.target.value }))}
                 placeholder="my-bucket"
-                className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">
-                  Endpoint<span className="text-white/20 ml-1">(可选)</span>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Endpoint<span className="text-muted-foreground/40 ml-1">(可选)</span>
                 </label>
                 <Input
                   value={form.endpoint || ''}
                   onChange={e => setForm(p => ({ ...p, endpoint: e.target.value }))}
                   placeholder="https://oss-cn-hangzhou.aliyuncs.com"
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
                 />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">
-                  Region<span className="text-white/20 ml-1">(可选)</span>
+                <label className="text-xs text-muted-foreground mb-1.5 block">
+                  Region<span className="text-muted-foreground/40 ml-1">(可选)</span>
                 </label>
                 <Input
                   value={form.region || ''}
                   onChange={e => setForm(p => ({ ...p, region: e.target.value }))}
                   placeholder="cn-hangzhou"
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg"
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg"
                 />
               </div>
             </div>
@@ -467,7 +467,7 @@ export default function StoragePage() {
             <Button
               variant="outline"
               onClick={() => setDialog({ open: false })}
-              className="border-white/[0.08] text-white/60 hover:text-white"
+              className="border-border text-muted-foreground hover:text-foreground"
             >
               取消
             </Button>

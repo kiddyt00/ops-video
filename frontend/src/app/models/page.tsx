@@ -107,15 +107,15 @@ export default function ModelsPage() {
     <AppShell>
       <ScrollArea className="h-full">
         {/* Hero */}
-        <div className="relative overflow-hidden border-b border-white/[0.04] bg-gradient-to-b from-primary/[0.03] to-transparent">
+        <div className="relative overflow-hidden border-b border-border bg-gradient-to-b from-primary/[0.03] to-transparent">
           <div className="max-w-5xl mx-auto px-6 py-10">
             <div className="flex items-start justify-between">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 ring-1 ring-primary/20 text-xs text-primary font-medium mb-4">
                   <Zap className="w-3 h-3" /> 模型中心
                 </div>
-                <h2 className="text-3xl font-bold text-white">AI 模型配置</h2>
-                <p className="text-sm text-white/40 mt-2 max-w-md">
+                <h2 className="text-3xl font-bold text-foreground">AI 模型配置</h2>
+                <p className="text-sm text-muted-foreground mt-2 max-w-md">
                   管理接入的 AI 模型，配置 API Key 后可启用真实生成能力
                 </p>
               </div>
@@ -133,8 +133,8 @@ export default function ModelsPage() {
             </div>
           ) : grouped.length === 0 ? (
             <div className="text-center py-20">
-              <Cpu className="w-12 h-12 mx-auto text-white/10 mb-4" />
-              <p className="text-white/30 mb-4">暂无模型配置</p>
+              <Cpu className="w-12 h-12 mx-auto text-muted-foreground/20 mb-4" />
+              <p className="text-muted-foreground mb-4">暂无模型配置</p>
               <Button onClick={openNew} variant="outline" size="sm"><Plus className="w-3.5 h-3.5 mr-1.5" />添加第一个模型</Button>
             </div>
           ) : (
@@ -146,8 +146,8 @@ export default function ModelsPage() {
                       <group.icon className="w-4 h-4" style={{ color: group.color }} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-white">{group.label}</h3>
-                      <p className="text-xs text-white/30">{group.desc}</p>
+                      <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
+                      <p className="text-xs text-muted-foreground">{group.desc}</p>
                     </div>
                     <Badge variant="outline" className="text-[10px] ml-auto">{group.items.length}</Badge>
                   </div>
@@ -160,7 +160,7 @@ export default function ModelsPage() {
                         <div
                           key={m.id}
                           className={cn(
-                            'group relative rounded-xl border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1] transition-all duration-200',
+                            'group relative rounded-xl border border-border bg-card/50 hover:bg-muted/30 hover:border-border/80 transition-all duration-200',
                             !m.is_enabled && 'opacity-40 hover:opacity-60'
                           )}
                         >
@@ -171,12 +171,12 @@ export default function ModelsPage() {
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h4 className="text-sm font-medium text-white truncate">{m.name}</h4>
-                                  {m.is_builtin && <Badge className="text-[9px] bg-white/5 text-white/40 border-white/10">内置</Badge>}
+                                  <h4 className="text-sm font-medium text-foreground truncate">{m.name}</h4>
+                                  {m.is_builtin && <Badge className="text-[9px] bg-muted/50 text-muted-foreground border-border">内置</Badge>}
                                   {m.api_key && <Badge className="text-[9px] bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
                                     <Check className="w-2.5 h-2.5 mr-0.5" />已配置</Badge>}
                                 </div>
-                                <p className="text-xs text-white/30 mt-1 truncate">
+                                <p className="text-xs text-muted-foreground mt-1 truncate">
                                   {m.provider || '—'} · {m.model_name}
                                 </p>
                               </div>
@@ -186,7 +186,7 @@ export default function ModelsPage() {
                                 onClick={() => toggleMut.mutate(m.id)}
                                 className={cn(
                                   'shrink-0 w-9 h-5 rounded-full relative transition-colors cursor-pointer',
-                                  m.is_enabled ? 'bg-emerald-500/30' : 'bg-white/[0.06]'
+                                  m.is_enabled ? 'bg-emerald-500/30' : 'bg-muted/30'
                                 )}
                               >
                                 <div className={cn(
@@ -200,23 +200,23 @@ export default function ModelsPage() {
                             {t && (
                               <div className={cn('mt-3 text-xs rounded-lg p-2.5', t.ok ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
                                 {t.running ? <span className="flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin" />测试中...</span>
-                                : t.ok ? <span>✅ {t.msg?.substring(0, 150)}{t.ms ? <span className="text-white/30 ml-1">· {t.ms}ms</span> : ''}</span>
+                                : t.ok ? <span>✅ {t.msg?.substring(0, 150)}{t.ms ? <span className="text-muted-foreground/60 ml-1">· {t.ms}ms</span> : ''}</span>
                                 : <span>❌ {t.msg}</span>}
                               </div>
                             )}
 
                             {/* Actions */}
-                            <div className="flex items-center gap-1 mt-3 pt-3 border-t border-white/[0.04]">
+                            <div className="flex items-center gap-1 mt-3 pt-3 border-t border-border">
                               {m.is_enabled && (
-                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-white/40 hover:text-white" onClick={() => doTest(m)} disabled={t?.running}>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground" onClick={() => doTest(m)} disabled={t?.running}>
                                   {t?.running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}测试
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-white/40 hover:text-white ml-auto" onClick={() => openEdit(m)}>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground ml-auto" onClick={() => openEdit(m)}>
                                 <Pencil className="w-3 h-3" />编辑
                               </Button>
                               {!m.is_builtin && (
-                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-white/40 hover:text-red-400" onClick={() => setConfirmTarget(m)}>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-red-500" onClick={() => setConfirmTarget(m)}>
                                   <Trash2 className="w-3 h-3" />删除
                                 </Button>
                               )}
@@ -235,29 +235,29 @@ export default function ModelsPage() {
 
       {/* ─── Dialog ───────────────────────────────────────────────── */}
       <Dialog open={dialog.open} onOpenChange={v => setDialog({ open: v })}>
-        <DialogContent className="max-w-md bg-[#111118] border-white/[0.06]">
+        <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white">{dialog.id ? '编辑模型' : '添加模型'}</DialogTitle>
+            <DialogTitle className="text-foreground">{dialog.id ? '编辑模型' : '添加模型'}</DialogTitle>
             <DialogDescription>配置 AI 模型接入参数</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             {formErr && <div className="flex items-center gap-2 text-sm text-red-400 bg-red-500/10 rounded-lg p-2.5"><AlertCircle className="w-4 h-4 shrink-0" />{formErr}</div>}
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">名称</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">名称</label>
               <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="例如: Qwen-Plus"
-                className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg" />
+                className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg" />
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">分类</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">分类</label>
               <Select value={form.category} onValueChange={v => { if (v) setForm(p => ({ ...p, category: v })) }}>
-                <SelectTrigger className="h-10 bg-white/[0.03] border-white/[0.08] text-white rounded-lg">
+                <SelectTrigger className="h-10 bg-background border-input text-foreground rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#111118] border-white/[0.08]">
+                <SelectContent className="bg-card border-border">
                   {CATS.map(c => (
-                    <SelectItem key={c.key} value={c.key} className="text-white focus:bg-white/[0.06]">
+                    <SelectItem key={c.key} value={c.key} className="text-foreground focus:bg-accent">
                       <span className="flex items-center gap-2"><c.icon className="w-3.5 h-3.5" style={{color:c.color}} />{c.label}</span>
                     </SelectItem>
                   ))}
@@ -267,31 +267,31 @@ export default function ModelsPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">供应商</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">供应商</label>
                 <Input value={form.provider} onChange={e => setForm(p => ({ ...p, provider: e.target.value }))} placeholder="DashScope"
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg" />
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg" />
               </div>
               <div>
-                <label className="text-xs text-white/40 mb-1.5 block">模型名</label>
+                <label className="text-xs text-muted-foreground mb-1.5 block">模型名</label>
                 <Input value={form.model_name} onChange={e => setForm(p => ({ ...p, model_name: e.target.value }))} placeholder="qwen-plus"
-                  className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg" />
+                  className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg" />
               </div>
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">API Key</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">API Key</label>
               <Input value={form.api_key || ''} onChange={e => setForm(p => ({ ...p, api_key: e.target.value }))} placeholder="sk-..." type="password"
-                className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg" />
+                className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg" />
             </div>
 
             <div>
-              <label className="text-xs text-white/40 mb-1.5 block">API Base URL</label>
+              <label className="text-xs text-muted-foreground mb-1.5 block">API Base URL</label>
               <Input value={form.api_base_url || ''} onChange={e => setForm(p => ({ ...p, api_base_url: e.target.value }))} placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1"
-                className="h-10 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/15 rounded-lg" />
+                className="h-10 bg-background border-input text-foreground placeholder:text-muted-foreground rounded-lg" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialog({ open: false })} className="border-white/[0.08] text-white/60 hover:text-white">取消</Button>
+            <Button variant="outline" onClick={() => setDialog({ open: false })} className="border-border text-muted-foreground hover:text-foreground">取消</Button>
             <Button onClick={save} disabled={createMut.isPending || updateMut.isPending} className="gap-1.5">
               {(createMut.isPending || updateMut.isPending) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               {dialog.id ? '保存' : '添加'}

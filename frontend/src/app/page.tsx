@@ -134,7 +134,7 @@ function ProjectCard({
                 <span>进度</span>
                 <span>{completedStages}/{stages.length} 阶段</span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+              <div className="w-full h-1.5 rounded-full bg-muted/30 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-violet-500 to-sky-400 transition-all duration-500"
                   style={{ width: `${progress}%` }}
@@ -400,7 +400,7 @@ function ProjectsOverview() {
               <div className="mb-6 p-6 rounded-2xl border border-violet-500/20 bg-gradient-to-br from-violet-500/5 via-transparent to-sky-500/5">
                 <div className="flex items-center gap-2 mb-3">
                   <Wand2 className="w-5 h-5 text-violet-400" />
-                  <h3 className="text-sm font-semibold text-white/80">灵感一键创作</h3>
+                  <h3 className="text-sm font-semibold text-foreground">灵感一键创作</h3>
                 </div>
                 <p className="text-xs text-zinc-500 mb-4">输入一个创意主题，AI 将自动为你生成完整故事</p>
                 <div className="flex gap-2">
@@ -408,7 +408,7 @@ function ProjectsOverview() {
                     value={inspiration}
                     onChange={(e) => setInspiration(e.target.value)}
                     placeholder="例如：赛博朋克世界的花店少女、修仙界的程序员..."
-                    className="flex-1 bg-white/5 border-white/10 text-white placeholder:text-zinc-600"
+                    className="flex-1 bg-muted/50 border-border text-foreground placeholder:text-muted-foreground"
                     onKeyDown={(e) => { if (e.key === 'Enter') handleQuickCreate() }}
                   />
                   <Button
