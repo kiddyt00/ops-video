@@ -105,11 +105,14 @@ class CharacterThreeViewService:
         """Generate front/side/back three-view images for a character card.
 
         1. LLM generates angle-specific appearance descriptions (JSON)
+           using full story context: synopsis(蓝图), worldbuilding, style, themes
         2. Image provider generates 3 images (front/side/back)
-        3. Updates CharacterCard with image URLs
+        3. Uploads to OSS via ArtifactUploader
+        4. Updates CharacterCard with OSS URLs
         """
         from ..providers.llm_provider import llm_provider
         from ..services.provider_router import ProviderRouter
+        from ..services.artifact_uploader import upload_artifact
 
         card = self.db.query(CharacterCard).filter(
             CharacterCard.id == card_id,
@@ -118,7 +121,7 @@ class CharacterThreeViewService:
         if not card:
             raise ValueError(f"CharacterCard {card_id} not found")
 
-        # Get story context for worldbuilding + style
+        # Get full story context
         story = (
             self.db.query(Story)
             .filter(Story.project_id == project_id)
@@ -126,11 +129,16 @@ class CharacterThreeViewService:
             .first()
         )
         worldbuilding = (story.worldbuilding or {}) if story else {}
+        synopsis = story.synopsis if story else ""
+        themes = story.themes if story else []
         style = style_tags or (story.style_tags if story else []) or ["写实"]
         style_str = ", ".join(style) if isinstance(style, list) else str(style)
 
-        # Step 1: LLM generates angle descriptions
-        prompt = self._build_angle_prompt(card, worldbuilding, style_str)
+        # Step 1: LLM generates angle descriptions with full story context
+        prompt = self._build_angle_prompt(
+            card, worldbuilding, style_str,
+            synopsis=synopsis, themes=themes,
+        )
         llm_result = await llm_provider.generate(parameters={
             "prompt": prompt,
             "system_prompt": "你是一位专业角色设计师。返回严格JSON。",
@@ -162,18 +170,28 @@ class CharacterThreeViewService:
                     "n": 1,
                 })
                 if img_result.file_paths and len(img_result.file_paths) > 0:
-                    urls[f"{angle_key}_view_url"] = str(img_result.file_paths[0])
+                    local_path = str(img_result.file_paths[0])
+                    # Upload to OSS
+                    oss_url = await upload_artifact(
+                        project_id=project_id,
+                        task_id=card_id,
+                        stage="character_three_views",
+                        file_path=local_path,
+                    )
+                    urls[f"{angle_key}_view_url"] = oss_url or local_path
             except Exception as e:
                 logger.warning("Image generation failed for %s/%s: %s", card.name, angle_key, e)
 
         if not urls:
             raise RuntimeError(f"All three image generations failed for card {card.name}")
 
-        # Step 3: Update character card
+        # Step 3: Update character card with OSS URLs
         character_card_crud.update(
             self.db, card_id,
             CharacterCardUpdate(**urls),
         )
+
+        logger.info("Three-view generated for %s | oss_urls=%s", card.name, urls)
 
         return {
             "card_id": str(card_id),
@@ -229,29 +247,52 @@ class CharacterThreeViewService:
         card: CharacterCard,
         worldbuilding: Dict[str, Any],
         style_str: str,
+        synopsis: str = "",
+        themes: Optional[List[str]] = None,
     ) -> str:
-        """Build LLM prompt for generating angle-specific appearance descriptions."""
-        wb = worldbuilding if isinstance(worldbuilding, dict) else {}
-        return f"""你是一位专业的角色设计师。请为以下角色生成正/侧/背三个角度的外观描述。
+        """Build LLM prompt for generating angle-specific appearance descriptions.
 
+        Uses full story context: worldbuilding(世界观), synopsis(蓝图/梗概),
+        style(风格), themes(主题) to guide character design.
+        """
+        wb = worldbuilding if isinstance(worldbuilding, dict) else {}
+        theme_str = "、".join(themes) if themes else ""
+        synopsis_preview = synopsis[:300] + "..." if len(synopsis) > 300 else synopsis
+
+        return f"""你是一位专业的角色设计师。请根据以下完整故事设定，为指定角色生成正/侧/背三个角度的外观描述。
+
+=== 故事蓝图 ===
+{synopsis_preview or "（无）"}
+
+=== 世界观 ===
+背景设定: {wb.get("setting", "未知")}
+时代: {wb.get("time_period", "未知")}
+世界规则: {wb.get("rules", "无")}
+
+=== 风格 ===
+{style_str}
+
+{'=== 故事主题 ===' + theme_str if theme_str else ''}
+
+=== 目标角色 ===
 角色名: {card.name}
+角色定位: {card.traits.get("role", "角色") if card.traits else "角色"}
 角色设定: {card.description or "无"}
 外貌特征: {card.traits or {}}
-世界观: {wb.get("setting", "未知")} / {wb.get("time_period", "未知")}
-风格: {style_str}
 
-请提供三个角度的描述，每个角度包含：
+请根据故事的整体设定，设计符合世界观和风格的角色外观。
+每个角度描述包含：
 - 发型、发色
-- 脸型、五官
+- 脸型、五官、表情特征
 - 服装（正面/侧面/背面细节不同）
-- 配饰
+- 配饰、道具
 - 体型特征
 
 输出 JSON:
 {{
-  "front": "正面详细描述...",
-  "side": "侧面详细描述...",
-  "back": "背面详细描述..."
+  "front": "正面详细描述（包含全身服装、五官、发型）",
+  "side": "侧面详细描述（包含侧脸轮廓、侧面服装细节）",
+  "back": "背面详细描述（包含背面服装、发型背面）"
 }}"""
 
     @staticmethod

@@ -30,6 +30,7 @@ _STAGE_PREFIX = {
     "inspiration": "inspiration",
     "story": "story",
     "chapter_outline": "chapters",
+    "character_three_views": "characters/three_views",
 }
 
 
