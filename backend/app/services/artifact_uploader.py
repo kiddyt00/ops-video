@@ -52,9 +52,12 @@ async def upload_artifact(
     Returns:
         OSS URL string, or None if upload was skipped/failed.
     """
+    # Resolve relative to storage path; absolute paths used as-is
     local_path = Path(file_path)
+    if not local_path.is_absolute():
+        local_path = settings.storage_path / local_path
     if not local_path.exists():
-        logger.warning("Artifact not found, skipping OSS upload: %s", file_path)
+        logger.warning("Artifact not found, skipping OSS upload: %s", local_path)
         return None
 
     try:

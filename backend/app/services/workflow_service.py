@@ -270,6 +270,10 @@ class WorkflowService:
                         obj_in=TaskStatusUpdate(status=TaskStatus.COMPLETED),
                     )
                     self.db.commit()
+
+                    # Upload artifacts to OSS (non-blocking)
+                    await self._upload_artifacts_to_oss(task, target_stage)
+
                     break  # success — exit retry loop
                 except Exception as e:
                     last_error = e
@@ -1291,6 +1295,7 @@ class WorkflowService:
                     "file_id": str(f.id),
                     "file_path": f.file_path,
                     "file_type": f.file_type.value,
+                    "oss_url": f.oss_url,
                     "generation_params": f.generation_params,
                     "extra_info": f.extra_info,
                     "is_selected": f.is_selected,
@@ -1299,6 +1304,39 @@ class WorkflowService:
                 for f in files
             ],
         }
+
+    async def _upload_artifacts_to_oss(
+        self,
+        task: "Task",
+        target_stage: "TaskStage",
+    ) -> None:
+        """Upload all file artifacts for a completed task to OSS (non-blocking)."""
+        try:
+            from ..services.artifact_uploader import upload_artifacts_batch
+            from ..models.file import File
+
+            file_records = self.db.query(File).filter(
+                File.task_id == task.id
+            ).all()
+
+            if not file_records:
+                return
+
+            file_paths = [f.file_path for f in file_records if not f.oss_url]
+            file_ids = [f.id for f in file_records if not f.oss_url]
+
+            if not file_paths:
+                return
+
+            await upload_artifacts_batch(
+                project_id=task.project_id,
+                task_id=task.id,
+                stage=target_stage.value,
+                file_paths=file_paths,
+                file_ids=file_ids,
+            )
+        except Exception as e:
+            logger.warning("OSS artifact upload failed (non-blocking): %s", e)
 
 
 workflow_service = WorkflowService
