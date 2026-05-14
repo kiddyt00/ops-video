@@ -47,7 +47,7 @@ class OSSService:
 
         provider_type = self.provider.provider_type
 
-        if provider_type == StorageProviderType.OSS.value:
+        if provider_type in (StorageProviderType.OSS.value, "oss"):
             self._client = self._init_aliyun_oss()
         elif provider_type in (
             StorageProviderType.S3.value,
@@ -169,7 +169,7 @@ class OSSService:
 
         provider_type = self.provider.provider_type
 
-        if provider_type == StorageProviderType.OSS.value:
+        if provider_type in (StorageProviderType.OSS.value, "oss"):
             bucket = self._get_client()
             bucket.put_object_from_file(key, local_path)
 
@@ -234,7 +234,7 @@ class OSSService:
         expires_seconds = int(expires_hours * 3600)
         provider_type = self.provider.provider_type
 
-        if provider_type == StorageProviderType.OSS.value:
+        if provider_type in (StorageProviderType.OSS.value, "oss"):
             bucket = self._get_client()
             return bucket.sign_url("GET", key, expires_seconds)
 
@@ -272,7 +272,7 @@ class OSSService:
         """
         provider_type = self.provider.provider_type
 
-        if provider_type == StorageProviderType.OSS.value:
+        if provider_type in (StorageProviderType.OSS.value, "oss"):
             bucket = self._get_client()
             bucket.delete_object(key)
 
@@ -335,7 +335,7 @@ async def test_storage_connection(provider: StorageProvider) -> TestResult:
         service = OSSService(provider)
 
         pt = provider.provider_type
-        if pt == StorageProviderType.OSS.value:
+        if pt in (StorageProviderType.OSS.value, "oss"):
             bucket = service._get_client()
             # List first 1 object to verify credentials
             result = bucket.list_objects(prefix="", maxkeys=1)
