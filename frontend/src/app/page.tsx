@@ -25,6 +25,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
 import {
   useProjects,
   useMyProjects,
@@ -71,6 +72,8 @@ function ProjectCard({
   const stages = workflowStatus?.stages ?? []
   const completedStages = stages.filter((s: { status: string }) => s.status === 'completed').length
   const progress = stages.length > 0 ? Math.round((completedStages / stages.length) * 100) : 0
+  const failedTasks = (tasks ?? []).filter((t: Task) => t.status === 'failed').length
+  const runningTasks = (tasks ?? []).filter((t: Task) => t.status === 'running').length
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -104,8 +107,22 @@ function ProjectCard({
       onClick={() => !showRestore && !showPermanentDelete && router.push(`/projects/${project.id}`)}
     >
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between gap-2">
           <span className="truncate">{project.name}</span>
+          <div className="flex items-center gap-1 shrink-0">
+            {failedTasks > 0 && (
+              <Badge variant="destructive" className="text-[10px] h-5 gap-1">
+                <AlertCircle className="w-2.5 h-2.5" />
+                {failedTasks}
+              </Badge>
+            )}
+            {runningTasks > 0 && (
+              <Badge variant="secondary" className="text-[10px] h-5 gap-1 text-blue-500 bg-blue-500/10 border-blue-500/20">
+                <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                {runningTasks}
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
             {showDelete && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDelete}>

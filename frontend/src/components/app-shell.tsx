@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { Film, BarChart3, ListTodo, Users, Settings, ExternalLink, ArrowLeft, Menu, X, LogIn, LogOut, HardDrive } from 'lucide-react'
+import { Film, Users, Settings, ExternalLink, ArrowLeft, Menu, X, LogIn, LogOut, HardDrive } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -22,7 +22,6 @@ import { TimezoneBadge } from '@/components/timezone-badge'
 
 const NAV_ITEMS = [
   { key: 'projects', label: '项目总览', icon: Film, href: '/' },
-  { key: 'tasks', label: '任务管理', icon: ListTodo, href: '/tasks' },
   { key: 'users', label: '用户管理', icon: Users, href: '/users' },
   { key: 'models', label: '模型管理', icon: Settings, href: '/models' },
   { key: 'storage', label: '存储管理', icon: HardDrive, href: '/storage' },
