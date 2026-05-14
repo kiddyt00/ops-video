@@ -15,3 +15,9 @@ export * from './use-files'
 
 // Chapter hooks
 export * from './use-chapters'
+
+// Theme hooks
+export * from './use-theme'
+
+// Timezone hooks
+export * from './use-timezone'

@@ -15,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/hooks/use-auth'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { TimezoneBadge } from '@/components/timezone-badge'
 
 const NAV_ITEMS = [
   { key: 'projects', label: '项目总览', icon: Film, href: '/' },
@@ -105,7 +107,9 @@ export function AppShell({ projectHeader, rightPanel, showSidebar = true, childr
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          <TimezoneBadge />
+          <ThemeToggle />
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger className="inline-flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer">

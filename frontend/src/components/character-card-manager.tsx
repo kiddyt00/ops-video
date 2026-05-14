@@ -39,17 +39,17 @@ interface CharacterCardManagerProps {
 interface CardFormState {
   name: string
   description: string
-  front_image_url: string
-  side_image_url: string
-  back_image_url: string
+  front_view_url: string
+  side_view_url: string
+  back_view_url: string
 }
 
 const emptyForm: CardFormState = {
   name: '',
   description: '',
-  front_image_url: '',
-  side_image_url: '',
-  back_image_url: '',
+  front_view_url: '',
+  side_view_url: '',
+  back_view_url: '',
 }
 
 function CardFormDialog({
@@ -69,9 +69,9 @@ function CardFormDialog({
       ? {
           name: card.name,
           description: card.description,
-          front_image_url: card.front_image_url,
-          side_image_url: card.side_image_url,
-          back_image_url: card.back_image_url,
+          front_view_url: card.front_view_url,
+          side_view_url: card.side_view_url,
+          back_view_url: card.back_view_url,
         }
       : { ...emptyForm }
   )
@@ -87,9 +87,9 @@ function CardFormDialog({
         ? {
             name: card.name,
             description: card.description,
-            front_image_url: card.front_image_url,
-            side_image_url: card.side_image_url,
-            back_image_url: card.back_image_url,
+            front_view_url: card.front_view_url,
+            side_view_url: card.side_view_url,
+            back_view_url: card.back_view_url,
           }
         : { ...emptyForm }
     )
@@ -111,9 +111,9 @@ function CardFormDialog({
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = '名称不能为空'
-    if (!form.front_image_url.trim()) errs.front_image_url = '正面图 URL 不能为空'
-    if (!form.side_image_url.trim()) errs.side_image_url = '侧面图 URL 不能为空'
-    if (!form.back_image_url.trim()) errs.back_image_url = '背面图 URL 不能为空'
+    if (!form.front_view_url.trim()) errs.front_view_url = '正面图 URL 不能为空'
+    if (!form.side_view_url.trim()) errs.side_view_url = '侧面图 URL 不能为空'
+    if (!form.back_view_url.trim()) errs.back_view_url = '背面图 URL 不能为空'
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -126,9 +126,9 @@ function CardFormDialog({
         const update: CharacterCardUpdate = {}
         if (form.name !== card!.name) update.name = form.name
         if (form.description !== card!.description) update.description = form.description
-        if (form.front_image_url !== card!.front_image_url) update.front_image_url = form.front_image_url
-        if (form.side_image_url !== card!.side_image_url) update.side_image_url = form.side_image_url
-        if (form.back_image_url !== card!.back_image_url) update.back_image_url = form.back_image_url
+        if (form.front_view_url !== card!.front_view_url) update.front_view_url = form.front_view_url
+        if (form.side_view_url !== card!.side_view_url) update.side_view_url = form.side_view_url
+        if (form.back_view_url !== card!.back_view_url) update.back_view_url = form.back_view_url
         await updateMutation.mutateAsync(update)
       } else {
         await createMutation.mutateAsync(form as CharacterCardCreate)
@@ -191,12 +191,12 @@ function CardFormDialog({
             <div className="space-y-3">
               <label className="text-sm font-medium">三视图 URL</label>
 
-              {(['front_image_url', 'side_image_url', 'back_image_url'] as const).map(
+              {(['front_view_url', 'side_view_url', 'back_view_url'] as const).map(
                 (key) => {
                   const labelMap = {
-                    front_image_url: '正面图',
-                    side_image_url: '侧面图',
-                    back_image_url: '背面图',
+                    front_view_url: '正面图',
+                    side_view_url: '侧面图',
+                    back_view_url: '背面图',
                   }
                   return (
                     <div key={key}>
@@ -206,7 +206,7 @@ function CardFormDialog({
                       <Input
                         value={form[key]}
                         onChange={e => setField(key, e.target.value)}
-                        placeholder={`https://example.com/${key.replace('_image_url', '')}.png`}
+                        placeholder={`https://example.com/${key.replace('_view_url', '')}.png`}
                         className={cn(errors[key] && 'border-destructive')}
                       />
                       {errors[key] && (
@@ -294,7 +294,11 @@ function DeleteConfirmDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+          >
             {deleteMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
             删除
           </Button>
@@ -308,10 +312,16 @@ function DeleteConfirmDialog({
 /* Character Context Preview                                          */
 /* ------------------------------------------------------------------ */
 
-function CharacterContextPreview({ projectId, cards }: { projectId: string; cards: CharacterCard[] }) {
+function CharacterContextPreview({
+  projectId,
+  cards,
+}: {
+  projectId: string
+  cards: CharacterCard[]
+}) {
+  const [show, setShow] = useState(false)
   const [context, setContext] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [show, setShow] = useState(false)
 
   useEffect(() => {
     if (!show || context !== null) return
@@ -343,13 +353,10 @@ function CharacterContextPreview({ projectId, cards }: { projectId: string; card
           {loading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
           ) : (
-            <div className="bg-muted/30 rounded p-2.5 text-xs leading-relaxed text-muted-foreground">
-              {context || '无角色设定'}
-            </div>
+            <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap font-mono bg-muted/50 rounded p-2 max-h-40 overflow-y-auto">
+              {context}
+            </pre>
           )}
-          <p className="mt-1.5 text-[10px] text-muted-foreground">
-            此上下文将在图片生成时自动注入到提示词中，确保角色外观一致
-          </p>
         </div>
       )}
     </div>
@@ -357,7 +364,7 @@ function CharacterContextPreview({ projectId, cards }: { projectId: string; card
 }
 
 /* ------------------------------------------------------------------ */
-/* Main manager component                                             */
+/* Main component                                                     */
 /* ------------------------------------------------------------------ */
 
 export function CharacterCardManager({ projectId, className }: CharacterCardManagerProps) {
@@ -369,25 +376,25 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Header */}
-      <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+      <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
         <div className="flex items-center gap-2">
-          <User className="w-4 h-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            角色卡
-          </h3>
+          <User className="w-4 h-4 text-primary" />
+          <span className="font-medium text-sm">角色卡</span>
           {cards && (
-            <Badge variant="outline" className="text-xs">{cards.length}</Badge>
+            <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+              {cards.length}
+            </Badge>
           )}
         </div>
-        <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-3.5 h-3.5 mr-1" />
+        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setCreateOpen(true)}>
+          <Plus className="w-3 h-3 mr-1" />
           新建
         </Button>
       </div>
 
-      {/* Content */}
+      {/* Card list */}
       <ScrollArea className="flex-1">
-        <div className="p-3">
+        <div className="p-2 space-y-2">
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
@@ -395,35 +402,35 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
           )}
 
           {error && (
-            <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-md p-3">
+            <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded p-2 mx-1">
               <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              <span>{error instanceof Error ? error.message : '加载失败'}</span>
+              <span>加载失败: {error.message}</span>
             </div>
           )}
 
-          {!isLoading && !error && cards?.length === 0 && (
-            <div className="text-center py-8">
-              <User className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">暂无角色卡</p>
-              <p className="text-xs text-muted-foreground mt-1">点击「新建」添加第一个角色卡</p>
+          {!isLoading && !error && cards && cards.length === 0 && (
+            <div className="text-center py-8 text-xs text-muted-foreground">
+              暂无角色卡
             </div>
           )}
 
-          {cards && cards.length > 0 && (
-            <div className="space-y-3">
+          {!isLoading && cards && cards.length > 0 && (
+            <div className="space-y-2">
               {cards.map(card => (
-                <Card key={card.id} className="overflow-hidden group">
-                  <CardHeader className="pb-2">
+                <Card key={card.id} className="overflow-hidden">
+                  <CardHeader className="p-3 pb-0">
                     <div className="flex items-start justify-between">
-                      <div className="min-w-0 flex-1">
-                        <CardTitle className="text-sm truncate">{card.name}</CardTitle>
+                      <div className="min-w-0">
+                        <CardTitle className="text-sm font-medium truncate">
+                          {card.name}
+                        </CardTitle>
                         {card.description && (
-                          <CardDescription className="mt-0.5 line-clamp-2">
+                          <CardDescription className="text-xs mt-0.5 line-clamp-2">
                             {card.description}
                           </CardDescription>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-0.5 shrink-0 ml-2">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -448,9 +455,9 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
                   <CardContent className="pt-0">
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
-                        { label: '正面', url: card.front_image_url },
-                        { label: '侧面', url: card.side_image_url },
-                        { label: '背面', url: card.back_image_url },
+                        { label: '正面', url: card.front_view_url },
+                        { label: '侧面', url: card.side_view_url },
+                        { label: '背面', url: card.back_view_url },
                       ].map(({ label, url }) => (
                         <div key={label} className="space-y-1">
                           <span className="text-[10px] text-muted-foreground">{label}</span>

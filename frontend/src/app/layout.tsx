@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning className="dark">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body>
         <ErrorBoundary>
           <Providers>{children}</Providers>

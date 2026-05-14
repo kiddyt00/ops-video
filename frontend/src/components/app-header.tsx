@@ -5,6 +5,8 @@ import { Film, ExternalLink, ArrowLeft, CheckCircle2, Circle, Loader2 } from 'lu
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/theme-toggle'
+import { TimezoneBadge } from '@/components/timezone-badge'
 
 interface AppHeaderProps {
   projectName?: string
@@ -96,6 +98,8 @@ export function AppHeader({ projectName, showBack, workflowStatus }: AppHeaderPr
           </Badge>
         )}
 
+        <TimezoneBadge />
+        <ThemeToggle />
         <Button
           variant="ghost"
           size="icon"

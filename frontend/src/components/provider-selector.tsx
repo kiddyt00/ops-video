@@ -27,8 +27,8 @@ export function ProviderSelector({ projectId }: ProviderSelectorProps) {
 
   // Current selection: project override or global default
   const currentOverride = project?.settings?.image_provider as string | undefined
-  const [selected, setSelected] = useState(currentOverride || '')
-  const [saved, setSaved] = useState(currentOverride || '')
+  const [selected, setSelected] = useState<string | null>(currentOverride || '')
+  const [saved, setSaved] = useState<string | null>(currentOverride || '')
 
   // Sync when project data loads
   useEffect(() => {
