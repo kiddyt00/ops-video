@@ -114,10 +114,10 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
               </div>
             )}
             {chapterId && chapterName && (
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
-                <Film className="w-3.5 h-3.5 text-violet-400" />
-                <span className="text-sm text-violet-300 font-medium">{chapterName}</span>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-violet-500/10 text-violet-300 border-violet-500/20">当前章节</Badge>
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <Film className="w-3.5 h-3.5 text-primary" />
+                <span className="text-sm text-foreground font-medium">{chapterName}</span>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">当前章节</Badge>
               </div>
             )}
           </div>
@@ -142,18 +142,18 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                   return (
                     <div key={key} className="relative pb-2">
                       <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
-                        <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-violet-400" />
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-primary" />
                       </div>
                       <div className="ml-14">
-                        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
+                        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                               <Icon className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold text-foreground/90">{label}</span>
-                                <Badge className="text-[10px] px-1.5 py-0 bg-violet-500/15 text-violet-400 border-0">已完成</Badge>
+                                <Badge className="text-[10px] px-1.5 py-0 bg-primary/15 text-primary border-0">已完成</Badge>
                               </div>
                               <p className="text-xs text-muted-foreground mt-0.5">内容已保存在「创作」Tab</p>
                             </div>
@@ -283,12 +283,12 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
 function MiniPreview({ fileType, file }: { fileType: string; file: FileRecord }) {
   const src = `${API_BASE}/files/${file.id}/download`
   if (fileType === 'image') {
-    return <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/10">
+    return <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border">
       <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" />
     </div>
   }
   if (fileType === 'video') {
-    return <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/10 flex items-center justify-center">
+    return <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border flex items-center justify-center">
       <Film className="w-5 h-5 text-muted-foreground" />
     </div>
   }
