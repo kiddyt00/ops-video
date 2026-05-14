@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Play, Loader2, AlertCircle, Circle, Sparkles, FileText, Image as ImageIcon, Music, Film, Download, Lightbulb, BookOpen, ListTree } from 'lucide-react'
+import { ChevronDown, Play, Loader2, AlertCircle, Circle, Sparkles, FileText, Image as ImageIcon, Music, Film, Download, Lightbulb, BookOpen, ListTree, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,17 +16,18 @@ import type { FileRecord } from '@/lib/api/files'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
-const CREATION_STAGES = new Set(['inspiration', 'story', 'chapter_outline'])
-
-const STAGES: { key: TaskStage; label: string; desc: string; icon: typeof Sparkles; fileType: string }[] = [
-  { key: 'inspiration', label: '灵感', desc: 'AI 创意发散', icon: Lightbulb, fileType: 'inspiration' },
-  { key: 'story', label: '故事', desc: '故事大纲创作', icon: BookOpen, fileType: 'story' },
-  { key: 'chapter_outline', label: '章节', desc: '章节大纲拆解', icon: ListTree, fileType: 'chapter_outline' },
+const PRODUCTION_STAGES: { key: TaskStage; label: string; desc: string; icon: typeof Sparkles; fileType: string }[] = [
   { key: 'script', label: '剧本', desc: 'AI 编剧创作剧本', icon: FileText, fileType: 'script' },
   { key: 'storyboard', label: '分镜', desc: '拆解为视觉分镜', icon: Sparkles, fileType: 'storyboard' },
   { key: 'image', label: '生图', desc: 'Wan2.6 文生图', icon: ImageIcon, fileType: 'image' },
   { key: 'audio', label: '配音', desc: 'Qwen3-TTS 旁白音效', icon: Music, fileType: 'audio' },
   { key: 'video', label: '成片', desc: '合成最终视频', icon: Film, fileType: 'video' },
+]
+
+const CREATION_STAGES: { key: string; label: string }[] = [
+  { key: 'inspiration', label: '灵感' },
+  { key: 'story', label: '故事' },
+  { key: 'chapter_outline', label: '章节' },
 ]
 
 const statusCfg: Record<string, { label: string; color: string; glow: string; dot: string }> = {
@@ -86,11 +87,13 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
 
   const toggle = (s: TaskStage) => setExpanded(p => p === s ? null : s)
 
+  const allCreationDone = CREATION_STAGES.every(s => getStatus(s.key) === 'completed')
+
   if (isLoading) {
     return (
       <ScrollArea className="h-full">
         <div className="p-6 max-w-3xl mx-auto space-y-5">
-          {STAGES.map((_, i) => (
+          {[...Array(5)].map((_, i) => (
             <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />
           ))}
         </div>
@@ -101,15 +104,15 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
   return (
     <div className="h-full">
       <ScrollArea className="h-full">
-        <div className="p-6 max-w-3xl mx-auto space-y-0">
-          <div className="text-center mb-8">
-            <h2 className="text-lg font-semibold text-foreground/90 tracking-wide">生成流水线</h2>
-            <p className="text-xs text-muted-foreground mt-1">点击阶段展开查看制品与参数</p>
+        <div className="p-6 max-w-3xl mx-auto">
+          <div className="text-center mb-6">
+            <h2 className="text-lg font-semibold text-foreground/90 tracking-wide">生产管线</h2>
+            <p className="text-xs text-muted-foreground mt-1">从剧本到成片，逐阶段生成</p>
             {onRunAll && (
               <div className="mt-3">
                 <Button size="sm" onClick={onRunAll} disabled={autoRunning} className="gap-1.5 bg-violet-600 hover:bg-violet-500">
                   {autoRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-                  {autoRunning ? '生成中...' : '全部生成'}
+                  {autoRunning ? '生成中...' : '一键推进'}
                 </Button>
               </div>
             )}
@@ -122,11 +125,54 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
             )}
           </div>
 
+          {/* ── 前期创作状态栏 ── */}
+          <div className="mb-6 p-4 rounded-xl border bg-card/50">
+            <div className="flex items-center gap-2 mb-3">
+              <BookOpen className="w-4 h-4 text-primary" />
+              <span className="text-xs font-semibold text-foreground/80">前期创作</span>
+              {allCreationDone && (
+                <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/15 text-emerald-500 border-0 ml-auto">全部就绪</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {CREATION_STAGES.map((s, i) => {
+                const status = getStatus(s.key)
+                return (
+                  <div key={s.key} className="flex items-center gap-1.5">
+                    {status === 'completed' ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    ) : status === 'running' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-500 shrink-0" />
+                    ) : (
+                      <Circle className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
+                    )}
+                    <span className={cn(
+                      'text-xs',
+                      status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' :
+                      status === 'running' ? 'text-sky-600 dark:text-sky-400' :
+                      'text-muted-foreground/50',
+                    )}>
+                      {s.label}
+                    </span>
+                    {i < CREATION_STAGES.length - 1 && (
+                      <ChevronDown className="w-3 h-3 text-muted-foreground/30 -rotate-90" />
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {!allCreationDone && (
+              <p className="text-[11px] text-muted-foreground/60 mt-2">
+                部分创作内容尚未完成，请前往「创作」Tab 完善
+              </p>
+            )}
+          </div>
+
+          {/* ── 生产阶段 ── */}
           <div className="relative">
-            {/* Vertical timeline line */}
             <div className="absolute left-8 top-0 bottom-0 w-px bg-border/50" />
 
-            {STAGES.map(({ key, label, desc, icon: Icon, fileType }) => {
+            {PRODUCTION_STAGES.map(({ key, label, desc, icon: Icon, fileType }) => {
               const status = getStatus(key)
               const cfg = statusCfg[status] || statusCfg.pending
               const stageTasks = (tasks ?? []).filter(t => t.stage === key)
@@ -134,61 +180,6 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
               const task = stageTasks.find(t => t.status === 'completed') || stageTasks[0]
               const isCurrent = currentStage === key
               const isOpen = expanded === key
-              const isCreation = CREATION_STAGES.has(key)
-
-              // ── Creation stages: compact summary ──
-              if (isCreation) {
-                if (status === 'completed') {
-                  return (
-                    <div key={key} className="relative pb-2">
-                      <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
-                        <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-primary" />
-                      </div>
-                      <div className="ml-14">
-                        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-                              <Icon className="w-4 h-4" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-foreground/90">{label}</span>
-                                <Badge className="text-[10px] px-1.5 py-0 bg-primary/15 text-primary border-0">已完成</Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">内容已保存在「创作」Tab</p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                }
-                return (
-                  <div key={key} className="relative pb-2">
-                    <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-muted-foreground/30" />
-                    </div>
-                    <div className="ml-14">
-                      <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-muted/30 text-muted-foreground flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-muted-foreground">{label}</span>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground/50 border-muted-foreground/20">待开始</Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground/50 mt-0.5">请先在「创作」Tab 中完成{label}设定</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              }
-
-              // ══════ Production stages (script → video) ══════
               const hasPreview = stageFiles.length > 0 && (fileType === 'image' || fileType === 'video' || fileType === 'audio')
 
               return (
@@ -197,17 +188,14 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                     <div className={cn('w-3.5 h-3.5 rounded-full border-2 border-background transition-colors', cfg.dot)} />
                   </div>
                   <div className="ml-14">
-                    <Card
-                      className={cn(
-                        'border-0 rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden',
-                        'bg-muted/30 backdrop-blur-sm hover:bg-muted/50',
-                        isOpen && 'bg-muted/50 ring-1 ring-violet-500/30',
-                        isCurrent && status === 'running' && 'ring-1 ring-sky-500/40 shadow-lg shadow-sky-500/10',
-                        status === 'completed' && 'shadow-lg shadow-emerald-500/5',
-                        status === 'failed' && 'ring-1 ring-rose-500/20',
-                      )}
-                      onClick={() => toggle(key)}
-                    >
+                    <Card className={cn(
+                      'border-0 rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden',
+                      'bg-muted/30 backdrop-blur-sm hover:bg-muted/50',
+                      isOpen && 'bg-muted/50 ring-1 ring-violet-500/30',
+                      isCurrent && status === 'running' && 'ring-1 ring-sky-500/40 shadow-lg shadow-sky-500/10',
+                      status === 'completed' && 'shadow-lg shadow-emerald-500/5',
+                      status === 'failed' && 'ring-1 ring-rose-500/20',
+                    )} onClick={() => toggle(key)}>
                       <div className="flex items-center gap-4 p-4">
                         <div className={cn(
                           'w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors',
