@@ -126,8 +126,12 @@ class ImageGeneratorService:
                         )
 
                 if result.success and result.file_paths:
-                    for file_path in result.file_paths:
+                    for idx, file_path in enumerate(result.file_paths):
                         rel_path = str(file_path.relative_to(settings.storage_path)) if file_path.is_absolute() else str(file_path)
+
+                        oss_url = None
+                        if hasattr(result, 'oss_urls') and result.oss_urls and idx < len(result.oss_urls):
+                            oss_url = result.oss_urls[idx]
 
                         file_record = file_crud.create(
                             self.db,
@@ -137,6 +141,7 @@ class ImageGeneratorService:
                                 task_id=task_id,
                                 file_path=rel_path,
                                 file_type=FileType.IMAGE,
+                                oss_url=oss_url,
                                 file_size=file_path.stat().st_size if isinstance(file_path, Path) and file_path.exists() else 0,
                                 generation_params={
                                     "prompt": prompt,

@@ -90,7 +90,7 @@ function ImageThumb({
   const [lightbox, setLightbox] = useState(false)
   const [selecting, setSelecting] = useState(false)
 
-  const imgSrc = `${API_BASE_URL}/files/${file.id}/download`
+  const imgSrc = file.oss_url || `${API_BASE_URL}/files/${file.id}/download`
 
   const handleSelect = useCallback(async () => {
     if (!file.variant_group_id || selecting) return
@@ -188,7 +188,7 @@ function ImageThumb({
 /* ------------------------------------------------------------------ */
 
 function VideoPreview({ file }: { file: FileRecord }) {
-  const videoSrc = `${API_BASE_URL}/files/${file.id}/download`
+  const videoSrc = file.oss_url || `${API_BASE_URL}/files/${file.id}/download`
   const name = file.file_path.split('/').pop() ?? file.id
 
   return (
@@ -225,7 +225,7 @@ function VideoPreview({ file }: { file: FileRecord }) {
 /* ------------------------------------------------------------------ */
 
 function AudioPreview({ file }: { file: FileRecord }) {
-  const audioSrc = `${API_BASE_URL}/files/${file.id}/download`
+  const audioSrc = file.oss_url || `${API_BASE_URL}/files/${file.id}/download`
   const name = file.file_path.split('/').pop() ?? file.id
 
   const params = file.generation_params as Record<string, unknown> | undefined

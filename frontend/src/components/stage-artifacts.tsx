@@ -19,7 +19,7 @@ function ImageGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id:
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1">生成图片 · {files.length} 张</p>
       <div className="grid grid-cols-2 gap-2">
         {files.map(f => {
-          const src = `${API_BASE}/files/${f.id}/download`
+          const src = f.oss_url || `${API_BASE}/files/${f.id}/download`
           return (
             <div key={f.id} className="aspect-[4/5] rounded-xl overflow-hidden bg-zinc-900 ring-1 ring-white/5 hover:ring-violet-500/40 transition-all group relative">
               <img src={src} alt="" className="w-full h-full object-cover cursor-pointer" onClick={() => setLightbox(src)} />
@@ -60,7 +60,7 @@ function VideoGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id:
     <div className="space-y-3">
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1">最终视频</p>
       {files.map(f => {
-        const src = `${API_BASE}/files/${f.id}/download`
+        const src = f.oss_url || `${API_BASE}/files/${f.id}/download`
         return (
           <div key={f.id} className="rounded-xl overflow-hidden bg-black ring-1 ring-white/5 group">
             <video
@@ -110,7 +110,7 @@ function AudioGallery({ files, onDelete }: { files: FileRecord[]; onDelete: (id:
     <div className="space-y-2">
       <p className="text-[11px] text-muted-foreground uppercase tracking-wider px-1">配音文件 · {files.length} 个</p>
       {files.map(f => {
-        const src = `${API_BASE}/files/${f.id}/download`
+        const src = f.oss_url || `${API_BASE}/files/${f.id}/download`
         const params = f.generation_params as Record<string, unknown> | undefined
         const typeLabel = params?.type ? String(params.type).toUpperCase() : 'AUDIO'
         const panelIdx = params?.panel_index !== undefined ? `Panel ${params.panel_index}` : null
@@ -181,7 +181,7 @@ function ScriptCard({ file, onDelete }: { file: FileRecord; onDelete: (id: strin
               {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>
           )}
-          <a href={`${API_BASE}/files/${file.id}/download`} download className="text-muted-foreground hover:text-foreground"><Download className="w-3.5 h-3.5" /></a>
+          <a href={file.oss_url || `${API_BASE}/files/${file.id}/download`} download className="text-muted-foreground hover:text-foreground"><Download className="w-3.5 h-3.5" /></a>
           <button onClick={() => onDelete(file.id)}><Trash2 className="w-3.5 h-3.5 text-red-600 hover:text-red-400" /></button>
         </div>
       </div>
@@ -243,7 +243,7 @@ function StoryboardCard({ file, onDelete }: { file: FileRecord; onDelete: (id: s
           <button onClick={() => setCollapsed(!collapsed)} className="text-xs text-muted-foreground hover:text-foreground px-2">
             {collapsed ? '展开' : '收起'}
           </button>
-          <a href={`${API_BASE}/files/${file.id}/download`} download className="text-muted-foreground hover:text-foreground"><Download className="w-3.5 h-3.5" /></a>
+          <a href={file.oss_url || `${API_BASE}/files/${file.id}/download`} download className="text-muted-foreground hover:text-foreground"><Download className="w-3.5 h-3.5" /></a>
           <button onClick={() => onDelete(file.id)}><Trash2 className="w-3.5 h-3.5 text-red-600 hover:text-red-400" /></button>
         </div>
       </div>
@@ -315,7 +315,7 @@ export function StageArtifacts({ fileType, files, onFilesChange }: Props) {
         <div key={f.id} className="flex items-center gap-2 text-xs text-muted-foreground px-1">
           <FileText className="w-3 h-3" />
           <span className="truncate">{f.file_path.split('/').pop()}</span>
-          <a href={`${API_BASE}/files/${f.id}/download`} download className="ml-auto"><Download className="w-3 h-3" /></a>
+          <a href={f.oss_url || `${API_BASE}/files/${f.id}/download`} download className="ml-auto"><Download className="w-3 h-3" /></a>
           <button onClick={() => handleDelete(f.id)}><Trash2 className="w-3 h-3 text-red-600" /></button>
         </div>
       ))}

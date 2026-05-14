@@ -120,10 +120,14 @@ export function MediaPreviews({ projectId }: { projectId: string }) {
   )
 }
 
-function ImageCard({ file }: { file: { id: string; file_path: string; created_at: string; generation_params?: Record<string, unknown> } }) {
-  const [url, setUrl] = useState<string | null>(null)
+function ImageCard({ file }: { file: { id: string; file_path: string; oss_url?: string | null; created_at: string; generation_params?: Record<string, unknown> } }) {
+  const [url, setUrl] = useState<string | null>(file.oss_url || null)
 
   const handleLoad = async () => {
+    if (file.oss_url) {
+      setUrl(file.oss_url)
+      return
+    }
     try {
       const resp = await fetch(fileDownloadUrl(file.id))
       const data = await resp.json()
@@ -158,11 +162,11 @@ function ImageCard({ file }: { file: { id: string; file_path: string; created_at
   )
 }
 
-function AudioCard({ file }: { file: { id: string; file_path: string; created_at: string; generation_params?: Record<string, unknown> } }) {
-  const [audioUrl, setAudioUrl] = useState<string | null>(null)
+function AudioCard({ file }: { file: { id: string; file_path: string; oss_url?: string | null; created_at: string; generation_params?: Record<string, unknown> } }) {
+  const [audioUrl, setAudioUrl] = useState<string | null>(file.oss_url || null)
 
   const handleLoad = () => {
-    setAudioUrl(`${API_BASE_URL}/files/${file.id}/download`)
+    setAudioUrl(file.oss_url || `${API_BASE_URL}/files/${file.id}/download`)
   }
 
   const params = file.generation_params as Record<string, unknown> | undefined
@@ -190,11 +194,11 @@ function AudioCard({ file }: { file: { id: string; file_path: string; created_at
   )
 }
 
-function VideoCard({ file }: { file: { id: string; file_path: string; created_at: string } }) {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+function VideoCard({ file }: { file: { id: string; file_path: string; oss_url?: string | null; created_at: string } }) {
+  const [videoUrl, setVideoUrl] = useState<string | null>(file.oss_url || null)
 
   const handleLoad = () => {
-    setVideoUrl(`${API_BASE_URL}/files/${file.id}/download`)
+    setVideoUrl(file.oss_url || `${API_BASE_URL}/files/${file.id}/download`)
   }
 
   return (

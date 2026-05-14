@@ -237,7 +237,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
 }
 
 function MiniPreview({ fileType, file }: { fileType: string; file: FileRecord }) {
-  const src = `${API_BASE}/files/${file.id}/download`
+  const src = file.oss_url || `${API_BASE}/files/${file.id}/download`
   if (fileType === 'image') return <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border">
     <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" /></div>
   if (fileType === 'video') return <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0 ring-1 ring-border flex items-center justify-center">

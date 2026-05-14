@@ -6,6 +6,7 @@ export interface File {
   variant_group_id: string | null
   task_id: string | null
   file_path: string
+  oss_url: string | null
   file_type: FileType
   file_size: number | null
   generation_params: Record<string, unknown>
