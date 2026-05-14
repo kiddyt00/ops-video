@@ -13,4 +13,26 @@ export const characterCardApi = {
 
   remove: (projectId: string, cardId: string) =>
     api.delete(`/projects/${projectId}/character-cards/${cardId}`),
+
+  sync: (projectId: string) =>
+    api.post<{ created: number; skipped: number; cards: CharacterCard[] }>(
+      `/projects/${projectId}/character-cards/sync`
+    ).then(r => r.data),
+
+  generateThreeView: (projectId: string, cardId: string, styleTags?: string[], strict?: boolean) =>
+    api.post<{
+      card_id: string; card_name?: string;
+      front_view_url?: string; side_view_url?: string; back_view_url?: string;
+    }>(`/projects/${projectId}/character-cards/${cardId}/three-view`, {
+      style_tags: styleTags ?? [],
+      strict: strict ?? false,
+    }).then(r => r.data),
+
+  generateAllThreeViews: (projectId: string, styleTags?: string[], strict?: boolean) =>
+    api.post<{
+      total: number; success: number; failed: number; skipped: number; details: any[];
+    }>(`/projects/${projectId}/character-cards/generate-all-three-views`, {
+      style_tags: styleTags ?? [],
+      strict: strict ?? false,
+    }).then(r => r.data),
 }
