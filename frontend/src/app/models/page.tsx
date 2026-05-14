@@ -160,7 +160,7 @@ export default function ModelsPage() {
                         <div
                           key={m.id}
                           className={cn(
-                            'group relative rounded-xl border border-border bg-card/50 hover:bg-muted/30 hover:border-border/80 transition-all duration-200',
+                            'group relative rounded-xl border border-border/50 bg-card shadow-sm ring-1 ring-foreground/5 hover:bg-muted/30 hover:border-border transition-all duration-200',
                             !m.is_enabled && 'opacity-40 hover:opacity-60'
                           )}
                         >

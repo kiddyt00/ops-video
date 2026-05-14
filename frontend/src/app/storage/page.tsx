@@ -199,7 +199,7 @@ export default function StoragePage() {
                   <div
                     key={p.id}
                     className={cn(
-                      'group relative rounded-xl border bg-card/50 transition-all duration-200',
+                      'group relative rounded-xl border bg-card shadow-sm ring-1 ring-foreground/5 transition-all duration-200',
                       p.is_active
                         ? 'border-primary/30 bg-primary/[0.03]'
                         : 'border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.1]'
