@@ -14,6 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useEffect } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { TimezoneBadge } from '@/components/timezone-badge'
@@ -45,11 +47,31 @@ interface AppShellProps {
 export function AppShell({ projectHeader, rightPanel, showSidebar = true, children }: AppShellProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, isAuthenticated, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, logout } = useAuth()
 
   // Determine active nav item
   const activeKey = NAV_ITEMS.find(item => pathname === item.href)?.key
     ?? (pathname.startsWith('/projects/') ? 'projects' : 'projects')
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (pathname === '/login') return
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login')
+    }
+  }, [isLoading, isAuthenticated, pathname, router])
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!isAuthenticated && pathname !== '/login') {
+    return null
+  }
 
   const handleLogout = async () => {
     await logout()
