@@ -6,6 +6,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional
 from pathlib import Path
+from sqlalchemy.orm import Session
 
 from ...providers.llm_provider import llm_provider, LLMProvider
 from ...config import settings, STORAGE_DIRS
@@ -315,8 +316,9 @@ def _validate_schema(data: Dict[str, Any], schema: Dict[str, Any]) -> List[str]:
 class StoryGeneratorService:
     """Service for generating story outlines and chapter breakdowns using LLM."""
 
-    def __init__(self, llm: Optional[LLMProvider] = None):
+    def __init__(self, llm: Optional[LLMProvider] = None, db: Optional['Session'] = None):
         self.llm = llm or llm_provider
+        self.db = db
 
     # --- Story generation ------------------------------------------------
 
@@ -339,7 +341,27 @@ class StoryGeneratorService:
             "请始终返回符合要求格式的有效 JSON。"
         )
 
-        prompt = _build_story_prompt(inspiration, **kwargs)
+        # Use template-based prompt from PromptService when db is available
+        if self.db:
+            try:
+                from ..services.prompt_service import get_rendered_prompt
+                context = {
+                    "inspiration": inspiration,
+                    "genre": kwargs.get("genre", ""),
+                    "tone": kwargs.get("tone", ""),
+                    "target_length": kwargs.get("target_length", ""),
+                    "protagonist": kwargs.get("protagonist", ""),
+                    "golden_finger": kwargs.get("golden_finger", ""),
+                    "relationship": kwargs.get("relationship", ""),
+                    "worldbuilding_hints": kwargs.get("worldbuilding_hints", ""),
+                }
+                prompt = get_rendered_prompt(self.db, "story-generation", context)
+                logger.info("Using prompt template 'story-generation' | project=%s", project_id)
+            except Exception as e:
+                logger.warning("Failed to use prompt template, falling back: %s", e)
+                prompt = _build_story_prompt(inspiration, **kwargs)
+        else:
+            prompt = _build_story_prompt(inspiration, **kwargs)
 
         logger.info(
             "Generating story outline | project=%s | inspiration=%s",
@@ -391,6 +413,7 @@ class StoryGeneratorService:
         self,
         story_data: Dict[str, Any],
         chapter_count: Optional[int] = None,
+        project_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Divide a story outline into chapter-level outlines.
 
@@ -409,7 +432,36 @@ class StoryGeneratorService:
             "所有内容请使用中文输出。"
         )
 
-        prompt = _build_chapter_prompt(story_data, chapter_count)
+        # Use template-based prompt from PromptService when db is available
+        if self.db:
+            try:
+                from ..services.prompt_service import get_rendered_prompt
+                from ..services.knowledge_service import build_continuity_context
+                from ..db.relation_crud import relation_crud
+                story_json = json.dumps(story_data, indent=2, ensure_ascii=False)
+                continuity = build_continuity_context(self.db, project_id) if project_id else "（无前情提要）"
+                # Build relations context
+                relations_text = "（无关系信息）"
+                if project_id:
+                    relations = relation_crud.list_by_project(self.db, project_id)
+                    if relations:
+                        lines = ["角色关系图："]
+                        for r in relations[:20]:
+                            lines.append(f"- {r.character_name} {r.relation_type} {r.target_name}")
+                        relations_text = "\n".join(lines)
+                context = {
+                    "chapter_count": str(chapter_count),
+                    "story_data_json": story_json,
+                    "continuity_context": continuity,
+                    "relations_context": relations_text,
+                }
+                prompt = get_rendered_prompt(self.db, "chapter-outline", context)
+                logger.info("Using prompt template 'chapter-outline' | chapter_count=%d", chapter_count)
+            except Exception as e:
+                logger.warning("Failed to use prompt template, falling back: %s", e)
+                prompt = _build_chapter_prompt(story_data, chapter_count)
+        else:
+            prompt = _build_chapter_prompt(story_data, chapter_count)
 
         logger.info(
             "Generating chapter outline | chapter_count=%d",

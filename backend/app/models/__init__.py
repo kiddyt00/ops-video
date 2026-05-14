@@ -13,10 +13,12 @@ from .story import Story, StoryStatus
 from .knowledge import Knowledge
 from .prompt import Prompt
 from .relation import Relation, CharacterState
+from .chapter import Chapter
 
 __all__ = [
     "Base",
     "BaseModel",
+    "Chapter",
     "Project",
     "Task",
     "TaskStatus",

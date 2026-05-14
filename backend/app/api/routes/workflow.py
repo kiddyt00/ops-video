@@ -75,11 +75,13 @@ class WorkflowAdvanceRequest(BaseModel):
     generator_type: Optional[str] = None
     parameters: Optional[Dict[str, Any]] = None
     execute: bool = True
+    chapter_id: Optional[str] = None
 
 
 class WorkflowAdvanceToStageRequest(BaseModel):
     parameters: Optional[Dict[str, Any]] = None
     execute: bool = True
+    chapter_id: Optional[str] = None
 
 
 @router.post("/{project_id}/advance", response_model=TaskResponse)
@@ -106,6 +108,7 @@ async def advance_workflow(
             generator_type=request.generator_type,
             parameters=request.parameters,
             execute=request.execute,
+            chapter_id=UUID(request.chapter_id) if request.chapter_id else None,
         )
         return task
     except WorkflowError as e:

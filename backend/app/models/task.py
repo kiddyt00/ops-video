@@ -53,6 +53,12 @@ class Task(BaseModel):
         nullable=False,
         index=True
     )
+    chapter_id = Column(
+        GUID(),
+        ForeignKey("chapters.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     parent_task_id = Column(
         GUID(),
         ForeignKey("tasks.id", ondelete="SET NULL"),

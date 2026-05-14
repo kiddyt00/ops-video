@@ -461,6 +461,25 @@
   - 可预览角色上下文模板在生成 prompt 中的效果
 - **实现方式**: 轻量级 prompt 注入（非实际 LoRA 训练），从 storyboard panel 的 characters 字段匹配角色卡
 
+### Phase 22: NovelForge 集成修复 ✅
+- **断点1: PromptTemplate + 知识库注入**
+  - `StoryGeneratorService` 新增 `db` 参数，有 DB 时使用 `get_rendered_prompt()` 替代硬编码 prompt
+  - `generate_story()` 使用 `get_rendered_prompt('story-generation', context)` 含 `@KB{name=story-structures}` 等注入
+  - `generate_chapter_outline()` 使用 `get_rendered_prompt('chapter-outline', context)` 含前情提要和角色关系注入
+  - fallback 机制：模板加载失败时自动回退到硬编码 prompt
+- **断点2: MemoryExtractor 接入**
+  - 剧本生成完成后自动调用 `extract_from_script()` 提取角色状态
+  - 分镜生成完成后也自动提取
+  - 非阻塞设计，提取失败不影响主流程
+- **断点3: Chapter 模型 + 每章独立管线**
+  - 新增 `Chapter` 模型 (`chapters` 表) — 独立的 DB 实体，含 status/current_stage/video_file_id 字段
+  - `Task` 模型新增 `chapter_id` 外键 — task 可关联到章节
+  - 迁移 016: 创建 chapters 表 + tasks.chapter_id
+  - `ChapterCRUD` — 完整 CRUD + `batch_create_from_outline()`
+  - Chapters API 重写为完整 CRUD + `/sync` 端点（从 story.chapter_outline 自动创建）
+  - 工作流 API 支持 `chapter_id` 参数
+  - 前端 chapters API 客户端适配新后端
+
 ---
 
 ## 快速开始
@@ -515,5 +534,5 @@ docker-compose -f docker-compose.prod.yml logs -f
 - **最新 Commit**: `c0971a4` - 修复 e2e 测试适配 8 阶段工作流
 - **分支**: main + novelforge（当前活跃）
 - **总测试数**: 231+ (preset 11 passed)
-- **已完成阶段**: Phase 1 ~ Phase 21
-- **下一阶段**: Phase 22 — 待定
+- **已完成阶段**: Phase 1 ~ Phase 22
+- **下一阶段**: Phase 23 — 待定

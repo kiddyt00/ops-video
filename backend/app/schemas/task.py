@@ -37,6 +37,7 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     """Schema for creating a task"""
     project_id: UUID
+    chapter_id: Optional[UUID] = None
     parent_task_ids: List[UUID] = []
 
 

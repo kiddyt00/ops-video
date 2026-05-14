@@ -156,7 +156,8 @@ class WorkflowService:
         target_stage: Optional[TaskStage] = None,
         generator_type: Optional[str] = None,
         parameters: Optional[Dict[str, Any]] = None,
-        execute: bool = True,  # Whether to execute the generation immediately
+        execute: bool = True,
+        chapter_id: Optional[UUID] = None,
     ) -> Task:
         """
         Advance workflow to next stage or specific stage
@@ -224,6 +225,7 @@ class WorkflowService:
             stage=target_stage,
             generator_type=generator_type,
             parameters=parameters or {},
+            chapter_id=chapter_id,
             parent_task_ids=[UUID(f["task_id"]) for f in input_file_ids] if input_file_ids else [],
         )
 
@@ -690,7 +692,7 @@ class WorkflowService:
             from .generator_services.mock_helpers import mock_story_data
             story_data = mock_story_data(inspiration=inspiration)
         else:
-            service = StoryGeneratorService()
+            service = StoryGeneratorService(db=self.db)
             story_data = await service.generate_story(
                 inspiration=inspiration,
                 project_id=str(task.project_id),
@@ -810,7 +812,7 @@ class WorkflowService:
             from .generator_services.mock_helpers import mock_story_data
             story_data = mock_story_data(inspiration=inspiration_text)
         else:
-            service = StoryGeneratorService()
+            service = StoryGeneratorService(db=self.db)
             story_data = await service.generate_story(
                 inspiration=inspiration_text,
                 project_id=str(task.project_id),
@@ -907,8 +909,11 @@ class WorkflowService:
             from .generator_services.mock_helpers import mock_chapter_outline_data
             outline_data = mock_chapter_outline_data(story_data, chapter_count or 6)
         else:
-            service = StoryGeneratorService()
+            from ..db.relation_crud import relation_crud
+            service = StoryGeneratorService(db=self.db)
+            service.project_id = task.project_id
             outline_data = await service.generate_chapter_outline(
+                project_id=task.project_id,
                 story_data=story_data,
                 chapter_count=chapter_count,
             )
@@ -987,6 +992,28 @@ class WorkflowService:
         if not success:
             raise WorkflowError("Script generation failed")
 
+        # Extract character states from generated script (non-blocking)
+        try:
+            from ..services.memory_extractor import extract_from_script
+            stage_status = self.get_project_stages(task.project_id)
+            script_files = stage_status.get("script", {}).get("selected_files", [])
+            if script_files:
+                import json
+                script_fid = UUID(script_files[0]["file_id"])
+                script_rec = file_crud.get(self.db, file_id=script_fid)
+                if script_rec:
+                    sp = settings.storage_path / script_rec.file_path
+                    if sp.exists():
+                        script_text = sp.read_text(encoding="utf-8")
+                        await extract_from_script(
+                            project_id=str(task.project_id),
+                            content=script_text[:6000],
+                            chapter_number=1,
+                        )
+                        logger.info("Memory extraction completed for project=%s", task.project_id)
+        except Exception as e:
+            logger.warning("Memory extraction failed (non-blocking): %s", e)
+
         # Auto-select first generated file so next stage can proceed
         self._auto_select_first_file(task.id)
 
@@ -1019,6 +1046,27 @@ class WorkflowService:
         )
         if not success:
             raise WorkflowError("Storyboard generation failed")
+
+        # Extract character states from storyboard (non-blocking)
+        try:
+            from ..services.memory_extractor import extract_from_script
+            stage_status = self.get_project_stages(task.project_id)
+            sb_files = stage_status.get("storyboard", {}).get("selected_files", [])
+            if sb_files:
+                sb_fid = UUID(sb_files[0]["file_id"])
+                sb_rec = file_crud.get(self.db, file_id=sb_fid)
+                if sb_rec:
+                    sp = settings.storage_path / sb_rec.file_path
+                    if sp.exists():
+                        sb_text = sp.read_text(encoding="utf-8")
+                        await extract_from_script(
+                            project_id=str(task.project_id),
+                            content=sb_text[:6000],
+                            chapter_number=1,
+                        )
+                        logger.info("Storyboard memory extraction completed for project=%s", task.project_id)
+        except Exception as e:
+            logger.warning("Storyboard memory extraction failed (non-blocking): %s", e)
 
         self._auto_select_first_file(task.id)
 

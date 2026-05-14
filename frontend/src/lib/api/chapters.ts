@@ -8,11 +8,13 @@ export const chapterApi = {
   get: (projectId: string, chapterId: string) =>
     api.get<Chapter>(`/projects/${projectId}/chapters/${chapterId}`).then(r => r.data),
 
-  create: (projectId: string, data: ChapterCreate) =>
-    api.post<Chapter>(`/projects/${projectId}/chapters`, data).then(r => r.data),
+  syncFromStory: (projectId: string) =>
+    api.post<Chapter[]>(`/projects/${projectId}/chapters/sync`).then(r => r.data),
 
-  update: (projectId: string, chapterId: string, data: ChapterUpdate) =>
-    api.put<Chapter>(`/projects/${projectId}/chapters/${chapterId}`, data).then(r => r.data),
+  create: (projectId: string, data: ChapterCreate) =>
+    api.post<Chapter>(`/projects/${projectId}/chapters`, null, {
+      params: { name: data.name, description: data.description || '' },
+    }).then(r => r.data),
 
   remove: (projectId: string, chapterId: string) =>
     api.delete(`/projects/${projectId}/chapters/${chapterId}`),

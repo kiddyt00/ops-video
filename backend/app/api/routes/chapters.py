@@ -1,73 +1,88 @@
 """
-Chapter API routes -- derived from Story chapter_outline
+Chapter API routes — full CRUD backed by Chapter model.
+
+Chapters can be:
+1. Auto-created from story chapter_outline via POST /projects/{id}/chapters/sync
+2. Manually created/updated/deleted
 """
 from uuid import UUID
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from ...db.session import get_db
+from ...db.chapter_crud import chapter_crud
 from ...db.story_crud import story_crud
 
 router = APIRouter()
 
-# Status progression mapping
-STATUS_ORDER = ["pending", "running", "completed", "failed"]
-DEFAULT_STATUS = "pending"
 
-
-def _enrich_chapter(
-    item: dict, index: int, project_id: UUID, story_updated_at: Optional[datetime]
-) -> dict:
-    """Map chapter_outline entry to full chapter response expected by frontend."""
+def _to_response(chapter) -> dict:
     return {
-        "id": str(index),  # chapter_outline uses array index as ID
-        "project_id": str(project_id),
-        "chapter_number": item.get("chapter_number", index + 1),
-        "name": item.get("title") or item.get("name") or f"Chapter {index + 1}",
-        "description": item.get("summary") or item.get("description") or None,
-        "status": item.get("status", DEFAULT_STATUS),
-        "thumbnail_url": item.get("thumbnail_url"),
-        "video_file_id": item.get("video_file_id"),
-        "current_stage": item.get("current_stage"),
-        "created_at": (
-            story_updated_at.isoformat()
-            if story_updated_at
-            else datetime.utcnow().isoformat()
-        ),
-        "updated_at": (
-            story_updated_at.isoformat()
-            if story_updated_at
-            else datetime.utcnow().isoformat()
-        ),
+        "id": str(chapter.id),
+        "project_id": str(chapter.project_id),
+        "chapter_number": chapter.chapter_number,
+        "name": chapter.name,
+        "description": chapter.description or None,
+        "status": chapter.status,
+        "current_stage": chapter.current_stage,
+        "video_file_id": str(chapter.video_file_id) if chapter.video_file_id else None,
+        "thumbnail_url": chapter.thumbnail_url,
+        "created_at": chapter.created_at.isoformat() if chapter.created_at else None,
+        "updated_at": chapter.updated_at.isoformat() if chapter.updated_at else None,
     }
 
 
 @router.get("", response_model=List[dict])
 def list_chapters(project_id: UUID, db: Session = Depends(get_db)):
-    """List chapters from the project's story chapter_outline"""
-    story = story_crud.get_by_project(db, project_id)
-    if not story or not story.chapter_outline:
-        return []
-    return [
-        _enrich_chapter(item, idx, project_id, story.updated_at)
-        for idx, item in enumerate(story.chapter_outline)
-    ]
+    """List all chapters for a project."""
+    chapters = chapter_crud.get_by_project(db, project_id)
+    return [_to_response(c) for c in chapters]
 
 
 @router.get("/{chapter_id}", response_model=dict)
-def get_chapter(project_id: UUID, chapter_id: str, db: Session = Depends(get_db)):
-    """Get a specific chapter by index from story chapter_outline"""
+def get_chapter(project_id: UUID, chapter_id: UUID, db: Session = Depends(get_db)):
+    """Get a single chapter."""
+    chapter = chapter_crud.get(db, chapter_id)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
+    return _to_response(chapter)
+
+
+@router.post("/sync", response_model=List[dict])
+def sync_chapters_from_story(project_id: UUID, db: Session = Depends(get_db)):
+    """Auto-create chapters from story chapter_outline."""
     story = story_crud.get_by_project(db, project_id)
     if not story or not story.chapter_outline:
+        raise HTTPException(status_code=400, detail="Story has no chapter outline")
+
+    chapters = chapter_crud.get_by_project(db, project_id)
+    if chapters:
+        return [_to_response(c) for c in chapters]
+
+    created = chapter_crud.batch_create_from_outline(db, project_id, story.chapter_outline)
+    return [_to_response(c) for c in created]
+
+
+@router.post("", response_model=dict, status_code=status.HTTP_201_CREATED)
+def create_chapter(
+    project_id: UUID,
+    name: str,
+    description: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """Create a new chapter manually."""
+    chapters = chapter_crud.get_by_project(db, project_id)
+    next_num = max((c.chapter_number for c in chapters), default=0) + 1
+    chapter = chapter_crud.create_from_outline(
+        db, project_id=project_id, chapter_number=next_num, name=name, description=description,
+    )
+    return _to_response(chapter)
+
+
+@router.delete("/{chapter_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_chapter(project_id: UUID, chapter_id: UUID, db: Session = Depends(get_db)):
+    """Soft delete a chapter."""
+    success = chapter_crud.soft_delete(db, chapter_id)
+    if not success:
         raise HTTPException(status_code=404, detail="Chapter not found")
-    try:
-        idx = int(chapter_id)
-        if 0 <= idx < len(story.chapter_outline):
-            return _enrich_chapter(
-                story.chapter_outline[idx], idx, project_id, story.updated_at
-            )
-    except ValueError:
-        pass
-    raise HTTPException(status_code=404, detail="Chapter not found")
