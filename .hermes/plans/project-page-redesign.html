@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ops-Video 项目详情页 - 重设计提案</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0a0a12;
+  color: #e4e4e7;
+  padding: 40px;
+  line-height: 1.5;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 24px; margin-bottom: 8px; color: #f4f4f5; }
+.subtitle { font-size: 14px; color: #a1a1aa; margin-bottom: 32px; }
+.comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 40px; }
+.comparison h2 { font-size: 16px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #27272a; }
+.comparison h2 span { font-size: 12px; font-weight: 400; display: block; color: #71717a; margin-top: 2px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-left: 8px; }
+.tag-remove { background: #ef444433; color: #fca5a5; }
+.tag-merge { background: #f59e0b33; color: #fde68a; }
+.tag-keep { background: #22c55e33; color: #86efac; }
+.tag-new { background: #6366f133; color: #a5b4fc; }
+.tab-group { margin-bottom: 24px; }
+.tab-label { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.tab-items { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab-item { padding: 6px 14px; border-radius: 8px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.tab-item.current { background: #27272a; border: 1px solid #3f3f46; }
+.tab-item.proposed { background: #1e1b4b; border: 1px solid #3730a3; }
+.mockup { background: #09090b; border: 1px solid #27272a; border-radius: 16px; overflow: hidden; margin-top: 32px; }
+.mockup-header { padding: 12px 20px; border-bottom: 1px solid #27272a; display: flex; align-items: center; gap: 12px; background: #0c0c14; }
+.mockup-header .back { color: #a1a1aa; font-size: 13px; }
+.mockup-header .breadcrumb { color: #52525b; font-size: 12px; }
+.mockup-header .project-name { font-weight: 600; font-size: 14px; }
+.mockup-header .status-dots { display: flex; gap: 4px; margin-left: auto; }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-green { background: #22c55e; }
+.dot-gray { background: #3f3f46; }
+.dot-blue { background: #3b82f6; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.mockup-tabs { display: flex; border-bottom: 1px solid #27272a; padding: 0 20px; background: #0c0c14; }
+.mockup-tab { padding: 12px 20px 12px; font-size: 13px; font-weight: 500; color: #71717a; cursor: default; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
+.mockup-tab.active { color: #f4f4f5; border-bottom-color: #6366f1; }
+.mockup-tab .badge { font-size: 10px; padding: 1px 6px; border-radius: 10px; background: #27272a; color: #a1a1aa; margin-left: 4px; }
+.mockup-tab.active .badge { background: #6366f133; color: #a5b4fc; }
+.mockup-body { padding: 24px 20px; min-height: 400px; }
+.section { margin-bottom: 24px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.section-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.section-action { font-size: 12px; color: #6366f1; cursor: default; }
+.section-card { background: #18181b; border: 1px solid #27272a; border-radius: 12px; padding: 16px; margin-bottom: 8px; }
+.chapter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.chapter-card { background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 12px; }
+.chapter-card .num { font-size: 10px; color: #52525b; margin-bottom: 4px; }
+.chapter-card .name { font-size: 13px; font-weight: 500; margin-bottom: 8px; }
+.chapter-card .actions { display: flex; gap: 6px; }
+.chapter-card .btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 500; background: #27272a; color: #a1a1aa; }
+.chapter-card .btn.primary { background: #6366f1; color: #e4e4f0; }
+.stage { display: flex; gap: 12px; padding: 12px 0; border-left: 2px solid #27272a; margin-left: 8px; padding-left: 20px; position: relative; }
+.stage:last-child { border-left-color: transparent; }
+.stage-dot { position: absolute; left: -9px; top: 14px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #27272a; background: #09090b; }
+.stage-dot.done { background: #22c55e; border-color: #22c55e; }
+.stage-dot.current { background: #3b82f6; border-color: #3b82f6; animation: pulse 2s infinite; }
+.stage-dot.summary { background: #6366f1; border-color: #6366f1; }
+.stage-content { flex: 1; }
+.stage-label { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+.stage-status { font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+.stage-status.done { background: #22c55e22; color: #86efac; }
+.stage-status.running { background: #3b82f622; color: #93c5fd; }
+.stage-status.summary { background: #6366f122; color: #a5b4fc; }
+.stage-desc { font-size: 12px; color: #71717a; margin-top: 4px; }
+.stage-preview { font-size: 12px; color: #a1a1aa; margin-top: 6px; padding: 8px; background: #141417; border-radius: 8px; }
+.chapter-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; padding: 12px 16px; background: #18181b; border: 1px solid #27272a; border-radius: 12px; }
+.chapter-selector label { font-size: 12px; color: #71717a; }
+.chapter-pills { display: flex; gap: 6px; }
+.chapter-pill { padding: 4px 12px; border-radius: 6px; font-size: 12px; background: #27272a; color: #a1a1aa; }
+.chapter-pill.active { background: #6366f1; color: #e4e4f0; }
+.comparison-table { margin-top: 32px; background: #18181b; border-radius: 12px; overflow: hidden; }
+.comparison-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.comparison-table th, .comparison-table td { padding: 10px 16px; text-align: left; border-bottom: 1px solid #27272a; }
+.comparison-table th { background: #141417; font-weight: 600; color: #a1a1aa; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.fade { color: #52525b; }
+.check { color: #86efac; }
+.cross { color: #fca5a5; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>项目详情页 · 信息架构重构</h1>
+<p class="subtitle">从 5 Tab（功能维度）→ 3 Tab（任务维度），消除工作流重复感</p>
+
+<div class="comparison">
+<div class="bad">
+<h2>当前 · 5 Tab<span>按功能模块组织</span></h2>
+<div class="tab-group">
+<div class="tab-label">感觉怪的地方</div>
+<div class="tab-items">
+<div class="tab-item current"><span>📖</span>故事</div>
+<div class="tab-item current"><span>👤</span>角色卡</div>
+<div class="tab-item current"><span>🎬</span>章节</div>
+<div class="tab-item current"><span>⚙️</span>工作流 <span class="tag tag-remove">前3阶段重复</span></div>
+<div class="tab-item current"><span>🔧</span>设置</div>
+</div>
+<div style="font-size: 12px; color: #71717a; margin-top: 8px;">
+· 工作流前3阶段（灵感/故事/章节）与 Tab 内容重复<br>
+· 角色卡独立成 Tab 使用率极低<br>
+· 用户需要在 Tab 间来回切换，流程断裂
+</div>
+</div>
+</div>
+<div class="good">
+<h2>提案 · 3 Tab<span>按用户任务组织</span></h2>
+<div class="tab-group">
+<div class="tab-label">更自然的创作流</div>
+<div class="tab-items">
+<div class="tab-item proposed"><span>📖</span>创作 <span class="tag tag-merge">融合 故事+角色卡+章节</span></div>
+<div class="tab-item proposed"><span>🏗️</span>管线 <span class="tag tag-new">前3阶段只读</span></div>
+<div class="tab-item proposed"><span>⚙️</span>设置 <span class="tag tag-keep">保留</span></div>
+</div>
+<div style="font-size: 12px; color: #a5b4fc; margin-top: 8px;">
+· 创作 Tab: 自上而下 故事→角色卡→章节，一次完成输入<br>
+· 管线 Tab: 前3阶段(灵感/故事/章节)只读摘要 → 后续5阶段可操作<br>
+· 章节选择器放在管线顶部，选中后聚焦该章管线
+</div>
+</div>
+</div>
+</div>
+
+<!-- Mockup: 创作 Tab -->
+<div class="mockup">
+<div class="mockup-header">
+<span class="back">← 项目列表</span>
+<span class="breadcrumb">/</span>
+<span class="project-name">赛博修仙传</span>
+<div class="status-dots">
+<span class="dot dot-green"></span><span class="dot dot-green"></span><span class="dot dot-green"></span>
+<span class="dot dot-blue"></span><span class="dot dot-gray"></span><span class="dot dot-gray"></span>
+<span class="dot dot-gray"></span><span class="dot dot-gray"></span>
+</div>
+</div>
+<div class="mockup-tabs">
+<div class="mockup-tab active"><span>📖</span> 创作 <span class="badge">故事 · 角色 · 章节</span></div>
+<div class="mockup-tab"><span>🏗️</span> 管线 <span class="badge">8 阶段</span></div>
+<div class="mockup-tab"><span>⚙️</span> 设置</div>
+</div>
+<div class="mockup-body">
+
+<div class="section">
+<div class="section-header">
+<div class="section-title">📖 故事设定</div>
+<div class="section-action">✏️ 编辑</div>
+</div>
+<div class="section-card">
+<div style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">赛博修仙传</div>
+<div style="font-size: 12px; color: #a1a1aa; line-height: 1.6; margin-bottom: 12px;">
+2077 年，修真文明与赛博科技交融。主角林夜发现自己的灵根被植入量子芯片...
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #27272a; color: #a1a1aa;">类型: 科幻修仙</span>
+<span style="padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #27272a; color: #a1a1aa;">世界观: 赛博朋克</span>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-header">
+<div class="section-title">👤 角色设定 <span style="font-size: 11px; color: #71717a; font-weight: 400;">3 个角色</span></div>
+<div class="section-action">展开 ▾</div>
+</div>
+<div style="display: flex; gap: 8px;">
+<div style="background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 10px 14px; flex: 1;">
+<div style="font-size: 12px; font-weight: 600;">林夜 <span style="font-size: 10px; color: #71717a;">男主角</span></div>
+<div style="font-size: 11px; color: #71717a; margin-top: 4px;">量子灵根 · 17 岁 · 黑发异瞳</div>
+</div>
+<div style="background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 10px 14px; flex: 1;">
+<div style="font-size: 12px; font-weight: 600;">苏瑶 <span style="font-size: 10px; color: #71717a;">女主角</span></div>
+<div style="font-size: 11px; color: #71717a; margin-top: 4px;">天机阁少主 · 银发 · 机械义肢</div>
+</div>
+<div style="background: #18181b; border: 1px solid #27272a; border-radius: 10px; padding: 10px 14px; flex: 1;">
+<div style="font-size: 12px; font-weight: 600;">天网 <span style="font-size: 10px; color: #71717a;">反派</span></div>
+<div style="font-size: 11px; color: #71717a; margin-top: 4px;">AI 意识 · 全息投影形态</div>
+</div>
+</div>
+</div>
+
+<div class="section">
+<div class="section-header">
+<div class="section-title">📑 章节大纲 <span style="font-size: 11px; color: #71717a;">5 章</span></div>
+<div class="section-action" style="display: flex; gap: 8px;">
+<span>重新生成</span>
+<span style="color: #6366f1;">进入管线 →</span>
+</div>
+</div>
+<div class="chapter-grid">
+<div class="chapter-card">
+<div class="num">第 1 章</div>
+<div class="name">量子灵根觉醒</div>
+<div style="display: flex; gap: 4px; align-items: center; margin-bottom: 8px;">
+<span class="dot dot-green" style="width: 6px; height: 6px; display: inline-block;"></span>
+<span style="font-size: 10px; color: #86efac;">已完成</span>
+</div>
+<div class="actions"><span class="btn">查看</span><span class="btn primary">进入管线</span></div>
+</div>
+<div class="chapter-card">
+<div class="num">第 2 章</div>
+<div class="name">天机阁试炼</div>
+<div style="display: flex; gap: 4px; align-items: center; margin-bottom: 8px;">
+<span class="dot dot-blue" style="width: 6px; height: 6px; display: inline-block;"></span>
+<span style="font-size: 10px; color: #93c5fd;">生成中</span>
+</div>
+<div class="actions"><span class="btn">查看</span><span class="btn primary">进入管线</span></div>
+</div>
+<div class="chapter-card">
+<div class="num">第 3 章</div>
+<div class="name">暗网追踪</div>
+<div style="display: flex; gap: 4px; align-items: center; margin-bottom: 8px;">
+<span class="dot dot-gray" style="width: 6px; height: 6px; display: inline-block;"></span>
+<span style="font-size: 10px; color: #71717a;">待开始</span>
+</div>
+<div class="actions"><span class="btn">查看</span><span class="btn primary">进入管线</span></div>
+</div>
+<div class="chapter-card">
+<div class="num">第 4 章</div>
+<div class="name">赛博飞升</div>
+<div style="display: flex; gap: 4px; align-items: center; margin-bottom: 8px;">
+<span class="dot dot-gray" style="width: 6px; height: 6px; display: inline-block;"></span>
+<span style="font-size: 10px; color: #71717a;">待开始</span>
+</div>
+<div class="actions"><span class="btn">查看</span><span class="btn primary">进入管线</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Mockup: 管线 Tab -->
+<div class="mockup" style="margin-top: 16px;">
+<div class="mockup-header">
+<span class="back">← 项目列表</span>
+<span class="breadcrumb">/</span>
+<span class="project-name">赛博修仙传</span>
+<div class="status-dots">
+<span class="dot dot-green"></span><span class="dot dot-green"></span><span class="dot dot-green"></span>
+<span class="dot dot-blue"></span><span class="dot dot-gray"></span><span class="dot dot-gray"></span>
+<span class="dot dot-gray"></span><span class="dot dot-gray"></span>
+</div>
+</div>
+<div class="mockup-tabs">
+<div class="mockup-tab"><span>📖</span> 创作</div>
+<div class="mockup-tab active"><span>🏗️</span> 管线 <span class="badge">第 2 章</span></div>
+<div class="mockup-tab"><span>⚙️</span> 设置</div>
+</div>
+<div class="mockup-body">
+
+<div class="chapter-selector">
+<label>当前章节:</label>
+<div class="chapter-pills">
+<span class="chapter-pill">第 1 章 · 已完成</span>
+<span class="chapter-pill active">第 2 章 · 剧本阶段</span>
+<span class="chapter-pill">第 3 章 · 待开始</span>
+<span class="chapter-pill">第 4 章 · 待开始</span>
+</div>
+</div>
+
+<div class="pipeline">
+<div class="stage">
+<div class="stage-dot summary"></div>
+<div class="stage-content">
+<div class="stage-label"><span>💡 灵感</span><span class="stage-status summary">已完成（来源于创作 Tab）</span></div>
+<div class="stage-preview">关于"量子灵根"与"赛博修仙"的跨界设定</div>
+</div>
+</div>
+<div class="stage">
+<div class="stage-dot summary"></div>
+<div class="stage-content">
+<div class="stage-label"><span>📖 故事</span><span class="stage-status summary">已完成</span></div>
+<div class="stage-preview">2077 年，林夜发现自己的灵根被植入量子芯片...（来自创作 Tab）</div>
+</div>
+</div>
+<div class="stage">
+<div class="stage-dot summary"></div>
+<div class="stage-content">
+<div class="stage-label"><span>📑 章节</span><span class="stage-status summary">已拆解 4 章</span></div>
+<div class="stage-preview">量子灵根觉醒 → 天机阁试炼 → 暗网追踪 → 赛博飞升</div>
+</div>
+</div>
+
+<div style="text-align: center; font-size: 10px; color: #52525b; padding: 4px 0; letter-spacing: 2px; border-top: 1px dashed #27272a; margin: 8px 0;">
+── 创作完成 · 进入生产管线 ──
+</div>
+
+<div class="stage">
+<div class="stage-dot done"></div>
+<div class="stage-content">
+<div class="stage-label"><span>📝 剧本</span><span class="stage-status done">已完成</span></div>
+<div class="stage-desc">第 2 章 · 天机阁试炼 完整剧本已生成</div>
+<div class="stage-preview">场景: 天机阁大厅 · 林夜初次面对机械守卫... <span style="color: #6366f1; margin-left: 8px;">查看完整剧本 →</span></div>
+</div>
+</div>
+
+<div class="stage">
+<div class="stage-dot current"></div>
+<div class="stage-content">
+<div class="stage-label"><span>🎬 分镜</span><span class="stage-status running">生成中...</span></div>
+<div class="stage-desc">AI 正在将剧本拆解为视觉分镜</div>
+<div style="margin-top: 8px; display: flex; gap: 6px;">
+<span style="padding: 6px 14px; border-radius: 8px; font-size: 12px; background: #3b82f6; color: #fff;">重新生成</span>
+<span style="padding: 6px 14px; border-radius: 8px; font-size: 12px; background: #27272a; color: #a1a1aa;">修改参数</span>
+</div>
+</div>
+</div>
+
+<div class="stage">
+<div class="stage-dot"></div>
+<div class="stage-content" style="opacity: 0.4;">
+<div class="stage-label"><span>🖼️ 生图</span><span class="stage-status" style="background: #27272a; color: #52525b;">等待前序阶段</span></div>
+</div>
+</div>
+<div class="stage">
+<div class="stage-dot"></div>
+<div class="stage-content" style="opacity: 0.4;">
+<div class="stage-label"><span>🎵 配音</span><span class="stage-status" style="background: #27272a; color: #52525b;">等待前序阶段</span></div>
+</div>
+</div>
+<div class="stage">
+<div class="stage-dot"></div>
+<div class="stage-content" style="opacity: 0.4;">
+<div class="stage-label"><span>🎬 成片</span><span class="stage-status" style="background: #27272a; color: #52525b;">等待前序阶段</span></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Comparison Table -->
+<div class="comparison-table">
+<table>
+<thead>
+<tr><th>维度</th><th>当前 (5 Tab)</th><th>提案 (3 Tab)</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>Tab 数量</strong></td><td>5</td><td>3</td></tr>
+<tr><td><strong>组织逻辑</strong></td><td class="fade">按功能模块</td><td>按用户任务路线</td></tr>
+<tr><td><strong>角色卡</strong></td><td class="fade">独立 Tab（使用率低）</td><td>折叠在创作 Tab 中</td></tr>
+<tr><td><strong>章节</strong></td><td class="fade">独立 Tab，点击后跳工作流</td><td>创作 Tab 底部展示</td></tr>
+<tr><td><strong>工作流前3阶段</strong></td><td class="cross">可操作卡片，与 Tab 重复</td><td class="check">只读摘要卡片</td></tr>
+<tr><td><strong>章节选择</strong></td><td class="fade">章节 Tab → 选章 → 跳工作流</td><td class="check">管线 Tab 顶部 Pill 选择器</td></tr>
+<tr><td><strong>用户聚焦</strong></td><td class="fade">分散在 5 个点</td><td class="check">先创作 → 再生产，线性专注</td></tr>
+</tbody>
+</table>
+</div>
+
+</div>
+</body>
+</html>
