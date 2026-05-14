@@ -353,10 +353,10 @@ class TestEndToEndWorkflow:
 
     def _complete_stage(self, project_id, stage, generator_type, parameters=None):
         """Helper: create task, mark as completed, create variant group and file"""
-        # Advance endpoint expects query parameters, not JSON body
+        body = {"parameters": parameters or {}, "execute": False}
         task_resp = client.post(
             f"/api/v1/workflow/{project_id}/advance/{stage}",
-            params=parameters or {},
+            json=body,
         )
         assert task_resp.status_code == 200, f"Failed to advance to {stage}: {task_resp.text}"
         task_id = task_resp.json()["id"]
@@ -383,13 +383,13 @@ class TestEndToEndWorkflow:
         return task_id, vg_id, file_id
 
     def test_full_workflow(self):
-        """Test complete workflow: project -> script -> storyboard -> image -> audio -> video"""
+        """Test complete 8-stage workflow: inspiration -> story -> ... -> video"""
         # 1. Create project
         project_resp = create_project("Full Workflow Test")
         project_id = project_resp.json()["id"]
 
-        # 2. Advance through all stages
-        stages = ["script", "storyboard", "image", "audio", "video"]
+        # 2. Advance through all 8 stages
+        stages = ["inspiration", "story", "chapter_outline", "script", "storyboard", "image", "audio", "video"]
         created_tasks = []
 
         for stage in stages:
@@ -401,31 +401,38 @@ class TestEndToEndWorkflow:
         assert resp.status_code == 200
         data = resp.json()
         assert data["project_id"] == project_id
-        assert len(data["stages"]) == 5
+        assert len(data["stages"]) == 8
 
         # 4. Verify workflow history
         resp = client.get(f"/api/v1/workflow/{project_id}/history")
         assert resp.status_code == 200
         history = resp.json()["history"]
-        assert len(history) == 5
+        assert len(history) == 8
 
     def test_workflow_advancement_without_prerequisites(self):
         """Test that advancing without completing prerequisites fails"""
         project_resp = create_project()
         project_id = project_resp.json()["id"]
 
-        # Try to advance to storyboard without completing script
+        # Try to advance to storyboard without completing any prerequisites
         resp = client.post(f"/api/v1/workflow/{project_id}/advance/storyboard")
         assert resp.status_code == 400
 
+        # Try to advance directly to script without inspiration/story/chapter_outline
+        resp = client.post(f"/api/v1/workflow/{project_id}/advance/script")
+        assert resp.status_code == 400
+
     def test_workflow_first_stage(self):
-        """Test advancing to first stage (script) without prerequisites"""
+        """Test advancing to first stage (inspiration)"""
         project_resp = create_project()
         project_id = project_resp.json()["id"]
-        resp = client.post(f"/api/v1/workflow/{project_id}/advance/script")
+        resp = client.post(
+            f"/api/v1/workflow/{project_id}/advance/inspiration",
+            json={"execute": False},
+        )
         assert resp.status_code == 200
-        assert resp.json()["stage"] == "script"
-        assert resp.json()["status"] in ("pending", "completed")
+        assert resp.json()["stage"] == "inspiration"
+        assert resp.json()["status"] in ("pending", "failed")
 
     def test_workflow_history_empty_project(self):
         """Test workflow history for project with no tasks"""
@@ -440,8 +447,9 @@ class TestEndToEndWorkflow:
         project_resp = create_project()
         project_id = project_resp.json()["id"]
 
-        # Complete script stage
-        self._complete_stage(project_id, "script", "script")
+        # Complete all prerequisite stages (inspiration → story → chapter_outline → script)
+        for pre in ["inspiration", "story", "chapter_outline", "script"]:
+            self._complete_stage(project_id, pre, pre)
 
         # Complete storyboard stage
         self._complete_stage(project_id, "storyboard", "storyboard")

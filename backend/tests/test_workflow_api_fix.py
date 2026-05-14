@@ -46,6 +46,7 @@ async def test_advance_workflow_reads_generator_type_from_body():
             generator_type="storyboard",
             parameters={"panel_count": 6},
             execute=True,
+            chapter_id=None,
         )
         assert result.status == TaskStatus.COMPLETED
         assert result.stage == TaskStage.STORYBOARD
@@ -79,4 +80,5 @@ async def test_advance_workflow_defaults_to_none_when_no_generator_type():
             generator_type=None,
             parameters=None,
             execute=True,
+            chapter_id=None,
         )

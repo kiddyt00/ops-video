@@ -74,6 +74,45 @@ class E2ETestRunner:
         print(f"  Created project: {data['id']}")
         return data["id"]
 
+    async def generate_inspiration(self) -> str:
+        """Generate inspiration"""
+        print("\n[1b/7] Generating inspiration...")
+        response = await self.client.post(
+            f"/workflow/{self.project_id}/advance/inspiration",
+            json={"topic": TEST_TOPIC},
+        )
+        response.raise_for_status()
+        data = response.json()
+        self.results["inspiration_task_id"] = data["task_id"]
+        print(f"  Inspiration task created: {data['task_id']}")
+        return data["task_id"]
+
+    async def generate_story(self) -> str:
+        """Generate story"""
+        print("\n[1c/7] Generating story...")
+        response = await self.client.post(
+            f"/workflow/{self.project_id}/advance/story",
+            json={"topic": TEST_TOPIC},
+        )
+        response.raise_for_status()
+        data = response.json()
+        self.results["story_task_id"] = data["task_id"]
+        print(f"  Story task created: {data['task_id']}")
+        return data["task_id"]
+
+    async def generate_chapter_outline(self) -> str:
+        """Generate chapter outline"""
+        print("\n[1d/7] Generating chapter outline...")
+        response = await self.client.post(
+            f"/workflow/{self.project_id}/advance/chapter_outline",
+            json={"topic": TEST_TOPIC},
+        )
+        response.raise_for_status()
+        data = response.json()
+        self.results["chapter_outline_task_id"] = data["task_id"]
+        print(f"  Chapter outline task created: {data['task_id']}")
+        return data["task_id"]
+
     async def generate_script(self) -> str:
         """Generate script using LLM"""
         print("\n[2/7] Generating script...")
@@ -217,6 +256,11 @@ class E2ETestRunner:
         try:
             # Create project
             await self.create_project()
+
+            # Generate inspiration, story, chapter outline (prerequisites)
+            await self.generate_inspiration()
+            await self.generate_story()
+            await self.generate_chapter_outline()
 
             # Generate script
             await self.generate_script()

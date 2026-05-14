@@ -51,7 +51,13 @@ class TestAdvanceStageGeneratorTypeMapping:
             # Patch can_advance_to to always return True
             with patch.object(ws, "can_advance_to", return_value=True), \
                  patch.object(ws, "get_project_stages", return_value={
-                     "script": {"selected_files": [{"file_id": "1", "task_id": str(uuid4())}],
+                     "inspiration": {"selected_files": [{"file_id": "1", "task_id": str(uuid4())}],
+                                     "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "story": {"selected_files": [{"file_id": "2", "task_id": str(uuid4())}],
+                               "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "chapter_outline": {"selected_files": [{"file_id": "3", "task_id": str(uuid4())}],
+                                         "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "script": {"selected_files": [{"file_id": "4", "task_id": str(uuid4())}],
                                 "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
                      "storyboard": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},
                      "image": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},
@@ -114,6 +120,12 @@ class TestAdvanceStageExecuteErrorHandling:
 
             with patch.object(ws, "can_advance_to", return_value=True), \
                  patch.object(ws, "get_project_stages", return_value={
+                     "inspiration": {"selected_files": [{"file_id": "1", "task_id": str(uuid4())}],
+                                    "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "story": {"selected_files": [{"file_id": "2", "task_id": str(uuid4())}],
+                               "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "chapter_outline": {"selected_files": [{"file_id": "3", "task_id": str(uuid4())}],
+                                         "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
                      "script": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},
                      "storyboard": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},
                      "image": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},
@@ -126,6 +138,7 @@ class TestAdvanceStageExecuteErrorHandling:
                 with pytest.raises(WorkflowError, match="Script generation failed"):
                     await ws.advance_stage(
                         project_id=mock_project.id,
+                        target_stage=TaskStage.SCRIPT,
                         execute=True,
                     )
 
@@ -157,6 +170,9 @@ class TestAdvanceStageExecuteErrorHandling:
 
             with patch.object(ws, "can_advance_to", return_value=True), \
                  patch.object(ws, "get_project_stages", return_value={
+                     "inspiration": {"selected_files": [], "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "story": {"selected_files": [], "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
+                     "chapter_outline": {"selected_files": [], "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
                      "script": {"selected_files": [{"file_id": "1", "task_id": str(uuid4())}],
                                 "completed_tasks": 1, "total_tasks": 1, "can_proceed": True},
                      "storyboard": {"selected_files": [], "completed_tasks": 0, "total_tasks": 0, "can_proceed": False},

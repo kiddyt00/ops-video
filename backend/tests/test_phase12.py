@@ -6,16 +6,15 @@ Tests provider switching, routing logic, and individual provider interfaces.
 import sys
 import asyncio
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.providers.base_provider import BaseProvider, GenerationResult
+from app.providers.base_provider import GenerationResult
 from app.providers.wanx_provider import WanxProvider
 from app.providers.siliconflow_provider import SiliconFlowProvider
-from app.services.generator_services.image_generator_service import get_image_provider
 
 
 # ─── Provider Base Tests ─────────────────────────────────────────────
@@ -96,33 +95,9 @@ class TestSiliconFlowProvider:
 
 
 # ─── Provider Routing Tests ──────────────────────────────────────────
-
-class TestProviderRouting:
-    """Test dynamic provider routing based on config."""
-
-    @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_dashscope(self, mock_settings):
-        mock_settings.IMAGE_PROVIDER = "DASHSCOPE"
-        provider = get_image_provider()
-        assert isinstance(provider, WanxProvider)
-
-    @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_siliconflow(self, mock_settings):
-        mock_settings.IMAGE_PROVIDER = "SILICONFLOW"
-        provider = get_image_provider()
-        assert isinstance(provider, SiliconFlowProvider)
-
-    @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_unknown_defaults_to_dashscope(self, mock_settings):
-        mock_settings.IMAGE_PROVIDER = "UNKNOWN"
-        provider = get_image_provider()
-        assert isinstance(provider, WanxProvider)
-
-    @patch("app.services.generator_services.image_generator_service.settings")
-    def test_get_image_provider_empty_defaults_to_dashscope(self, mock_settings):
-        mock_settings.IMAGE_PROVIDER = ""
-        provider = get_image_provider()
-        assert isinstance(provider, WanxProvider)
+# Note: get_image_provider() was removed in Phase 20 refactor.
+# Provider resolution is now handled by ProviderRouter(db).resolve(category, project_id)
+# See test_provider_router.py or similar for current tests.
 
 
 # ─── GenerationResult Tests ──────────────────────────────────────────
