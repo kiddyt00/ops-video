@@ -16,6 +16,8 @@ import type { FileRecord } from '@/lib/api/files'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 
+const CREATION_STAGES = new Set(['inspiration', 'story', 'chapter_outline'])
+
 const STAGES: { key: TaskStage; label: string; desc: string; icon: typeof Sparkles; fileType: string }[] = [
   { key: 'inspiration', label: '灵感', desc: 'AI 创意发散', icon: Lightbulb, fileType: 'inspiration' },
   { key: 'story', label: '故事', desc: '故事大纲创作', icon: BookOpen, fileType: 'story' },
@@ -46,7 +48,6 @@ interface Props {
   autoRunning?: boolean
   isLoading?: boolean
   onFilesChange?: () => void
-  /** If set, show chapter context banner and pass to onGenerate */
   chapterId?: string
   chapterName?: string
 }
@@ -75,7 +76,6 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
 
   const getStatus = (key: string): string => {
     const stageTasks = (tasks ?? []).filter(t => t.stage === key)
-    // Prefer completed, then running, then any status, then pending
     if (stageTasks.some(t => t.status === 'completed')) return 'completed'
     if (stageTasks.some(t => t.status === 'running')) return 'running'
     if (stageTasks.length > 0) return stageTasks[0].status
@@ -99,7 +99,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
   }
 
   return (
-    <div className="h-full bg-gradient-to-b from-[#0a0a14] via-[#0d0d1a] to-[#0a0a14]">
+    <div className="h-full">
       <ScrollArea className="h-full">
         <div className="p-6 max-w-3xl mx-auto space-y-0">
           <div className="text-center mb-8">
@@ -107,17 +107,8 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
             <p className="text-xs text-muted-foreground mt-1">点击阶段展开查看制品与参数</p>
             {onRunAll && (
               <div className="mt-3">
-                <Button
-                  size="sm"
-                  onClick={onRunAll}
-                  disabled={autoRunning}
-                  className="gap-1.5 bg-violet-600 hover:bg-violet-500"
-                >
-                  {autoRunning ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Play className="w-3.5 h-3.5" />
-                  )}
+                <Button size="sm" onClick={onRunAll} disabled={autoRunning} className="gap-1.5 bg-violet-600 hover:bg-violet-500">
+                  {autoRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                   {autoRunning ? '生成中...' : '全部生成'}
                 </Button>
               </div>
@@ -126,32 +117,85 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
               <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20">
                 <Film className="w-3.5 h-3.5 text-violet-400" />
                 <span className="text-sm text-violet-300 font-medium">{chapterName}</span>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-violet-500/10 text-violet-300 border-violet-500/20">
-                  当前章节
-                </Badge>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-violet-500/10 text-violet-300 border-violet-500/20">当前章节</Badge>
               </div>
             )}
           </div>
 
           <div className="relative">
-            <div className="absolute left-8 top-0 bottom-0 w-px bg-gradient-to-b from-violet-500/30 via-sky-500/20 to-emerald-500/30" />
+            {/* Vertical timeline line */}
+            <div className="absolute left-8 top-0 bottom-0 w-px bg-border/50" />
 
-            {STAGES.map(({ key, label, desc, icon: Icon, fileType }, i) => {
+            {STAGES.map(({ key, label, desc, icon: Icon, fileType }) => {
               const status = getStatus(key)
-              const cfg = statusCfg[status] ?? statusCfg.pending
-              const isOpen = expanded === key
-              const isCurrent = currentStage === key
-              const stageFiles = getFiles(fileType)
+              const cfg = statusCfg[status] || statusCfg.pending
               const stageTasks = (tasks ?? []).filter(t => t.stage === key)
+              const stageFiles = getFiles(fileType)
               const task = stageTasks.find(t => t.status === 'completed') || stageTasks[0]
+              const isCurrent = currentStage === key
+              const isOpen = expanded === key
+              const isCreation = CREATION_STAGES.has(key)
+
+              // ── Creation stages: compact summary ──
+              if (isCreation) {
+                if (status === 'completed') {
+                  return (
+                    <div key={key} className="relative pb-2">
+                      <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-violet-400" />
+                      </div>
+                      <div className="ml-14">
+                        <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center shrink-0">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-foreground/90">{label}</span>
+                                <Badge className="text-[10px] px-1.5 py-0 bg-violet-500/15 text-violet-400 border-0">已完成</Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">内容已保存在「创作」Tab</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return (
+                  <div key={key} className="relative pb-2">
+                    <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-background bg-muted-foreground/30" />
+                    </div>
+                    <div className="ml-14">
+                      <div className="rounded-2xl border border-dashed border-border/50 bg-muted/20 p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-muted/30 text-muted-foreground flex items-center justify-center shrink-0">
+                            <Icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-muted-foreground">{label}</span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground/50 border-muted-foreground/20">待开始</Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground/50 mt-0.5">请先在「创作」Tab 中完成{label}设定</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
+              // ══════ Production stages (script → video) ══════
               const hasPreview = stageFiles.length > 0 && (fileType === 'image' || fileType === 'video' || fileType === 'audio')
 
               return (
                 <div key={key} className="relative pb-2">
                   <div className="absolute left-8 top-8 -translate-x-1/2 z-10">
-                    <div className={cn('w-3.5 h-3.5 rounded-full border-2 border-[#0a0a14] transition-colors', cfg.dot)} />
+                    <div className={cn('w-3.5 h-3.5 rounded-full border-2 border-background transition-colors', cfg.dot)} />
                   </div>
-
                   <div className="ml-14">
                     <Card
                       className={cn(
@@ -170,62 +214,44 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                           status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
                           status === 'running' ? 'bg-sky-500/15 text-sky-400' :
                           status === 'failed' ? 'bg-rose-500/10 text-rose-400' :
-                          'bg-zinc-800 text-muted-foreground',
+                          'bg-muted text-muted-foreground',
                         )}>
                           {status === 'running' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-foreground/90">{label}</span>
-                            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', cfg.color, 'bg-muted/30')}>
-                              {cfg.label}
-                            </Badge>
+                            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', cfg.color, 'bg-muted/30')}>{cfg.label}</Badge>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                         </div>
-                        {status === 'completed' && hasPreview && (
-                          <MiniPreview fileType={fileType} file={stageFiles[0]} />
-                        )}
+                        {status === 'completed' && hasPreview && <MiniPreview fileType={fileType} file={stageFiles[0]} />}
                         <div className={cn('transition-transform duration-200', isOpen && 'rotate-180')}>
                           <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
                       </div>
                       {task?.error_message && (
                         <div className="px-4 pb-3">
-                          <div className="text-[11px] text-rose-400/80 bg-rose-500/5 rounded-lg px-3 py-2">
-                            {task.error_message.slice(0, 200)}
-                          </div>
+                          <div className="text-[11px] text-rose-400/80 bg-rose-500/5 rounded-lg px-3 py-2">{task.error_message.slice(0, 200)}</div>
                         </div>
                       )}
                     </Card>
-
                     {isOpen && (
                       <div className="mt-2 ml-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                        {stageFiles.length > 0 && (
-                          <StageArtifacts fileType={fileType} files={stageFiles} onFilesChange={onFilesChange} />
-                        )}
+                        {stageFiles.length > 0 && <StageArtifacts fileType={fileType} files={stageFiles} onFilesChange={onFilesChange} />}
                         <Card className="border-0 rounded-xl bg-muted/20">
                           <CardContent className="p-4">
-                            <ParameterPanel
-                              stage={key}
-                              onGenerate={(params) => onGenerate(key, params)}
-                              canGenerate={true}
-                              canAdvance={false}
-                            />
+                            <ParameterPanel stage={key} onGenerate={(params) => onGenerate(key, params)} canGenerate={true} canAdvance={false} />
                             <div className="flex gap-2 mt-3">
-                              <Button
-                                size="sm" variant="outline"
-                                className="text-xs border-border text-foreground/70 hover:bg-muted/50"
+                              <Button size="sm" variant="outline" className="text-xs border-border text-foreground/70 hover:bg-muted/50"
                                 onClick={(e) => { e.stopPropagation(); startStreaming(key, {}) }}
-                                disabled={status === 'running' || isStreaming}
-                              >
-                                {status === 'completed' ? <Play className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
-                                {isStreaming && streamingStage === key ? '流式生成中...' : task ? '重新生成' : '开始生成'}
+                                disabled={status === 'running' || isStreaming}>
+                                {status === 'running'
+                                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />生成中</>
+                                  : <><Play className="w-3 h-3 mr-1" />{task ? '重新生成' : '开始生成'}</>}
                               </Button>
                               {status === 'completed' && isCurrent && (
-                                <Button size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onAdvance() }}>
-                                  推进下一阶段
-                                </Button>
+                                <Button size="sm" className="text-xs" onClick={(e) => { e.stopPropagation(); onAdvance() }}>推进下一阶段</Button>
                               )}
                             </div>
                           </CardContent>
@@ -268,7 +294,7 @@ function MiniPreview({ fileType, file }: { fileType: string; file: FileRecord })
   }
   if (fileType === 'audio') {
     return <div className="shrink-0">
-      <audio controls src={src} className="h-7 w-32 [&::-webkit-media-controls-panel]:bg-zinc-800" preload="metadata" />
+      <audio controls src={src} className="h-7 w-32" preload="metadata" />
     </div>
   }
   return null
