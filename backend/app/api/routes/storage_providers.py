@@ -92,12 +92,16 @@ async def test_storage_provider(
     start = time.time()
 
     try:
-        result = await _test_s3_connection(provider)
+        from ...core.oss_service import test_storage_connection as _real_test
+        tr = await _real_test(provider)
         latency = (time.time() - start) * 1000
-        storage_provider_crud.update_test_result(db, provider_id, success=True)
+        if tr.success:
+            storage_provider_crud.update_test_result(db, provider_id, success=True)
+        else:
+            storage_provider_crud.update_test_result(db, provider_id, success=False, error=tr.message)
         return StorageTestResult(
-            success=True,
-            message=result,
+            success=tr.success,
+            message=tr.message,
             latency_ms=round(latency, 1),
             provider_name=provider.name,
             bucket=provider.bucket,
