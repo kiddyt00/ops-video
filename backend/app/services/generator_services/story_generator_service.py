@@ -150,26 +150,41 @@ def _build_story_prompt(inspiration: str, **kwargs) -> str:
 返回以下结构的 JSON 对象（所有字段内容必须使用中文）：
 {
   "logline": "一句话概括整个故事",
-  "synopsis": "详细的故事梗概",
+  "synopsis": "详细的故事梗概（300-500字）",
+  "title_suggestions": ["备选书名1", "备选书名2"],
+  "target_audience": "目标读者群",
+  "style_tags": ["风格标签1", "风格标签2"],
+  "word_count_estimate": 50000,
   "worldbuilding": {
     "setting": "故事发生的世界背景",
     "time_period": "故事发生的时代",
     "rules": "这个世界的基本规则和力量体系"
   },
+  "world_map_hints": "世界地理概述",
+  "power_system": {
+    "name": "力量体系名称",
+    "stages": ["境界1", "境界2", "境界3"],
+    "description": "力量体系简述"
+  },
+  "golden_finger_detail": "主角金手指的详细设定和限制",
   "characters": [
     {
       "name": "角色姓名",
       "role": "角色定位（如：主角/反派/导师/伙伴）",
       "description": "角色外貌和性格描述",
-      "arc": "角色成长弧线简述"
+      "arc": "角色成长弧线简述",
+      "abilities": "角色能力或特长"
     }
   ],
   "themes": ["故事主题1", "故事主题2"],
   "plot_points": [
-    {"act": "第一幕", "description": "开篇设定和冲突引入"},
-    {"act": "第二幕", "description": "主要冲突展开"},
-    {"act": "第三幕", "description": "高潮与结局"}
-  ]
+    {"act": "开篇", "description": "开篇设定和冲突引入"},
+    {"act": "发展", "description": "主要冲突展开和升级"},
+    {"act": "转折", "description": "重大转折或意外事件"},
+    {"act": "高潮", "description": "最终对决或关键抉择"},
+    {"act": "结局", "description": "故事收束和新平衡"}
+  ],
+  "prologue_preview": "故事开篇楔子（100-200字吸引读者的段落）"
 }"""
 
     prompt += "\n请只返回有效的 JSON，不要包含 markdown 或解释。"
