@@ -152,8 +152,10 @@ async def _test_s3_connection(provider) -> str:
         if not endpoint:
             raise ValueError(f"Endpoint required for provider type: {provider.provider_type}")
 
-    # Normalize endpoint (remove trailing slash)
+    # Normalize endpoint (remove trailing slash, ensure protocol)
     endpoint = endpoint.rstrip("/")
+    if not endpoint.startswith("http://") and not endpoint.startswith("https://"):
+        endpoint = "https://" + endpoint
 
     # Build the test request URL
     url = f"{endpoint}/{provider.bucket}/?max-keys=1"

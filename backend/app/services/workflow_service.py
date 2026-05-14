@@ -980,6 +980,10 @@ class WorkflowService:
         duration = parameters.get("duration", "1-3 minutes")
         variant_count = int(parameters.get("variant_count", 4))
 
+        # Build continuity context from earlier chapters
+        from ..services.knowledge_service import build_continuity_context
+        additional_context = build_continuity_context(self.db, str(task.project_id))
+
         service = ScriptGeneratorService(self.db)
         success = await service.generate(
             project_id=task.project_id,
@@ -987,6 +991,7 @@ class WorkflowService:
             topic=topic,
             style=style,
             duration=duration,
+            additional_context=additional_context,
             variant_count=variant_count,
         )
         if not success:
@@ -995,6 +1000,12 @@ class WorkflowService:
         # Extract character states from generated script (non-blocking)
         try:
             from ..services.memory_extractor import extract_from_script
+            from ..models.chapter import Chapter
+            chapter_number = 1
+            if task.chapter_id:
+                ch = self.db.query(Chapter).filter(Chapter.id == task.chapter_id).first()
+                if ch:
+                    chapter_number = ch.chapter_number
             stage_status = self.get_project_stages(task.project_id)
             script_files = stage_status.get("script", {}).get("selected_files", [])
             if script_files:
@@ -1008,9 +1019,9 @@ class WorkflowService:
                         await extract_from_script(
                             project_id=str(task.project_id),
                             content=script_text[:6000],
-                            chapter_number=1,
+                            chapter_number=chapter_number,
                         )
-                        logger.info("Memory extraction completed for project=%s", task.project_id)
+                        logger.info("Memory extraction completed for project=%s chapter=%d", task.project_id, chapter_number)
         except Exception as e:
             logger.warning("Memory extraction failed (non-blocking): %s", e)
 
@@ -1050,6 +1061,12 @@ class WorkflowService:
         # Extract character states from storyboard (non-blocking)
         try:
             from ..services.memory_extractor import extract_from_script
+            from ..models.chapter import Chapter
+            chapter_number = 1
+            if task.chapter_id:
+                ch = self.db.query(Chapter).filter(Chapter.id == task.chapter_id).first()
+                if ch:
+                    chapter_number = ch.chapter_number
             stage_status = self.get_project_stages(task.project_id)
             sb_files = stage_status.get("storyboard", {}).get("selected_files", [])
             if sb_files:
@@ -1062,9 +1079,9 @@ class WorkflowService:
                         await extract_from_script(
                             project_id=str(task.project_id),
                             content=sb_text[:6000],
-                            chapter_number=1,
+                            chapter_number=chapter_number,
                         )
-                        logger.info("Storyboard memory extraction completed for project=%s", task.project_id)
+                        logger.info("Storyboard memory extraction completed for project=%s chapter=%d", task.project_id, chapter_number)
         except Exception as e:
             logger.warning("Storyboard memory extraction failed (non-blocking): %s", e)
 
