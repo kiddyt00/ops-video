@@ -1,7 +1,7 @@
 """016_add_chapters_and_chapter_id
 
 Revision ID: 016
-Revises: 015
+Revises: 015_extend_story_fields
 Create Date: 2026-05-14
 
 Adds:
@@ -14,7 +14,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSON
 import uuid
 
 revision = "016"
-down_revision = "015"
+down_revision = "015_extend_story_fields"
 
 
 def upgrade():
