@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Plus, Pencil, Trash2, Loader2, AlertCircle, X, User, Eye
+  Pencil, Trash2, Loader2, AlertCircle, X, User, Eye
 } from 'lucide-react'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
@@ -368,7 +368,6 @@ function CharacterContextPreview({
 
 export function CharacterCardManager({ projectId, className }: CharacterCardManagerProps) {
   const { data: cards, isLoading, error } = useCharacterCards(projectId)
-  const [createOpen, setCreateOpen] = useState(false)
   const [editCard, setEditCard] = useState<CharacterCard | null>(null)
   const [deleteCard, setDeleteCard] = useState<CharacterCard | null>(null)
 
@@ -385,10 +384,7 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
             </Badge>
           )}
         </div>
-        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setCreateOpen(true)}>
-          <Plus className="w-3 h-3 mr-1" />
-          新建
-        </Button>
+
       </div>
 
       {/* Card list */}
@@ -500,11 +496,6 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
       )}
 
       {/* Dialogs */}
-      <CardFormDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        projectId={projectId}
-      />
       {editCard && (
         <CardFormDialog
           open={!!editCard}
