@@ -248,7 +248,7 @@ function ChapterCard({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-            <Film className="w-10 h-10 text-zinc-600" />
+            <Film className="w-10 h-10 text-muted-foreground" />
           </div>
         )}
 

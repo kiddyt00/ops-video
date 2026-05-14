@@ -61,14 +61,14 @@ export function GenerationPanel({
 
   return (
     <div className={cn(
-      'fixed bottom-4 right-4 z-50 w-[420px] rounded-2xl border border-white/10 bg-[#0d0d1a]/95 backdrop-blur-xl shadow-2xl transition-all duration-300',
+      'fixed bottom-4 right-4 z-50 w-[420px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl transition-all duration-300',
       minimized ? 'h-12 overflow-hidden' : 'h-[500px]',
     )}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/5 cursor-move">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/50 cursor-move">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-violet-400" />
-          <span className="text-sm font-medium text-white/80">AI 生成</span>
+          <span className="text-sm font-medium text-foreground/80">AI 生成</span>
           {isStreaming && (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
           )}
@@ -88,14 +88,14 @@ export function GenerationPanel({
           {/* Content */}
           <div className="flex-1 h-[340px] overflow-y-auto p-4 space-y-2">
             {thinkingText && (
-              <div className="flex items-start gap-2 text-xs text-zinc-400 italic">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground italic">
                 <Loader2 className="w-3 h-3 animate-spin mt-0.5 shrink-0" />
                 <span>{thinkingText}</span>
               </div>
             )}
 
             {contentText && (
-              <div className="text-sm text-white/90 whitespace-pre-wrap leading-relaxed bg-white/[0.02] rounded-lg p-3 max-h-[260px] overflow-y-auto">
+              <div className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed bg-muted/20 rounded-lg p-3 max-h-[260px] overflow-y-auto">
                 {contentText}
               </div>
             )}
@@ -115,7 +115,7 @@ export function GenerationPanel({
           </div>
 
           {/* Controls */}
-          <div className="border-t border-white/5 p-3 space-y-2">
+          <div className="border-t border-border/50 p-3 space-y-2">
             <div className="flex items-center gap-2">
               {isStreaming && (
                 <>
@@ -144,7 +144,7 @@ export function GenerationPanel({
             {isPaused && (
               <div className="flex gap-2">
                 <input
-                  className="flex-1 h-7 px-2 text-xs rounded-md bg-white/5 border border-white/10 text-white placeholder:text-zinc-600"
+                  className="flex-1 h-7 px-2 text-xs rounded-md bg-muted/30 border border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="输入反馈指令..."
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}

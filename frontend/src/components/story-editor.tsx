@@ -339,7 +339,7 @@ function WorldbuildingDisplay({ data, onChange }: { data: any; onChange?: (v: st
     </div>
   )
   if (typeof data === 'string') {
-    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
+    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
   }
   if (typeof data !== 'object' || data === null) return null
   const wb = data as Record<string, string>
@@ -352,11 +352,11 @@ function WorldbuildingDisplay({ data, onChange }: { data: any; onChange?: (v: st
   return (
     <div className="grid grid-cols-1 gap-2">
       {items.map(({ key, icon: Icon, label, value }) => (
-        <div key={key} className="flex items-start gap-3 p-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5">
+        <div key={key} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 ring-1 ring-border/50">
           <Icon className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-wider mb-1">{label}</p>
-            <p className="text-sm text-zinc-300 leading-relaxed">{value}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{value}</p>
           </div>
         </div>
       ))}
@@ -411,14 +411,14 @@ function CharactersDisplay({ data, onChange }: { data: any; onChange?: (v: strin
     </div>
   )
   if (typeof data === 'string') {
-    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-zinc-300 whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
+    try { data = JSON.parse(data) } catch { return <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-black/20 rounded-lg p-3">{data}</pre> }
   }
   if (!Array.isArray(data) || data.length === 0)
     return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
   return (
     <div className="space-y-2">
       {data.map((char: Record<string, unknown>, idx: number) => (
-        <div key={idx} className="p-3 rounded-lg bg-white/[0.03] ring-1 ring-white/5 space-y-2">
+        <div key={idx} className="p-3 rounded-lg bg-muted/30 ring-1 ring-border/50 space-y-2">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0">
               <Users className="w-4 h-4 text-violet-400" />
@@ -431,7 +431,7 @@ function CharactersDisplay({ data, onChange }: { data: any; onChange?: (v: strin
             </div>
           </div>
           {Boolean(char.description) && (
-            <p className="text-xs text-zinc-400 leading-relaxed pl-10">{String(char.description)}</p>
+            <p className="text-xs text-muted-foreground leading-relaxed pl-10">{String(char.description)}</p>
           )}
           {Boolean(char.arc) && (
             <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>

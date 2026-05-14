@@ -31,8 +31,8 @@ const statusCfg: Record<string, { label: string; color: string; glow: string; do
   completed: { label: '完成', color: 'text-emerald-400', glow: 'shadow-emerald-500/20', dot: 'bg-emerald-400' },
   running: { label: '生成中', color: 'text-sky-400', glow: 'shadow-sky-500/30', dot: 'bg-sky-400 animate-pulse' },
   failed: { label: '失败', color: 'text-rose-400', glow: 'shadow-rose-500/20', dot: 'bg-rose-400' },
-  pending: { label: '待开始', color: 'text-zinc-500', glow: '', dot: 'bg-zinc-600' },
-  cancelled: { label: '已取消', color: 'text-zinc-500', glow: '', dot: 'bg-zinc-600' },
+  pending: { label: '待开始', color: 'text-muted-foreground', glow: '', dot: 'bg-zinc-600' },
+  cancelled: { label: '已取消', color: 'text-muted-foreground', glow: '', dot: 'bg-zinc-600' },
 }
 
 interface Props {
@@ -91,7 +91,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
       <ScrollArea className="h-full">
         <div className="p-6 max-w-3xl mx-auto space-y-5">
           {STAGES.map((_, i) => (
-            <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />
+            <div key={i} className="h-24 rounded-2xl bg-muted/30 animate-pulse" />
           ))}
         </div>
       </ScrollArea>
@@ -103,8 +103,8 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
       <ScrollArea className="h-full">
         <div className="p-6 max-w-3xl mx-auto space-y-0">
           <div className="text-center mb-8">
-            <h2 className="text-lg font-semibold text-white/90 tracking-wide">生成流水线</h2>
-            <p className="text-xs text-zinc-500 mt-1">点击阶段展开查看制品与参数</p>
+            <h2 className="text-lg font-semibold text-foreground/90 tracking-wide">生成流水线</h2>
+            <p className="text-xs text-muted-foreground mt-1">点击阶段展开查看制品与参数</p>
             {onRunAll && (
               <div className="mt-3">
                 <Button
@@ -156,8 +156,8 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                     <Card
                       className={cn(
                         'border-0 rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden',
-                        'bg-white/[0.03] backdrop-blur-sm hover:bg-white/[0.06]',
-                        isOpen && 'bg-white/[0.06] ring-1 ring-violet-500/30',
+                        'bg-muted/30 backdrop-blur-sm hover:bg-muted/50',
+                        isOpen && 'bg-muted/50 ring-1 ring-violet-500/30',
                         isCurrent && status === 'running' && 'ring-1 ring-sky-500/40 shadow-lg shadow-sky-500/10',
                         status === 'completed' && 'shadow-lg shadow-emerald-500/5',
                         status === 'failed' && 'ring-1 ring-rose-500/20',
@@ -170,24 +170,24 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                           status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' :
                           status === 'running' ? 'bg-sky-500/15 text-sky-400' :
                           status === 'failed' ? 'bg-rose-500/10 text-rose-400' :
-                          'bg-zinc-800 text-zinc-500',
+                          'bg-zinc-800 text-muted-foreground',
                         )}>
                           {status === 'running' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Icon className="w-5 h-5" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-white/90">{label}</span>
-                            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', cfg.color, 'bg-white/5')}>
+                            <span className="text-sm font-semibold text-foreground/90">{label}</span>
+                            <Badge variant="outline" className={cn('text-[10px] px-1.5 py-0 border-0', cfg.color, 'bg-muted/30')}>
                               {cfg.label}
                             </Badge>
                           </div>
-                          <p className="text-xs text-zinc-500 mt-0.5">{desc}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                         </div>
                         {status === 'completed' && hasPreview && (
                           <MiniPreview fileType={fileType} file={stageFiles[0]} />
                         )}
                         <div className={cn('transition-transform duration-200', isOpen && 'rotate-180')}>
-                          <ChevronDown className="w-4 h-4 text-zinc-600" />
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
                         </div>
                       </div>
                       {task?.error_message && (
@@ -204,7 +204,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                         {stageFiles.length > 0 && (
                           <StageArtifacts fileType={fileType} files={stageFiles} onFilesChange={onFilesChange} />
                         )}
-                        <Card className="border-0 rounded-xl bg-white/[0.02]">
+                        <Card className="border-0 rounded-xl bg-muted/20">
                           <CardContent className="p-4">
                             <ParameterPanel
                               stage={key}
@@ -215,7 +215,7 @@ export function WorkflowWaterfall({ projectId, tasks, files, workflowStatus, onG
                             <div className="flex gap-2 mt-3">
                               <Button
                                 size="sm" variant="outline"
-                                className="text-xs border-white/10 text-white/70 hover:bg-white/10"
+                                className="text-xs border-border text-foreground/70 hover:bg-muted/50"
                                 onClick={(e) => { e.stopPropagation(); startStreaming(key, {}) }}
                                 disabled={status === 'running' || isStreaming}
                               >
@@ -263,7 +263,7 @@ function MiniPreview({ fileType, file }: { fileType: string; file: FileRecord })
   }
   if (fileType === 'video') {
     return <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 shrink-0 ring-1 ring-white/10 flex items-center justify-center">
-      <Film className="w-5 h-5 text-zinc-500" />
+      <Film className="w-5 h-5 text-muted-foreground" />
     </div>
   }
   if (fileType === 'audio') {
