@@ -49,11 +49,15 @@ def list_projects(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user),
 ):
-    """List all projects, optionally filtered by user_id. Ordered by created_at desc, limited to 12."""
+    """List all projects, optionally filtered by user_id. Ordered by created_at desc, limited to 12.
+
+    Admin sees all projects by default; regular user sees only their own.
+    """
     filter_user_id = user_id
-    # If no user_id param and user is authenticated, show their projects
-    if user_id is None and current_user is not None:
-        filter_user_id = current_user.id
+    if user_id is None:
+        # Admin sees all; regular user sees their own
+        if current_user is not None and current_user.role != "admin":
+            filter_user_id = current_user.id
     projects = project_crud.get_all(db, user_id=filter_user_id)
     # Sort by created_at descending and limit
     projects = sorted(projects, key=lambda p: p.created_at, reverse=True)[:limit]
