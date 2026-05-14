@@ -867,6 +867,14 @@ class WorkflowService:
             characters=story_data.get("characters"),
             themes=story_data.get("themes"),
             plot_points=story_data.get("plot_points"),
+            style_tags=story_data.get("style_tags"),
+            title_suggestions=story_data.get("title_suggestions"),
+            target_audience=story_data.get("target_audience"),
+            word_count_estimate=story_data.get("word_count_estimate"),
+            golden_finger_detail=story_data.get("golden_finger_detail"),
+            power_system=story_data.get("power_system"),
+            world_map_hints=story_data.get("world_map_hints"),
+            prologue_preview=story_data.get("prologue_preview"),
         )
         if existing:
             story_crud.update(self.db, existing.id, StoryUpdateSchema(**story_obj.model_dump(exclude_unset=True)))
