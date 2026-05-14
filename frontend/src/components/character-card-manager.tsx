@@ -25,6 +25,7 @@ import {
   useUpdateCharacterCard,
   useDeleteCharacterCard,
 } from '@/hooks/use-character-cards'
+import { ThreeViewGallery } from './three-view-gallery'
 import type { CharacterCard, CharacterCardCreate, CharacterCardUpdate } from '@/types/character-card'
 
 interface CharacterCardManagerProps {
@@ -111,9 +112,7 @@ function CardFormDialog({
   const validate = (): boolean => {
     const errs: Record<string, string> = {}
     if (!form.name.trim()) errs.name = '名称不能为空'
-    if (!form.front_view_url.trim()) errs.front_view_url = '正面图 URL 不能为空'
-    if (!form.side_view_url.trim()) errs.side_view_url = '侧面图 URL 不能为空'
-    if (!form.back_view_url.trim()) errs.back_view_url = '背面图 URL 不能为空'
+    // 三视图 URL 可选（可通过 AI 自动生成）
     setErrors(errs)
     return Object.keys(errs).length === 0
   }
@@ -201,7 +200,7 @@ function CardFormDialog({
                   return (
                     <div key={key}>
                       <label className="text-xs text-muted-foreground mb-1 block">
-                        {labelMap[key]} <span className="text-destructive">*</span>
+                        {labelMap[key]}
                       </label>
                       <Input
                         value={form[key]}
@@ -488,6 +487,12 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
           )}
         </div>
       </ScrollArea>
+
+      {/* Three-View Gallery */}
+      <div className="border-t pt-4 mt-4">
+        <h3 className="text-sm font-medium mb-3">角色三视图</h3>
+        <ThreeViewGallery projectId={projectId} />
+      </div>
 
       {/* Character Context Preview */}
       {cards && cards.length > 0 && (
