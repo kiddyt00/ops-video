@@ -957,6 +957,23 @@ class WorkflowService:
                 chapter_outline=outline_data.get("chapters", []),
             ))
             self.db.commit()
+
+        # ── Sync Chapter model records from outline ────────────────────
+        try:
+            from ..db.chapter_crud import chapter_crud
+            chapters = outline_data.get("chapters", [])
+            if chapters:
+                created = chapter_crud.batch_create_from_outline(
+                    self.db,
+                    project_id=task.project_id,
+                    outline_items=chapters,
+                )
+                logger.info(
+                    "Synced %d chapters from outline | project=%s",
+                    len(created), task.project_id,
+                )
+        except Exception as e:
+            logger.warning("Chapter model sync failed (non-blocking): %s", e)
         # ────────────────────────────────────────────────────────────────
 
     async def _execute_script_generation(
