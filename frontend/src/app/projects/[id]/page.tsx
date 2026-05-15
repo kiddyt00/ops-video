@@ -9,6 +9,8 @@ import { useWorkflowStatus } from '@/hooks/use-workflow'
 import { useFiles } from '@/hooks/use-files'
 import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
+export const dynamic = 'force-dynamic'
+
 import { CharacterCardManager } from '@/components/character-card-manager'
 import { ChaptersList } from '@/components/chapters-list'
 import { StoryEditor } from '@/components/story-editor'
