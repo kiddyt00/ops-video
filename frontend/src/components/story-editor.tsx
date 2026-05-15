@@ -390,20 +390,32 @@ function GenerateThreeViewBtn({ characterName, projectId }: { characterName: str
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
       if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
 
-      // Auto-sync silently; find the card by name
-      await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, { method: 'POST', headers }).catch(() => {})
+      // Cards are auto-created during story generation; just find and generate
       const listResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
+      if (!listResp.ok) throw new Error('获取角色卡失败')
       const allCards = await listResp.json()
       const found = allCards.find((c: any) => c.name === characterName)
       if (!found) {
-        setError(`角色 "${characterName}" 生成失败，请先在角色卡页面同步`)
-        setLoading(false)
-        return
+        // Fallback: try sync once
+        await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, { method: 'POST', headers }).catch(() => {})
+        const retryResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
+        if (retryResp.ok) {
+          const retryCards = await retryResp.json()
+          const retryFound = retryCards.find((c: any) => c.name === characterName)
+          if (!retryFound) throw new Error(`未找到角色 "${characterName}"`)
+          const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${retryFound.id}/three-view`, {
+            method: 'POST', headers, body: '{}',
+          })
+          if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
+        } else {
+          throw new Error(`未找到角色 "${characterName}"`)
+        }
+      } else {
+        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
+          method: 'POST', headers, body: '{}',
+        })
+        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
       }
-      const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
-        method: 'POST', headers, body: '{}',
-      })
-      if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
       setDone(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : '生成失败')

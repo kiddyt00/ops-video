@@ -881,6 +881,51 @@ class WorkflowService:
         else:
             story_crud.create(self.db, task.project_id, story_obj)
         self.db.commit()
+
+        # ── Auto-create CharacterCards from story characters ──────────
+        try:
+            from ..db.character_card_crud import character_card_crud
+            from ..schemas.character_card import CharacterCardCreate
+
+            _IMPORTANT_ROLES = {"主角", "反派", "导师", "伙伴", "朋友", "恋人"}
+            _MAX_SUPPORTING = 10
+            characters = story_data.get("characters", [])
+            if characters:
+                existing_cards = character_card_crud.get_by_project(self.db, task.project_id)
+                existing_names = {c.name for c in existing_cards}
+                supporting_count = 0
+                created_count = 0
+
+                for char in characters:
+                    name = char.get("name", "").strip()
+                    role = char.get("role", "").strip()
+                    if not name:
+                        continue
+                    is_important = any(r in role for r in _IMPORTANT_ROLES)
+                    is_supporting = "配角" in role
+                    if not is_important and not is_supporting:
+                        continue
+                    if is_supporting and not is_important:
+                        supporting_count += 1
+                        if supporting_count > _MAX_SUPPORTING:
+                            continue
+                    if name in existing_names:
+                        continue
+                    character_card_crud.create(
+                        self.db, project_id=task.project_id,
+                        obj_in=CharacterCardCreate(
+                            name=name,
+                            description=char.get("description", ""),
+                            traits={"role": role, "arc": char.get("arc", "")} if char.get("arc") else {"role": role},
+                        ),
+                    )
+                    existing_names.add(name)
+                    created_count += 1
+
+                if created_count > 0:
+                    logger.info("Auto-created %d CharacterCards from story | project=%s", created_count, task.project_id)
+        except Exception as e:
+            logger.warning("Auto-create CharacterCards failed (non-blocking): %s", e)
         # ────────────────────────────────────────────────────────────────
 
     async def _execute_chapter_outline_generation(
