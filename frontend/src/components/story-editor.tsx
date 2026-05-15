@@ -429,11 +429,11 @@ function GenerateThreeViewBtn({ characterName, projectId }: { characterName: str
   }
 
   return (
-    <div className="pl-10 mt-1">
+    <div>
       <button
         onClick={handleClick}
         disabled={loading}
-        className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50"
+        className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 shrink-0"
       >
         {loading ? (
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -503,6 +503,7 @@ function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?
                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">{String(char.role)}</Badge>
               )}
             </div>
+            <GenerateThreeViewBtn characterName={String(char.name || '')} projectId={projectId} />
           </div>
           {Boolean(char.description) && (
             <p className="text-xs text-muted-foreground leading-relaxed pl-10">{String(char.description)}</p>
@@ -510,7 +511,6 @@ function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?
           {Boolean(char.arc) && (
             <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>
           )}
-          <GenerateThreeViewBtn characterName={String(char.name || '')} projectId={projectId} />
         </div>
       ))}
       <div className="flex justify-end mt-2">
