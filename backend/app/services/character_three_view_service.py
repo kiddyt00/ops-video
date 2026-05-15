@@ -169,16 +169,19 @@ class CharacterThreeViewService:
                     "size": "1024*1024",
                     "n": 1,
                 })
-                if img_result.file_paths and len(img_result.file_paths) > 0:
-                    local_path = str(img_result.file_paths[0])
-                    # Upload to OSS
-                    oss_url = await upload_artifact(
-                        project_id=project_id,
-                        task_id=card_id,
-                        stage="character_three_views",
-                        file_path=local_path,
-                    )
-                    urls[f"{angle_key}_view_url"] = oss_url or local_path
+                if not img_result.success or not img_result.file_paths:
+                    err = img_result.error_message or "unknown provider error"
+                    logger.warning("Provider failed for %s/%s: %s", card.name, angle_key, err)
+                    continue
+                local_path = str(img_result.file_paths[0])
+                # Upload to OSS
+                oss_url = await upload_artifact(
+                    project_id=project_id,
+                    task_id=card_id,
+                    stage="character_three_views",
+                    file_path=local_path,
+                )
+                urls[f"{angle_key}_view_url"] = oss_url or local_path
             except Exception as e:
                 logger.warning("Image generation failed for %s/%s: %s", card.name, angle_key, e)
 
