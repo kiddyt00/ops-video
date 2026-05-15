@@ -22,8 +22,9 @@ def get_my_projects(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
-    """Get projects owned by the current user"""
-    projects = project_crud.get_all(db, user_id=current_user.id)
+    """Get projects. Admin sees all projects; regular user sees only their own."""
+    user_id = None if current_user.role == "admin" else current_user.id
+    projects = project_crud.get_all(db, user_id=user_id)
     return projects
 
 
