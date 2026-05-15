@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import {
-  Pencil, Trash2, Loader2, AlertCircle, X, User, Eye
+  Pencil, Trash2, Loader2, AlertCircle, X, User, Eye, Sparkles
 } from 'lucide-react'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
@@ -25,7 +25,7 @@ import {
   useUpdateCharacterCard,
   useDeleteCharacterCard,
 } from '@/hooks/use-character-cards'
-import { ThreeViewGallery } from './three-view-gallery'
+import { useQueryClient } from '@tanstack/react-query'
 import type { CharacterCard, CharacterCardCreate, CharacterCardUpdate } from '@/types/character-card'
 
 interface CharacterCardManagerProps {
@@ -366,7 +366,54 @@ function CharacterContextPreview({
 /* Main component                                                     */
 /* ------------------------------------------------------------------ */
 
+function GenerateThreeViewBtn({ cardId, projectId, has, onRefresh }: {
+  cardId: string; projectId: string; has: boolean; onRefresh: () => void
+}) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleClick = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      const resp = await fetch(
+        `${API_BASE}/projects/${projectId}/character-cards/${cardId}/three-view`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}' }
+      )
+      if (!resp.ok) throw new Error((await resp.json()).detail || '生成失败')
+      onRefresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '生成失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-end">
+      <Button
+        variant={has ? 'outline' : 'default'}
+        size="sm"
+        className="text-xs gap-1 h-7"
+        onClick={handleClick}
+        disabled={loading}
+      >
+        {loading ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Sparkles className="w-3 h-3" />
+        )}
+        {loading ? '生成中...' : has ? '重新生成' : '生成三视图'}
+      </Button>
+      {error && <p className="text-[10px] text-destructive mt-1">{error}</p>}
+    </div>
+  )
+}
+
 export function CharacterCardManager({ projectId, className }: CharacterCardManagerProps) {
+  const queryClient = useQueryClient()
   const { data: cards, isLoading, error } = useCharacterCards(projectId)
   const [editCard, setEditCard] = useState<CharacterCard | null>(null)
   const [deleteCard, setDeleteCard] = useState<CharacterCard | null>(null)
@@ -411,7 +458,9 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
 
           {!isLoading && cards && cards.length > 0 && (
             <div className="space-y-2">
-              {cards.map(card => (
+              {cards.map(card => {
+                const hasView = card.front_view_url && card.side_view_url && card.back_view_url
+                return (
                 <Card key={card.id} className="overflow-hidden">
                   <CardHeader className="p-3 pb-0">
                     <div className="flex items-start justify-between">
@@ -419,13 +468,24 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
                         <CardTitle className="text-sm font-medium truncate">
                           {card.name}
                         </CardTitle>
+                        {card.traits?.role && (
+                          <Badge variant="outline" className="text-[10px] mt-1">
+                            {card.traits.role}
+                          </Badge>
+                        )}
                         {card.description && (
-                          <CardDescription className="text-xs mt-0.5 line-clamp-2">
+                          <CardDescription className="text-xs mt-1 line-clamp-2">
                             {card.description}
                           </CardDescription>
                         )}
                       </div>
-                      <div className="flex items-center gap-0.5 shrink-0 ml-2">
+                      <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap">
+                        <GenerateThreeViewBtn
+                          cardId={card.id}
+                          projectId={projectId}
+                          has={Boolean(hasView)}
+                          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['character-cards', projectId] })}
+                        />
                         <Button
                           variant="ghost"
                           size="icon"
@@ -447,7 +507,7 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="pt-2">
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
                         { label: '正面', url: card.front_view_url },
@@ -478,17 +538,13 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Three-View Gallery */}
-      <div className="border-t pt-4 mt-4">
-        <h3 className="text-sm font-medium mb-3">角色三视图</h3>
-        <ThreeViewGallery projectId={projectId} />
-      </div>
+
 
       {/* Character Context Preview */}
       {cards && cards.length > 0 && (
