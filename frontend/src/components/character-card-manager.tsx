@@ -27,6 +27,7 @@ import {
 } from '@/hooks/use-character-cards'
 import { useQueryClient } from '@tanstack/react-query'
 import type { CharacterCard, CharacterCardCreate, CharacterCardUpdate } from '@/types/character-card'
+import { ThreeViewCard } from './three-view-card'
 
 interface CharacterCardManagerProps {
   projectId: string
@@ -366,51 +367,7 @@ function CharacterContextPreview({
 /* Main component                                                     */
 /* ------------------------------------------------------------------ */
 
-function GenerateThreeViewBtn({ cardId, projectId, has, onRefresh }: {
-  cardId: string; projectId: string; has: boolean; onRefresh: () => void
-}) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const handleClick = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const token = localStorage.getItem('ops-video-tokens')
-      const accessToken = token ? JSON.parse(token).access_token : null
-      const resp = await fetch(
-        `${API_BASE}/projects/${projectId}/character-cards/${cardId}/three-view`,
-        { method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}' }
-      )
-      if (!resp.ok) throw new Error((await resp.json()).detail || '生成失败')
-      onRefresh()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '生成失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="flex flex-col items-end">
-      <Button
-        variant={has ? 'outline' : 'default'}
-        size="sm"
-        className="text-xs gap-1 h-7"
-        onClick={handleClick}
-        disabled={loading}
-      >
-        {loading ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
-        ) : (
-          <Sparkles className="w-3 h-3" />
-        )}
-        {loading ? '生成中...' : has ? '重新生成' : '生成三视图'}
-      </Button>
-      {error && <p className="text-[10px] text-destructive mt-1">{error}</p>}
-    </div>
-  )
-}
 
 export function CharacterCardManager({ projectId, className }: CharacterCardManagerProps) {
   const queryClient = useQueryClient()
@@ -457,88 +414,33 @@ export function CharacterCardManager({ projectId, className }: CharacterCardMana
           )}
 
           {!isLoading && cards && cards.length > 0 && (
-            <div className="space-y-2">
-              {cards.map(card => {
-                const hasView = card.front_view_url && card.side_view_url && card.back_view_url
-                return (
-                <Card key={card.id} className="overflow-hidden">
-                  <CardHeader className="p-3 pb-0">
-                    <div className="flex items-start justify-between">
-                      <div className="min-w-0">
-                        <CardTitle className="text-sm font-medium truncate">
-                          {card.name}
-                        </CardTitle>
-                        {card.traits?.role && (
-                          <Badge variant="outline" className="text-[10px] mt-1">
-                            {card.traits.role}
-                          </Badge>
-                        )}
-                        {card.description && (
-                          <CardDescription className="text-xs mt-1 line-clamp-2">
-                            {card.description}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0 ml-2 flex-wrap">
-                        <GenerateThreeViewBtn
-                          cardId={card.id}
-                          projectId={projectId}
-                          has={Boolean(hasView)}
-                          onRefresh={() => queryClient.invalidateQueries({ queryKey: ['character-cards', projectId] })}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setEditCard(card)}
-                          title="编辑"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setDeleteCard(card)}
-                          title="删除"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-2">
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {[
-                        { label: '正面', url: card.front_view_url },
-                        { label: '侧面', url: card.side_view_url },
-                        { label: '背面', url: card.back_view_url },
-                      ].map(({ label, url }) => (
-                        <div key={label} className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground">{label}</span>
-                          <div className="aspect-square bg-muted rounded overflow-hidden">
-                            {url ? (
-                              <img
-                                src={url}
-                                alt={`${card.name} - ${label}`}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none'
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
-                                <X className="w-4 h-4" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )})}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {cards.map(card => (
+                <div key={card.id} className="relative group/card">
+                  <ThreeViewCard card={card} projectId={projectId} />
+                  {/* Edit/Delete floating buttons */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setEditCard(card)}
+                      title="编辑"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => setDeleteCard(card)}
+                      title="删除"
+                    >
+                      <Trash2 className="w-3 h-3 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
