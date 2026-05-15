@@ -198,12 +198,83 @@ function EditableField({
 function ChapterOutlineEditor({
   chapters,
   onChange,
+  projectId,
+  onBodyGenerated,
 }: {
   chapters: ChapterOutlineItem[]
   onChange: (chapters: ChapterOutlineItem[]) => void
+  projectId: string
+  onBodyGenerated?: () => void
 }) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [draft, setDraft] = useState<ChapterOutlineItem | null>(null)
+
+  // Per-chapter streaming state
+  const [streamingChNum, setStreamingChNum] = useState<number | null>(null)
+  const [streamText, setStreamText] = useState('')
+  const [streamErr, setStreamErr] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const handleGenerateBody = async (chNum: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    // Abort any existing stream
+    abortRef.current?.abort()
+    abortRef.current = new AbortController()
+
+    setStreamingChNum(chNum)
+    setStreamText('')
+    setStreamErr(null)
+
+    try {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || '/api/v1'}/workflow/stream/${projectId}/advance/chapter_body`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ parameters: { chapter_number: chNum }, execute: true }),
+          signal: abortRef.current.signal,
+        },
+      )
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }))
+        throw new Error(err.detail || '请求失败')
+      }
+
+      const reader = resp.body?.getReader()
+      if (!reader) throw new Error('No body')
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.text) setStreamText(prev => prev + data.text)
+            } catch { /* partial */ }
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if ((err as Error).name === 'AbortError') return
+      setStreamErr((err as Error).message || '生成失败')
+    } finally {
+      setStreamingChNum(null)
+      abortRef.current = null
+      onBodyGenerated?.()
+    }
+  }
 
   const startEdit = (idx: number) => {
     setEditingIndex(idx)
@@ -290,6 +361,19 @@ function ChapterOutlineEditor({
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {streamingChNum === ch.chapter_number ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] gap-1 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleGenerateBody(ch.chapter_number, e)}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      生成正文
+                    </Button>
+                  )}
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {formatDuration(ch.estimated_duration)}
@@ -297,6 +381,18 @@ function ChapterOutlineEditor({
                   <Pencil className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               </div>
+              {/* Inline streaming output */}
+              {streamingChNum === ch.chapter_number && (
+                <div className="mt-2 border-t border-border/50 pt-2" onClick={(e) => e.stopPropagation()}>
+                  {streamErr ? (
+                    <div className="text-xs text-rose-400 bg-rose-500/10 rounded p-2">{streamErr}</div>
+                  ) : (
+                    <div className="text-xs text-foreground/80 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto bg-muted/20 rounded p-2">
+                      {streamText || <span className="text-muted-foreground/50 italic">正在生成…</span>}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -913,6 +1009,11 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 <ChapterOutlineEditor
                   chapters={draft.chapter_outline ?? []}
                   onChange={(chapters) => setField('chapter_outline', chapters)}
+                  projectId={projectId}
+                  onBodyGenerated={() => {
+                    refetchChapters()
+                    queryClient.invalidateQueries({ queryKey: ['chapters', projectId] })
+                  }}
                 />
               </CollapsibleSection>
 

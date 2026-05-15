@@ -1064,6 +1064,14 @@ class WorkflowService:
         outline_data = json.loads(outline_path.read_text(encoding="utf-8"))
         chapters = outline_data.get("chapters", [])
 
+        # Support single-chapter generation via chapter_number parameter
+        target_chapter = parameters.get("chapter_number")
+        if target_chapter is not None:
+            target_chapter = int(target_chapter)
+            chapters = [c for c in chapters if c.get("chapter_number") == target_chapter]
+            if not chapters:
+                raise WorkflowError(f"Chapter {target_chapter} not found in outline")
+
         # Load story data for full context
         from ..db.story_crud import story_crud as _story_crud
         story = _story_crud.get_by_project(self.db, task.project_id)
@@ -1078,9 +1086,18 @@ class WorkflowService:
                 "style_tags": story.style_tags,
             }
 
+        # Pre-load existing chapter bodies for continuity
+        previous_bodies: list = []
+        try:
+            existing_chapters = _chapter_crud.get_by_project(self.db, task.project_id)
+            for c in sorted(existing_chapters, key=lambda x: x.chapter_number):
+                if c.body_text:
+                    previous_bodies.append(c.body_text)
+        except Exception:
+            pass
+
         # Generate body text for each chapter
         body_results = []
-        previous_bodies = []  # for continuity context
         service = StoryGeneratorService(db=self.db)
 
         for ch in chapters:
