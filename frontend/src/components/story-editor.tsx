@@ -25,8 +25,6 @@ import {
   useUpdateStory,
   useGenerateInspiration,
   useGenerateStory,
-  useGenerateChapterOutline,
-  useGenerateChapterBody,
 } from '@/hooks/use-stories'
 import { useChapters } from '@/hooks/use-chapters'
 import { useQueryClient } from '@tanstack/react-query'
@@ -367,7 +365,7 @@ function ChapterOutlineEditor({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-[10px] gap-1 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-6 text-[10px] gap-1 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
                       onClick={(e) => handleGenerateBody(ch.chapter_number, e)}
                     >
                       <Sparkles className="w-3 h-3" />
@@ -695,8 +693,6 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
   const updateMutation = useUpdateStory(projectId)
   const inspirationMutation = useGenerateInspiration(projectId)
   const generateStoryMutation = useGenerateStory(projectId)
-  const generateOutlineMutation = useGenerateChapterOutline(projectId)
-  const generateBodyMutation = useGenerateChapterBody(projectId)
   const { data: chapters, refetch: refetchChapters } = useChapters(projectId)
   const queryClient = useQueryClient()
   const { events, isStreaming, error: streamError, startStream, stopStream, clear } = useEventStream()
@@ -767,16 +763,6 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
     }
   }
 
-  const handleGenerateOutline = async () => {
-    setApiError(null)
-    try {
-      await generateOutlineMutation.mutateAsync()
-      await refetch()
-    } catch (e) {
-      setApiError(e instanceof Error ? e.message : '生成大纲失败')
-    }
-  }
-
   const handleGenerateBody = () => {
     setApiError(null)
     setBodyStreamPanelOpen(true)
@@ -805,7 +791,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
     stopStream()
   }
 
-  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending || generateBodyMutation.isPending || isStreaming
+  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || isStreaming
   const isSaving = updateMutation.isPending
 
   return (
@@ -916,24 +902,6 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                     >
                       {generateStoryMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                       重新生成故事
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerateOutline}
-                      disabled={isGenerating}
-                    >
-                      {generateOutlineMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                      生成章节大纲
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleGenerateBody}
-                      disabled={isGenerating || !(draft?.chapter_outline?.length)}
-                    >
-                      {generateBodyMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                      生成章节正文
                     </Button>
                     <Input
                       value={inspiration}
