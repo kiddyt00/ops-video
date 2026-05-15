@@ -183,9 +183,6 @@ export default function ProjectPage() {
               <TabsTrigger value="creation" className="gap-1.5">
                 <BookOpen className="w-3.5 h-3.5" /> 创作
               </TabsTrigger>
-              <TabsTrigger value="characters" className="gap-1.5">
-                <Users className="w-3.5 h-3.5" /> 角色
-              </TabsTrigger>
               <TabsTrigger value="pipeline" className="gap-1.5">
                 <Workflow className="w-3.5 h-3.5" /> 管线
                 {selectedChapter && (
@@ -243,15 +240,16 @@ export default function ProjectPage() {
                     onSelectChapter={handleSelectChapter}
                   />
                 </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
 
-          {/* ═════️ 🎭 角色 Tab ══════ */}
-          <TabsContent value="characters" className="flex-1 min-h-0 mt-3">
-            <ScrollArea className="h-full">
-              <div className="max-w-4xl mx-auto px-4 pb-8">
-                <CharacterCardManager projectId={projectId} />
+                <Separator />
+
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Users className="w-4 h-4 text-primary" />
+                    <h3 className="text-sm font-semibold">角色卡</h3>
+                  </div>
+                  <CharacterCardManager projectId={projectId} />
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>

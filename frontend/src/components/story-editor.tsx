@@ -387,32 +387,23 @@ function GenerateThreeViewBtn({ characterName, projectId }: { characterName: str
     try {
       const token = localStorage.getItem('ops-video-tokens')
       const accessToken = token ? JSON.parse(token).access_token : null
-      // First sync character from story
-      const syncResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-      })
-      if (!syncResp.ok) throw new Error('同步角色失败')
-      const syncData = await syncResp.json()
-      const cards = syncData.cards || []
-      const target = cards.find((c: any) => c.name === characterName)
-      if (!target) {
-        // Try to find the card by name in existing cards
-        const listResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, {
-          headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
-        })
-        const allCards = await listResp.json()
-        const found = allCards.find((c: any) => c.name === characterName)
-        if (!found) throw new Error(`角色 "${characterName}" 未同步到角色卡`)
-        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}',
-        })
-        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
-      } else {
-        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${target.id}/three-view`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}',
-        })
-        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      // Auto-sync silently; find the card by name
+      await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, { method: 'POST', headers }).catch(() => {})
+      const listResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
+      const allCards = await listResp.json()
+      const found = allCards.find((c: any) => c.name === characterName)
+      if (!found) {
+        setError(`角色 "${characterName}" 生成失败，请先在角色卡页面同步`)
+        setLoading(false)
+        return
       }
+      const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
+        method: 'POST', headers, body: '{}',
+      })
+      if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
       setDone(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : '生成失败')
