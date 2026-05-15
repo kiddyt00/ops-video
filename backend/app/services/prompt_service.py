@@ -120,6 +120,42 @@ $relations_context
 请只返回有效的 JSON，不要包含 markdown 或解释。"""
 
 
+_CHAPTER_BODY_TEMPLATE = """你是一位专业的网络小说作家。请将以下章节大纲展开为完整的叙事正文。
+
+@KB{name=story-structures}
+
+=== 故事设定 ===
+$story_context
+
+=== 本章信息 ===
+章节号：第$chapter_number章
+章节标题：$title
+章节概要：$summary
+
+$past_context
+
+=== 前情提要（保持情节连贯性）===
+$continuity_context
+
+要求：
+1. 文笔生动，有画面感和节奏感
+2. 包含场景描写、人物对话、心理活动
+3. 保持与前文的情节连贯性
+4. 篇幅在 1500-3000 字之间
+5. 结尾要有悬念或转折引导下一章
+6. 所有内容使用中文
+
+返回以下结构的 JSON 对象：
+{{
+  "chapter_number": $chapter_number,
+  "title": "$title",
+  "body_text": "本章完整正文内容...",
+  "word_count": 2500
+}}
+
+请只返回有效的 JSON，不要包含 markdown 或解释。"""
+
+
 _SCRIPT_TEMPLATE = """你是一位专业的漫剧编剧。请根据以下故事设定和角色信息创作剧本。
 
 === 故事设定 ===
@@ -175,6 +211,7 @@ def seed_default_prompts(db: Session) -> int:
     for name, template, desc in [
         ("story-generation", _STORY_TEMPLATE, "故事大纲生成提示词模板"),
         ("chapter-outline", _CHAPTER_TEMPLATE, "章节大纲拆解提示词模板"),
+        ("chapter-body-generation", _CHAPTER_BODY_TEMPLATE, "章节正文生成提示词模板"),
         ("script-generation", _SCRIPT_TEMPLATE, "剧本生成提示词模板"),
         ("storyboard-generation", _STORYBOARD_TEMPLATE, "分镜生成提示词模板"),
     ]:

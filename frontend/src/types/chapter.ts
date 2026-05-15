@@ -6,6 +6,7 @@ export interface Chapter {
   chapter_number: number
   name: string
   description: string | null
+  body_text: string | null
   status: ChapterStatus
   thumbnail_url: string | null
   video_file_id: string | null

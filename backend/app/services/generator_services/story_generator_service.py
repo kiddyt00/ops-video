@@ -508,3 +508,148 @@ class StoryGeneratorService:
             )
 
         return outline_data
+
+    # --- Chapter body generation -------------------------------------------
+
+    async def generate_chapter_body(
+        self,
+        project_id: str,
+        chapter_number: int,
+        title: str,
+        summary: str,
+        story_data: Dict[str, Any],
+        previous_bodies: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Expand a single chapter outline into full narrative prose.
+
+        Args:
+            project_id: Project UUID string.
+            chapter_number: Chapter number (1-based).
+            title: Chapter title.
+            summary: Chapter summary from outline.
+            story_data: Full story context (synopsis, worldbuilding, characters, etc.).
+            previous_bodies: Last N previous chapter bodies for continuity.
+
+        Returns:
+            Dict with chapter_number, title, body_text, word_count.
+        """
+        import json as _json
+
+        past_context = ""
+        if previous_bodies:
+            past_summaries = []
+            for i, body in enumerate(previous_bodies):
+                snippet = body[:300] + "..." if len(body) > 300 else body
+                past_summaries.append(f"第{chapter_number - len(previous_bodies) + i}章摘要：{snippet}")
+            past_context = "前情提要（请保持情节连贯性）：\n" + "\n".join(past_summaries)
+
+        system_prompt = (
+            "你是一位专业的网络小说作家，擅长将章节大纲展开为生动的叙事正文。"
+            "请根据章节大纲和故事设定，写出该章的完整叙事内容。"
+            "所有内容请使用中文输出，文笔流畅、有画面感。"
+        )
+
+        story_context = _json.dumps({
+            "synopsis": story_data.get("synopsis", ""),
+            "worldbuilding": story_data.get("worldbuilding", {}),
+            "themes": story_data.get("themes", []),
+            "plot_points": story_data.get("plot_points", []),
+            "style_tags": story_data.get("style_tags", []),
+        }, indent=2, ensure_ascii=False)
+
+        # Try template-based prompt
+        if self.db:
+            try:
+                from ..services.prompt_service import get_rendered_prompt
+                from ..services.knowledge_service import build_continuity_context
+                continuity = build_continuity_context(self.db, project_id)
+                context = {
+                    "chapter_number": str(chapter_number),
+                    "title": title,
+                    "summary": summary,
+                    "story_context": story_context,
+                    "continuity_context": continuity,
+                    "past_context": past_context,
+                }
+                prompt = get_rendered_prompt(self.db, "chapter-body-generation", context)
+                logger.info("Using prompt template 'chapter-body-generation' | ch=%d", chapter_number)
+            except Exception as e:
+                logger.warning("Failed to use prompt template for chapter body, falling back: %s", e)
+                prompt = self._build_chapter_body_prompt(
+                    chapter_number, title, summary, story_context, past_context
+                )
+        else:
+            prompt = self._build_chapter_body_prompt(
+                chapter_number, title, summary, story_context, past_context
+            )
+
+        logger.info("Generating chapter body | ch=%d | title=%s", chapter_number, title)
+
+        result = await self.llm.generate(
+            parameters={
+                "prompt": prompt,
+                "system_prompt": system_prompt,
+                "temperature": 0.85,
+                "max_tokens": 6000,
+                "response_format": {"type": "json_object"},
+            },
+        )
+
+        if not result.file_paths:
+            raise ValueError("LLM generation produced no output file")
+
+        raw_text = result.file_paths[0].read_text(encoding="utf-8")
+        body_data = _parse_json_result(raw_text)
+
+        # Validate required fields
+        if "body_text" not in body_data:
+            raise ValueError("Chapter body generation missing 'body_text' field")
+
+        return {
+            "chapter_number": chapter_number,
+            "title": title,
+            "body_text": body_data.get("body_text", ""),
+            "word_count": body_data.get("word_count", len(body_data.get("body_text", ""))),
+        }
+
+    @staticmethod
+    def _build_chapter_body_prompt(
+        chapter_number: int,
+        title: str,
+        summary: str,
+        story_context: str,
+        past_context: str,
+    ) -> str:
+        """Build fallback prompt for chapter body generation."""
+        prompt = f"""你是一位专业的网络小说作家。请将以下章节大纲展开为完整的叙事正文。
+
+【故事设定】
+{story_context}
+
+【本章信息】
+章节号：第{chapter_number}章
+章节标题：{title}
+章节概要：{summary}
+
+"""
+        if past_context:
+            prompt += f"""{past_context}
+
+"""
+        prompt += """请写出本章的完整叙事正文。要求：
+1. 文笔生动，有画面感和节奏感
+2. 包含场景描写、人物对话、心理活动
+3. 保持与前文的情节连贯性
+4. 篇幅在 1500-3000 字之间
+5. 结尾要有悬念或转折引导下一章
+
+返回以下结构的 JSON 对象：
+{
+  "chapter_number": """ + str(chapter_number) + """,
+  "title": \"""" + title + """\",
+  "body_text": "本章完整正文内容...",
+  "word_count": 2500
+}
+
+请只返回有效的 JSON，不要包含 markdown 或解释。"""
+        return prompt

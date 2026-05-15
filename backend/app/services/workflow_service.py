@@ -46,6 +46,7 @@ class WorkflowService:
         TaskStage.INSPIRATION,
         TaskStage.STORY,
         TaskStage.CHAPTER_OUTLINE,
+        TaskStage.CHAPTER_BODY,
         TaskStage.SCRIPT,
         TaskStage.STORYBOARD,
         TaskStage.IMAGE,
@@ -57,6 +58,7 @@ class WorkflowService:
         TaskStage.INSPIRATION: "inspiration",
         TaskStage.STORY: "story",
         TaskStage.CHAPTER_OUTLINE: "chapter_outline",
+        TaskStage.CHAPTER_BODY: "chapter_body",
         TaskStage.SCRIPT: "script",
         TaskStage.STORYBOARD: "storyboard",
         TaskStage.IMAGE: "image",
@@ -256,6 +258,8 @@ class WorkflowService:
                         await self._execute_story_generation(task, parameters)
                     elif target_stage == TaskStage.CHAPTER_OUTLINE:
                         await self._execute_chapter_outline_generation(task, parameters)
+                    elif target_stage == TaskStage.CHAPTER_BODY:
+                        await self._execute_chapter_body_generation(task, parameters)
                     elif target_stage == TaskStage.SCRIPT:
                         await self._execute_script_generation(task, parameters)
                     elif target_stage == TaskStage.STORYBOARD:
@@ -1029,6 +1033,120 @@ class WorkflowService:
             logger.warning("Chapter model sync failed (non-blocking): %s", e)
         # ────────────────────────────────────────────────────────────────
 
+    async def _execute_chapter_body_generation(
+        self,
+        task: Task,
+        parameters: Dict[str, Any],
+    ):
+        """Execute chapter body generation — expand outlines into full narrative prose."""
+        from .generator_services.story_generator_service import StoryGeneratorService
+        from ..schemas.file import FileCreate
+        from ..db.chapter_crud import chapter_crud as _chapter_crud
+
+        stages_status = self.get_project_stages(task.project_id)
+        outline_files = stages_status.get("chapter_outline", {}).get("selected_files", [])
+        if not outline_files:
+            raise WorkflowError(
+                "Chapter body generation requires a completed chapter_outline stage with a selected file"
+            )
+
+        # Load chapter outline data
+        outline_file_id = UUID(outline_files[0]["file_id"])
+        file_record = file_crud.get(self.db, file_id=outline_file_id)
+        if not file_record:
+            raise WorkflowError("Chapter outline file not found")
+
+        outline_path = settings.storage_path / file_record.file_path
+        if not outline_path.exists():
+            raise WorkflowError(f"Chapter outline file not found on disk: {outline_path}")
+
+        import json
+        outline_data = json.loads(outline_path.read_text(encoding="utf-8"))
+        chapters = outline_data.get("chapters", [])
+
+        # Load story data for full context
+        from ..db.story_crud import story_crud as _story_crud
+        story = _story_crud.get_by_project(self.db, task.project_id)
+        story_data = {}
+        if story:
+            story_data = {
+                "synopsis": story.synopsis,
+                "worldbuilding": story.worldbuilding,
+                "characters": story.characters,
+                "themes": story.themes,
+                "plot_points": story.plot_points,
+                "style_tags": story.style_tags,
+            }
+
+        # Generate body text for each chapter
+        body_results = []
+        previous_bodies = []  # for continuity context
+        service = StoryGeneratorService(db=self.db)
+
+        for ch in chapters:
+            ch_num = ch.get("chapter_number", len(body_results) + 1)
+            ch_title = ch.get("title", "")
+            ch_summary = ch.get("summary", "")
+
+            if settings.MOCK_MODE:
+                from .generator_services.mock_helpers import mock_chapter_body_data
+                body = mock_chapter_body_data(ch_num, ch_title, ch_summary)
+            else:
+                body = await service.generate_chapter_body(
+                    project_id=task.project_id,
+                    chapter_number=ch_num,
+                    title=ch_title,
+                    summary=ch_summary,
+                    story_data=story_data,
+                    previous_bodies=previous_bodies[-3:] if previous_bodies else [],
+                )
+
+            body_text = body.get("body_text", "")
+            body_results.append({
+                "chapter_number": ch_num,
+                "title": ch_title,
+                "body_text": body_text,
+                "word_count": body.get("word_count", len(body_text)),
+            })
+            previous_bodies.append(body_text)
+
+            # Persist body_text on Chapter model
+            try:
+                chapters_in_db = _chapter_crud.get_by_project(self.db, task.project_id)
+                db_chapter = next((c for c in chapters_in_db if c.chapter_number == ch_num), None)
+                if db_chapter:
+                    _chapter_crud.update_body_text(self.db, db_chapter.id, body_text)
+            except Exception as e:
+                logger.warning("Failed to persist body_text for chapter %d: %s", ch_num, e)
+
+        # Save combined result as JSON file
+        variant_group = self.db.query(VariantGroup).filter(
+            VariantGroup.task_id == task.id
+        ).first()
+
+        output_dir = settings.storage_path / "scripts"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / f"chapter_body_{task.id}.json"
+        output_path.write_text(
+            json.dumps({"chapters": body_results}, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        rel_path = str(output_path.relative_to(settings.storage_path))
+
+        file_record = file_crud.create(
+            self.db,
+            obj_in=FileCreate(
+                project_id=task.project_id,
+                task_id=task.id,
+                variant_group_id=variant_group.id if variant_group else None,
+                file_path=rel_path,
+                file_type=FileType.TEXT,
+                generation_params={"type": "chapter_body"},
+            ),
+        )
+        task.output_file_ids = [str(file_record.id)]
+        self._auto_select_first_file(task.id)
+
     async def _execute_script_generation(
         self,
         task: Task,
@@ -1073,17 +1191,37 @@ class WorkflowService:
             style_tags_str = ", ".join(story.style_tags) if story and story.style_tags else style
             synopsis_str = story.synopsis if story else ""
 
+            # ── Inject chapter body_text as primary narrative input ──────
+            chapter_body_context = ""
+            if task.chapter_id:
+                from ..models.chapter import Chapter as ChapterModel
+                ch = self.db.query(ChapterModel).filter(ChapterModel.id == task.chapter_id).first()
+                if ch and ch.body_text:
+                    chapter_body_context = (
+                        f"=== 本章正文（请基于此生成剧本）===\n{ch.body_text[:6000]}\n\n"
+                    )
+                    logger.info(
+                        "Script gen using chapter body_text | ch=%d | len=%d",
+                        ch.chapter_number, len(ch.body_text),
+                    )
+                elif ch:
+                    logger.info(
+                        "Script gen: chapter %d has no body_text, falling back to synopsis",
+                        ch.chapter_number,
+                    )
+            # ──────────────────────────────────────────────────────────────
+
             rendered = get_rendered_prompt(self.db, "script-generation", {
                 "topic": topic,
                 "synopsis": synopsis_str,
                 "worldbuilding": worldbuilding_str,
                 "style_tags": style_tags_str,
                 "characters_context": char_summary,
-                "additional_context": continuity_context,
+                "additional_context": chapter_body_context + continuity_context,
             })
             additional_context = rendered
         except Exception:
-            additional_context = continuity_context
+            additional_context = chapter_body_context + continuity_context
 
         service = ScriptGeneratorService(self.db)
         success = await service.generate(

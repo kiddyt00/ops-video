@@ -28,6 +28,7 @@ const CREATION_STAGES: { key: string; label: string }[] = [
   { key: 'inspiration', label: '灵感' },
   { key: 'story', label: '故事' },
   { key: 'chapter_outline', label: '章节' },
+  { key: 'chapter_body', label: '正文' },
 ]
 
 const statusCfg: Record<string, { label: string; color: string; dot: string }> = {

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Plus, Trash2, Loader2, AlertCircle, Film, Clock,
-  PlayCircle, ChevronRight, Workflow,
+  PlayCircle, ChevronRight, Workflow, ScrollText,
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader,
@@ -285,6 +285,21 @@ function ChapterCard({
             <h3 className="text-sm font-semibold truncate">{chapter.name}</h3>
             {chapter.description && (
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{chapter.description}</p>
+            )}
+            {chapter.body_text ? (
+              <div className="flex items-center gap-1 mt-1">
+                <ScrollText className="w-3 h-3 text-emerald-500/70 shrink-0" />
+                <p className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 line-clamp-1">
+                  {chapter.body_text.slice(0, 60)}...
+                </p>
+              </div>
+            ) : (
+              chapter.status === 'completed' && (
+                <div className="flex items-center gap-1 mt-1">
+                  <ScrollText className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                  <span className="text-[11px] text-muted-foreground/50">暂无正文</span>
+                </div>
+              )
             )}
           </div>
           <div

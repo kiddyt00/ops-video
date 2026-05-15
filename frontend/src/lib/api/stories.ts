@@ -22,4 +22,7 @@ export const storyApi = {
 
   generateChapterOutline: (projectId: string) =>
     api.post<Story>(`/workflow/${projectId}/advance/chapter_outline`).then(r => r.data),
+
+  generateChapterBody: (projectId: string) =>
+    api.post<Story>(`/workflow/${projectId}/advance/chapter_body`).then(r => r.data),
 }

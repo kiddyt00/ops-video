@@ -24,6 +24,7 @@ class Chapter(BaseModel):
     chapter_number = Column(Integer, nullable=False)
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
+    body_text = Column(Text, nullable=True)
     status = Column(
         String(30),
         nullable=False,

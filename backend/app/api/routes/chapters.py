@@ -24,6 +24,7 @@ def _to_response(chapter) -> dict:
         "chapter_number": chapter.chapter_number,
         "name": chapter.name,
         "description": chapter.description or None,
+        "body_text": chapter.body_text or None,
         "status": chapter.status,
         "current_stage": chapter.current_stage,
         "video_file_id": str(chapter.video_file_id) if chapter.video_file_id else None,
@@ -77,6 +78,20 @@ def create_chapter(
     chapter = chapter_crud.create_from_outline(
         db, project_id=project_id, chapter_number=next_num, name=name, description=description,
     )
+    return _to_response(chapter)
+
+
+@router.put("/{chapter_id}/body", response_model=dict)
+def update_chapter_body(
+    project_id: UUID,
+    chapter_id: UUID,
+    body_text: str,
+    db: Session = Depends(get_db),
+):
+    """Update a chapter's body text."""
+    chapter = chapter_crud.update_body_text(db, chapter_id, body_text)
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found")
     return _to_response(chapter)
 
 

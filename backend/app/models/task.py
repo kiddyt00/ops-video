@@ -18,6 +18,7 @@ class TaskStage(str, Enum):
     INSPIRATION = "inspiration"
     STORY = "story"
     CHAPTER_OUTLINE = "chapter_outline"
+    CHAPTER_BODY = "chapter_body"
     SCRIPT = "script"
     STORYBOARD = "storyboard"
     IMAGE = "image"

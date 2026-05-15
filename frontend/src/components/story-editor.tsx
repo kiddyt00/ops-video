@@ -24,7 +24,9 @@ import {
   useGenerateInspiration,
   useGenerateStory,
   useGenerateChapterOutline,
+  useGenerateChapterBody,
 } from '@/hooks/use-stories'
+import { useChapters } from '@/hooks/use-chapters'
 import type { Story, ChapterOutlineItem } from '@/types/story'
 
 /* ------------------------------------------------------------------ */
@@ -595,6 +597,8 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
   const inspirationMutation = useGenerateInspiration(projectId)
   const generateStoryMutation = useGenerateStory(projectId)
   const generateOutlineMutation = useGenerateChapterOutline(projectId)
+  const generateBodyMutation = useGenerateChapterBody(projectId)
+  const { data: chapters } = useChapters(projectId)
 
   const [inspiration, setInspiration] = useState('')
   const [apiError, setApiError] = useState<string | null>(null)
@@ -671,7 +675,17 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
     }
   }
 
-  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending
+  const handleGenerateBody = async () => {
+    setApiError(null)
+    try {
+      await generateBodyMutation.mutateAsync()
+      await refetch()
+    } catch (e) {
+      setApiError(e instanceof Error ? e.message : '生成正文失败')
+    }
+  }
+
+  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending || generateBodyMutation.isPending
   const isSaving = updateMutation.isPending
 
   return (
@@ -792,6 +806,15 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                       {generateOutlineMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
                       生成章节大纲
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateBody}
+                      disabled={isGenerating || !(draft?.chapter_outline?.length)}
+                    >
+                      {generateBodyMutation.isPending && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                      生成章节正文
+                    </Button>
                     <Input
                       value={inspiration}
                       onChange={(e) => setInspiration(e.target.value)}
@@ -868,6 +891,54 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                   onChange={(chapters) => setField('chapter_outline', chapters)}
                 />
               </CollapsibleSection>
+
+              {/* Chapter Body Preview */}
+              {(chapters?.length ?? 0) > 0 && (
+                <CollapsibleSection
+                  title="章节正文"
+                  icon={<ScrollText className="w-4 h-4 text-muted-foreground" />}
+                  defaultOpen={false}
+                  badge={
+                    (chapters?.filter(c => c.body_text)?.length ?? 0) > 0 ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        {chapters!.filter(c => c.body_text).length}/{chapters!.length} 章已生成
+                      </Badge>
+                    ) : undefined
+                  }
+                >
+                  <div className="space-y-2">
+                    {chapters?.map((ch) => (
+                      <div key={ch.id} className="border border-border rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="text-[10px]">
+                            第 {ch.chapter_number} 章
+                          </Badge>
+                          <span className="text-xs font-medium">{ch.name}</span>
+                          {ch.body_text ? (
+                            <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-500 border-0 ml-auto">
+                              已生成
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-muted-foreground ml-auto">
+                              待生成
+                            </Badge>
+                          )}
+                        </div>
+                        {ch.body_text ? (
+                          <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">
+                            {ch.body_text.slice(0, 200)}
+                            {ch.body_text.length > 200 ? '...' : ''}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground/50 italic">
+                            点击上方「生成章节正文」按钮展开章节大纲为完整叙事
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleSection>
+              )}
             </div>
           )}
         </div>

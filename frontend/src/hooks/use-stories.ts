@@ -80,3 +80,13 @@ export function useGenerateChapterOutline(projectId: string) {
     },
   })
 }
+
+export function useGenerateChapterBody(projectId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => storyApi.generateChapterBody(projectId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.story(projectId) })
+    },
+  })
+}

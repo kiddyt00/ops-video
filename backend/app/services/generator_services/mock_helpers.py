@@ -136,3 +136,33 @@ def mock_chapter_outline_data(story_data: dict | None = None, chapter_count: int
             "duration": 5.0,
         })
     return {"chapters": chapters}
+
+
+def mock_chapter_body_data(chapter_number: int, title: str, summary: str) -> dict:
+    """Return fake chapter body data for MOCK_MODE."""
+    body = f"""第{chapter_number}章：{title}
+
+{summary}
+
+清晨的阳光穿过稀疏的云层，洒在废墟之上。空气中弥漫着金属和尘土混合的气味。
+
+Kai 小心翼翼地拨开前方的藤蔓，指尖触碰到一块冰凉的金属表面。那是一个古老的终端，表面已经被苔藓覆盖，但隐约还能看到下方闪烁的微光。
+
+"这不可能……"他喃喃自语，心跳加速。
+
+在过去的三个月里，他走遍了这片废土，从未见过任何尚在运作的前代科技。然而眼前的终端屏幕，正以缓慢的节奏闪烁着暗蓝色的光芒。
+
+"Lena 说过，旧世界的遗迹都只是死物。"Kai 把手按在终端表面，感受着微弱的振动。"但这不是死物。它在等什么。"
+
+突然，终端发出一声低沉的嗡鸣。一道全息投影从终端上方的裂缝中投射而出，在半空中形成了一幅旋转的地图——标注着他从未见过的坐标符号。
+
+"这是一个邀请。"Kai 深吸一口气，"或是一个陷阱。"
+
+远处传来低沉的雷鸣，乌云正在聚集。风暴将至，但他已无退路。"""
+    word_count = len(body.replace(" ", "").replace("\n", ""))
+    return {
+        "chapter_number": chapter_number,
+        "title": title,
+        "body_text": body,
+        "word_count": word_count,
+    }

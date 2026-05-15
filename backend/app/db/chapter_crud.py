@@ -65,6 +65,20 @@ class ChapterCRUD:
         db.commit()
         return True
 
+    def update_body_text(
+        self,
+        db: Session,
+        chapter_id: UUID,
+        body_text: str,
+    ) -> Optional[Chapter]:
+        chapter = self.get(db, chapter_id)
+        if not chapter:
+            return None
+        chapter.body_text = body_text
+        db.commit()
+        db.refresh(chapter)
+        return chapter
+
     def batch_create_from_outline(
         self,
         db: Session,
