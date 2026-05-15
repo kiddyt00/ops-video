@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Loader2, AlertCircle, Sparkles, RotateCcw, Eye } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,12 +24,24 @@ const VIEW_LABELS: { key: ViewKey; label: string; desc: string }[] = [
   { key: 'back_view_url', label: '背面', desc: 'Back' },
 ]
 
+const PROGRESS_STAGES = [
+  { label: '正在生成角色描述...', pct: 15, timeout: 2000 },
+  { label: '正在生成正面视图...', pct: 35, timeout: 15000 },
+  { label: '正在生成侧面视图...', pct: 55, timeout: 15000 },
+  { label: '正在生成背面视图...', pct: 80, timeout: 15000 },
+  { label: '正在上传OSS...',      pct: 95, timeout: 5000 },
+]
+
 export function ThreeViewCard({ card, projectId, onRefresh, className }: ThreeViewCardProps) {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({})
   const [versionHistory, setVersionHistory] = useState<Record<string, string[]>>({})
+  const [progress, setProgress] = useState(0)
+  const [stageLabel, setStageLabel] = useState('')
   const generateMutation = useGenerateThreeView(projectId)
 
-  // Merge prop URLs with local preview state (preview overrides until refetch completes)
+  // Simulated progress during generation
+  const [progressTimer, setProgressTimer] = useState<ReturnType<typeof setInterval> | null>(null)
+
   const displayUrl = (key: ViewKey): string => {
     if (previewUrls[key]) return previewUrls[key]
     return (card[key] as string) || ''
@@ -37,10 +49,31 @@ export function ThreeViewCard({ card, projectId, onRefresh, className }: ThreeVi
 
   const hasAllViews = card.front_view_url && card.side_view_url && card.back_view_url
 
+  // Start/stop progress simulation when mutation state changes
+  React.useEffect(() => {
+    if (generateMutation.isPending) {
+      setProgress(0)
+      setStageLabel('准备中...')
+      let idx = 0
+      const timer = setInterval(() => {
+        idx = Math.min(idx + 1, PROGRESS_STAGES.length - 1)
+        setProgress(PROGRESS_STAGES[idx].pct)
+        setStageLabel(PROGRESS_STAGES[idx].label)
+      }, PROGRESS_STAGES[0].timeout)
+      setProgressTimer(timer)
+      return () => clearInterval(timer)
+    } else {
+      if (progressTimer) clearInterval(progressTimer)
+      if (hasAllViews) { setProgress(100); setStageLabel('生成完成') }
+      else if (generateMutation.isError) setStageLabel('生成失败')
+    }
+  }, [generateMutation.isPending])
+
   const handleGenerate = async () => {
     try {
+      setProgress(0)
+      setStageLabel('准备中...')
       const result = await generateMutation.mutateAsync({ cardId: card.id })
-      // Immediately show returned URLs in local state
       const urls: Record<string, string> = {}
       if (result.front_view_url) {
         urls.front_view_url = result.front_view_url
@@ -64,9 +97,11 @@ export function ThreeViewCard({ card, projectId, onRefresh, className }: ThreeVi
         }))
       }
       setPreviewUrls(urls)
+      setProgress(100)
+      setStageLabel('生成完成')
       onRefresh?.()
     } catch {
-      // handled by mutation state
+      setStageLabel('生成失败')
     }
   }
 
@@ -79,7 +114,7 @@ export function ThreeViewCard({ card, projectId, onRefresh, className }: ThreeVi
     <Card className={cn('overflow-hidden', className)}>
       <div className="p-3 space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-sm font-medium truncate">{card.name}</span>
             {card.traits?.role && (
@@ -99,21 +134,34 @@ export function ThreeViewCard({ card, projectId, onRefresh, className }: ThreeVi
           </div>
           <Button
             variant={status === 'completed' ? 'outline' : 'default'}
-            size="sm"
-            className="text-xs gap-1 shrink-0 h-7"
+            size="default"
+            className="text-xs gap-1.5 shrink-0"
             onClick={handleGenerate}
             disabled={generateMutation.isPending}
           >
             {generateMutation.isPending ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : status === 'completed' ? (
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3.5 h-3.5" />
             ) : (
-              <Sparkles className="w-3 h-3" />
+              <Sparkles className="w-3.5 h-3.5" />
             )}
-            {generateMutation.isPending ? '生成中...' : status === 'completed' ? '重新生成' : '生成三视图'}
+            {generateMutation.isPending ? '生成中' : status === 'completed' ? '重新生成' : '生成三视图'}
           </Button>
         </div>
+
+        {/* Progress bar during generation */}
+        {generateMutation.isPending && (
+          <div className="space-y-1">
+            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-violet-500 to-cyan-500 rounded-full transition-all duration-700 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground text-right">{stageLabel} {progress}%</p>
+          </div>
+        )}
 
         {/* Three-View Grid */}
         <div className="grid grid-cols-3 gap-2">
