@@ -41,6 +41,7 @@ interface StoryEditorProps {
 /* ------------------------------------------------------------------ */
 
 function formatDuration(seconds: number): string {
+  if (!seconds || isNaN(seconds) || seconds <= 0) return '--'
   const m = Math.floor(seconds / 60)
   const s = seconds % 60
   if (m === 0) return `${s}秒`
@@ -776,7 +777,8 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
               <CollapsibleSection
                 title="角色设定"
                 icon={<Users className="w-4 h-4 text-muted-foreground" />}
-                defaultOpen={false}
+                defaultOpen={true}
+                badge={draft?.characters?.length ? <span className="text-[10px] text-muted-foreground ml-1">{draft.characters.length}人</span> : undefined}
               >
                 <CharactersDisplay data={draft.characters} onChange={(v) => setField('characters', v)} projectId={projectId} />
               </CollapsibleSection>
