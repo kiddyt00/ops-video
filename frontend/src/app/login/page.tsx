@@ -123,16 +123,16 @@ export default function LoginPage() {
               </span>
             </h1>
             <p className="text-lg text-white/50 max-w-sm leading-relaxed">
-              输入一个想法，AI 自动完成从剧本、分镜、图片到配音和视频合成的全流程创作。
+              输入创意灵感，AI 自动完成故事创作、角色设计、剧本、分镜、生图到配音成片的全流程。
             </p>
           </div>
 
           <div className="flex gap-6 pt-4">
             {[
-              { label: '文生脚本', desc: 'LLM 智能编剧' },
-              { label: '分镜生成', desc: '自动拆解镜头' },
-              { label: 'AI 绘图', desc: '通义万相渲染' },
-              { label: '视频合成', desc: '一键出片' },
+              { label: '故事创作', desc: 'AI 世界观/角色/蓝图' },
+              { label: '角色三视图', desc: '自动生成正/侧/背' },
+              { label: 'AI 生图', desc: '通义万相/SiliconFlow' },
+              { label: '配音合成', desc: 'TTS + BGM + 成片' },
             ].map((step, i) => (
               <div key={i} className="flex items-start gap-2">
                 <div className="w-6 h-6 rounded-full bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -148,7 +148,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-xs text-white/20">
-          由 AI 驱动 · 创作从未如此简单
+          AI 驱动 · 故事 → 三视图 → 剧本 → 分镜 → 生图 → 配音 → 成片
         </p>
       </div>
 
