@@ -10,7 +10,7 @@ from uuid import UUID
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
-from ..models.story import Story, StoryStatus
+from ..models.story import Story
 from ..models.character_card import CharacterCard
 from ..db.character_card_crud import character_card_crud
 from ..schemas.character_card import CharacterCardCreate, CharacterCardUpdate
@@ -37,7 +37,7 @@ class CharacterThreeViewService:
         """
         story = (
             self.db.query(Story)
-            .filter(Story.project_id == project_id, Story.status == StoryStatus.completed)
+            .filter(Story.project_id == project_id)
             .order_by(Story.created_at.desc())
             .first()
         )
