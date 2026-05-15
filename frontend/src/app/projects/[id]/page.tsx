@@ -24,7 +24,7 @@ import { cn } from '@/lib/utils'
 import { useChapters } from '@/hooks/use-chapters'
 import {
   AlertCircle, RefreshCw, Share2, Workflow, Users, Film, BookOpen,
-  Settings, ChevronDown, ChevronUp,
+  Settings,
 } from 'lucide-react'
 import { type TaskStage } from '@/types/task'
 
@@ -35,8 +35,6 @@ export default function ProjectPage() {
   const [apiError, setApiError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('creation')
   const [selectedChapter, setSelectedChapter] = useState<{ id: string; name: string } | null>(null)
-  const [showCharacters, setShowCharacters] = useState(false)
-
   const queryClient = useQueryClient()
   const { data: project, isLoading: loadingProject, error: projectError } = useProject(projectId)
   const { data: tasks, isLoading: loadingTasks, error: tasksError } = useTasks(projectId)
@@ -185,6 +183,9 @@ export default function ProjectPage() {
               <TabsTrigger value="creation" className="gap-1.5">
                 <BookOpen className="w-3.5 h-3.5" /> 创作
               </TabsTrigger>
+              <TabsTrigger value="characters" className="gap-1.5">
+                <Users className="w-3.5 h-3.5" /> 角色
+              </TabsTrigger>
               <TabsTrigger value="pipeline" className="gap-1.5">
                 <Workflow className="w-3.5 h-3.5" /> 管线
                 {selectedChapter && (
@@ -220,31 +221,6 @@ export default function ProjectPage() {
                 <Separator />
 
                 <div>
-                  <button
-                    onClick={() => setShowCharacters(!showCharacters)}
-                    className="flex items-center gap-2 w-full text-left"
-                  >
-                    <Users className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-semibold">角色设定</h3>
-                    <div className="ml-auto text-muted-foreground">
-                      {showCharacters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                  </button>
-                  {showCharacters && (
-                    <div className="mt-3">
-                      <CharacterCardManager projectId={projectId} />
-                    </div>
-                  )}
-                  {!showCharacters && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-6">
-                      管理角色外观设定，确保图片生成时角色外貌一致
-                    </p>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Film className="w-4 h-4 text-primary" />
@@ -267,6 +243,15 @@ export default function ProjectPage() {
                     onSelectChapter={handleSelectChapter}
                   />
                 </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+
+          {/* ═════️ 🎭 角色 Tab ══════ */}
+          <TabsContent value="characters" className="flex-1 min-h-0 mt-3">
+            <ScrollArea className="h-full">
+              <div className="max-w-4xl mx-auto px-4 pb-8">
+                <CharacterCardManager projectId={projectId} />
               </div>
             </ScrollArea>
           </TabsContent>
