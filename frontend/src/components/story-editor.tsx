@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { StoryWizard } from './story-wizard'
+import { GenerationPanel } from './generation-panel'
+import { useEventStream } from '@/hooks/use-event-stream'
 import {
   BookOpen, Sparkles, Loader2, AlertCircle, Save, Pencil, RotateCcw,
   ChevronDown, ChevronUp, Clock, FileText, Globe, MapPin, Users, ScrollText,
@@ -27,6 +29,7 @@ import {
   useGenerateChapterBody,
 } from '@/hooks/use-stories'
 import { useChapters } from '@/hooks/use-chapters'
+import { useQueryClient } from '@tanstack/react-query'
 import type { Story, ChapterOutlineItem } from '@/types/story'
 
 /* ------------------------------------------------------------------ */
@@ -598,7 +601,10 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
   const generateStoryMutation = useGenerateStory(projectId)
   const generateOutlineMutation = useGenerateChapterOutline(projectId)
   const generateBodyMutation = useGenerateChapterBody(projectId)
-  const { data: chapters } = useChapters(projectId)
+  const { data: chapters, refetch: refetchChapters } = useChapters(projectId)
+  const queryClient = useQueryClient()
+  const { events, isStreaming, error: streamError, startStream, stopStream, clear } = useEventStream()
+  const [bodyStreamPanelOpen, setBodyStreamPanelOpen] = useState(false)
 
   const [inspiration, setInspiration] = useState('')
   const [apiError, setApiError] = useState<string | null>(null)
@@ -675,17 +681,35 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
     }
   }
 
-  const handleGenerateBody = async () => {
+  const handleGenerateBody = () => {
     setApiError(null)
-    try {
-      await generateBodyMutation.mutateAsync()
-      await refetch()
-    } catch (e) {
-      setApiError(e instanceof Error ? e.message : '生成正文失败')
-    }
+    setBodyStreamPanelOpen(true)
+    clear()
+    startStream(
+      `${API_BASE_SE}/workflow/stream/${projectId}/advance/chapter_body`,
+      { parameters: {}, execute: true },
+    )
   }
 
-  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending || generateBodyMutation.isPending
+  // When streaming completes, refetch story + chapters
+  const prevCompleteRef = useRef(false)
+  useEffect(() => {
+    const hasComplete = events.some(e => e.type === 'complete')
+    if (hasComplete && !prevCompleteRef.current) {
+      prevCompleteRef.current = true
+      refetch()
+      refetchChapters()
+      queryClient.invalidateQueries({ queryKey: ['chapters', projectId] })
+    }
+    if (!hasComplete) prevCompleteRef.current = false
+  }, [events, refetch, refetchChapters, queryClient, projectId])
+
+  const handleBodyPanelClose = () => {
+    setBodyStreamPanelOpen(false)
+    stopStream()
+  }
+
+  const isGenerating = inspirationMutation.isPending || generateStoryMutation.isPending || generateOutlineMutation.isPending || generateBodyMutation.isPending || isStreaming
   const isSaving = updateMutation.isPending
 
   return (
@@ -943,6 +967,15 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
           )}
         </div>
       </div>
+      <GenerationPanel
+        visible={bodyStreamPanelOpen}
+        events={events}
+        isStreaming={isStreaming}
+        error={streamError}
+        onClose={handleBodyPanelClose}
+        onStop={stopStream}
+        onRestart={handleGenerateBody}
+      />
     </div>
   )
 }

@@ -11,20 +11,17 @@ import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
 export const dynamic = 'force-dynamic'
 
-import { ChaptersList } from '@/components/chapters-list'
 import { StoryEditor } from '@/components/story-editor'
 import { ShareDialog } from '@/components/share-dialog'
 import { ProviderSelector } from '@/components/provider-selector'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { useChapters } from '@/hooks/use-chapters'
 import {
-  AlertCircle, RefreshCw, Share2, Workflow, Users, Film, BookOpen,
+  AlertCircle, RefreshCw, Share2, Workflow, BookOpen,
   Settings,
 } from 'lucide-react'
 import { type TaskStage } from '@/types/task'
@@ -78,6 +75,7 @@ export default function ProjectPage() {
       const accessToken = token ? JSON.parse(token).access_token : null
       const stageMap: Record<string, string> = {
         inspiration: 'inspiration', story: 'story', chapter_outline: 'chapter_outline',
+        chapter_body: 'chapter_body',
         script: 'script', storyboard: 'storyboard', image: 'image', audio: 'audio', video: 'video',
       }
       const resp = await fetch(
@@ -102,11 +100,6 @@ export default function ProjectPage() {
     } catch (e: unknown) {
       setApiError(e instanceof Error ? e.message : '生成任务失败')
     }
-  }
-
-  const handleSelectChapter = (chapter: { id: string; name: string }) => {
-    setSelectedChapter(chapter)
-    setActiveTab('pipeline')
   }
 
   const handleRetry = () => {
@@ -216,41 +209,7 @@ export default function ProjectPage() {
                   <StoryEditor projectId={projectId} />
                 </div>
 
-                <Separator />
 
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Film className="w-4 h-4 text-primary" />
-                      <h3 className="text-sm font-semibold">章节大纲</h3>
-                      {chapters && (
-                        <Badge variant="secondary" className="text-[10px]">{chapters.length} 章</Badge>
-                      )}
-                    </div>
-                    {chapters && chapters.length > 0 && (
-                      <Button
-                        variant="ghost" size="sm" className="text-xs gap-1"
-                        onClick={() => setActiveTab('pipeline')}
-                      >
-                        进入管线 <Workflow className="w-3 h-3" />
-                      </Button>
-                    )}
-                  </div>
-                  <ChaptersList
-                    projectId={projectId}
-                    onSelectChapter={handleSelectChapter}
-                  />
-                </div>
-
-                <Separator />
-
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Users className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-semibold">角色三视图</h3>
-                  <p className="text-[11px] text-muted-foreground">在角色设定中点击「生成三视图」生成正/侧/背视图</p>
-                  </div>
-                </div>
               </div>
             </ScrollArea>
           </TabsContent>
