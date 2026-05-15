@@ -160,12 +160,13 @@ class CharacterThreeViewService:
 
         for angle_key, angle_label in [("front", "正面"), ("side", "侧面"), ("back", "背面")]:
             desc = angle_descriptions.get(angle_key, card.description or "")
-            image_prompt = f"{desc}, {style_str}, {angle_label}全身照, 角色设计图, 白色背景, 高清"
+            image_prompt = f"{desc}, {style_str}, {angle_label}全身照, 角色设计三视图风格, 白色背景, 纯色背景, 无背景装饰, 正面站立, 全身入镜, 高清, 4K, 细节丰富"
+            negative_prompt = "多人, 复杂背景, 风景, 室内, 模糊, 低分辨率, 水印, 文字, 标签, 签名"
 
             try:
                 img_result = await provider.generate(parameters={
                     "prompt": image_prompt,
-                    "negative_prompt": "",
+                    "negative_prompt": negative_prompt,
                     "size": "1024*1024",
                     "n": 1,
                 })
@@ -255,47 +256,37 @@ class CharacterThreeViewService:
     ) -> str:
         """Build LLM prompt for generating angle-specific appearance descriptions.
 
-        Uses full story context: worldbuilding(世界观), synopsis(蓝图/梗概),
-        style(风格), themes(主题) to guide character design.
+        Uses full story context: worldbuilding, synopsis, style, themes.
+        Forces detailed visual output suitable for image generation.
         """
         wb = worldbuilding if isinstance(worldbuilding, dict) else {}
         theme_str = "、".join(themes) if themes else ""
         synopsis_preview = synopsis[:300] + "..." if len(synopsis) > 300 else synopsis
 
-        return f"""你是一位专业的角色设计师。请根据以下完整故事设定，为指定角色生成正/侧/背三个角度的外观描述。
+        return f"""你是一位专业角色设计师。输出将直接用于AI图片生成。
 
-=== 故事蓝图 ===
-{synopsis_preview or "（无）"}
-
-=== 世界观 ===
-背景设定: {wb.get("setting", "未知")}
-时代: {wb.get("time_period", "未知")}
-世界规则: {wb.get("rules", "无")}
-
-=== 风格 ===
-{style_str}
-
-{'=== 故事主题 ===' + theme_str if theme_str else ''}
-
-=== 目标角色 ===
 角色名: {card.name}
 角色定位: {card.traits.get("role", "角色") if card.traits else "角色"}
-角色设定: {card.description or "无"}
-外貌特征: {card.traits or {}}
+故事描述: {card.description or "无"}
 
-请根据故事的整体设定，设计符合世界观和风格的角色外观。
-每个角度描述包含：
-- 发型、发色
-- 脸型、五官、表情特征
-- 服装（正面/侧面/背面细节不同）
-- 配饰、道具
-- 体型特征
+故事背景: {synopsis_preview or "无"}
+世界观: {wb.get("setting", "未知")} / {wb.get("time_period", "未知")}
+风格: {style_str}
 
-输出 JSON:
+要求：故事描述可能不含完整外貌。你必须根据角色定位和世界观，合理推断并补充所有视觉细节。每个角度约200字，**必须包含以下全部要素**：
+
+【发型与发色】发型样式、长度、颜色、刘海/发髻等
+【脸型与五官】脸型、眼睛颜色和形状、眉毛、鼻子、嘴唇、表情特征
+【服装颜色与款式】每件衣物的颜色、材质、款式，正面/侧面/背面各自描述不同视角的细节
+【配饰与道具】首饰、武器、披风、面具、特殊装备等
+【体型】身高、体型（修长/健壮/纤细/丰满等）
+【肤色与皮肤特征】肤色、伤痕、纹身、特殊标记
+
+输出JSON（每个字段约200字中文描述）：
 {{
-  "front": "正面详细描述（包含全身服装、五官、发型）",
-  "side": "侧面详细描述（包含侧脸轮廓、侧面服装细节）",
-  "back": "背面详细描述（包含背面服装、发型背面）"
+  "front": "正面描述：包含正面视角全部外貌细节",
+  "side": "侧面描述：包含侧脸轮廓、侧面服装版型等侧面细节",
+  "back": "背面描述：包含背面服装、发型背面、背部佩饰等"
 }}"""
 
     @staticmethod
