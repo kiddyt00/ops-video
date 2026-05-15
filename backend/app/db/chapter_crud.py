@@ -71,18 +71,36 @@ class ChapterCRUD:
         project_id: UUID,
         outline_items: List[dict],
     ) -> List[Chapter]:
-        """Create chapters from story chapter_outline data."""
-        created = []
+        """Create or update chapters from story chapter_outline data.
+
+        Existing chapters are updated (name, description); only new ones
+        are created. This prevents duplicates across multiple calls.
+        """
+        existing = self.get_by_project(db, project_id)
+        existing_by_number = {c.chapter_number: c for c in existing}
+
+        result = []
         for item in outline_items:
-            chapter = self.create_from_outline(
-                db,
-                project_id=project_id,
-                chapter_number=item.get("chapter_number", len(created) + 1),
-                name=item.get("title", item.get("name", f"第{len(created)+1}章")),
-                description=item.get("summary", item.get("description")),
-            )
-            created.append(chapter)
-        return created
+            num = item.get("chapter_number", len(result) + 1)
+            name = item.get("title", item.get("name", f"第{num}章"))
+            desc = item.get("summary", item.get("description"))
+
+            if num in existing_by_number:
+                ch = existing_by_number[num]
+                ch.name = name
+                if desc:
+                    ch.description = desc
+                db.add(ch)
+                result.append(ch)
+            else:
+                ch = self.create_from_outline(
+                    db, project_id=project_id,
+                    chapter_number=num, name=name, description=desc,
+                )
+                result.append(ch)
+
+        db.commit()
+        return result
 
 
 chapter_crud = ChapterCRUD()
