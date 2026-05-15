@@ -11,7 +11,6 @@ import { AppShell } from '@/components/app-shell'
 import { WorkflowWaterfall } from '@/components/workflow-waterfall'
 export const dynamic = 'force-dynamic'
 
-import { CharacterCardManager } from '@/components/character-card-manager'
 import { ChaptersList } from '@/components/chapters-list'
 import { StoryEditor } from '@/components/story-editor'
 import { ShareDialog } from '@/components/share-dialog'
@@ -248,9 +247,9 @@ export default function ProjectPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Users className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-semibold">角色卡</h3>
+                    <h3 className="text-sm font-semibold">角色三视图</h3>
+                  <p className="text-[11px] text-muted-foreground">在角色设定中点击「生成三视图」生成正/侧/背视图</p>
                   </div>
-                  <CharacterCardManager projectId={projectId} />
                 </div>
               </div>
             </ScrollArea>

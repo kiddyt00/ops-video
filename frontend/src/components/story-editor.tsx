@@ -376,80 +376,26 @@ function WorldbuildingDisplay({ data, onChange }: { data: any; onChange?: (v: st
 /* Structured characters display                                       */
 /* ------------------------------------------------------------------ */
 
-function GenerateThreeViewBtn({ characterName, projectId }: { characterName: string; projectId?: string }) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [done, setDone] = useState(false)
-
-  const handleClick = async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const token = localStorage.getItem('ops-video-tokens')
-      const accessToken = token ? JSON.parse(token).access_token : null
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-
-      // Cards are auto-created during story generation; just find and generate
-      const listResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
-      if (!listResp.ok) throw new Error('获取角色卡失败')
-      const allCards = await listResp.json()
-      const found = allCards.find((c: any) => c.name === characterName)
-      if (!found) {
-        // Fallback: try sync once
-        await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, { method: 'POST', headers }).catch(() => {})
-        const retryResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
-        if (retryResp.ok) {
-          const retryCards = await retryResp.json()
-          const retryFound = retryCards.find((c: any) => c.name === characterName)
-          if (!retryFound) throw new Error(`未找到角色 "${characterName}"`)
-          const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${retryFound.id}/three-view`, {
-            method: 'POST', headers, body: '{}',
-          })
-          if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
-        } else {
-          throw new Error(`未找到角色 "${characterName}"`)
-        }
-      } else {
-        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
-          method: 'POST', headers, body: '{}',
-        })
-        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
-      }
-      setDone(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '生成失败')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (done) {
-    return <p className="text-[10px] text-emerald-400 pl-10 mt-1">✅ 三视图已生成</p>
-  }
-
-  return (
-    <div>
-      <button
-        onClick={handleClick}
-        disabled={loading}
-        className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50 shrink-0"
-      >
-        {loading ? (
-          <Loader2 className="w-3 h-3 animate-spin" />
-        ) : (
-          <Sparkles className="w-3 h-3" />
-        )}
-        {loading ? '生成中...' : '生成三视图'}
-      </button>
-      {error && <p className="text-[10px] text-destructive mt-0.5">{error}</p>}
-    </div>
-  )
-}
-
 function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?: (v: string) => void; projectId: string }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
+  // Fetch CharacterCards for three-view data
+  const [charCards, setCharCards] = useState<Record<string, any>>({})
+  useEffect(() => {
+    if (!projectId) return
+    const token = localStorage.getItem('ops-video-tokens')
+    const accessToken = token ? JSON.parse(token).access_token : null
+    const headers: Record<string, string> = {}
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+    fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, { headers })
+      .then(r => r.json())
+      .then(cards => {
+        const byName: Record<string, any> = {}
+        cards.forEach((c: any) => { byName[c.name] = c })
+        setCharCards(byName)
+      })
+      .catch(() => {})
+  }, [projectId])
 
   const startEdit = () => {
     setEditText(typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data ?? ''))
@@ -491,19 +437,25 @@ function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?
     return <p className="text-xs text-muted-foreground py-4 text-center">暂无角色设定</p>
   return (
     <div className="space-y-2">
-      {data.map((char: Record<string, unknown>, idx: number) => (
+      {data.map((char: Record<string, unknown>, idx: number) => {
+        const cname = String(char.name || '')
+        const card = charCards[cname]
+        const hasImgs = card?.front_view_url && card?.side_view_url && card?.back_view_url
+        return (
         <div key={idx} className="p-3 rounded-lg bg-muted/30 ring-1 ring-border/50 space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0">
-              <Users className="w-4 h-4 text-violet-400" />
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 text-violet-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white/90">{cname}</p>
+                {Boolean(char.role) && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">{String(char.role)}</Badge>
+                )}
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white/90">{String(char.name || `角色 ${idx + 1}`)}</p>
-              {Boolean(char.role) && (
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-0.5">{String(char.role)}</Badge>
-              )}
-            </div>
-            <GenerateThreeViewBtn characterName={String(char.name || '')} projectId={projectId} />
+            <CharacterThreeViewInline card={card} projectId={projectId} />
           </div>
           {Boolean(char.description) && (
             <p className="text-xs text-muted-foreground leading-relaxed pl-10">{String(char.description)}</p>
@@ -511,13 +463,124 @@ function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?
           {Boolean(char.arc) && (
             <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>
           )}
+          {/* Inline three-view image strip */}
+          {(card?.front_view_url || card?.side_view_url || card?.back_view_url) && (
+            <div className="grid grid-cols-3 gap-1.5 pl-10 mt-1">
+              {[
+                { label: '正面', url: card.front_view_url },
+                { label: '侧面', url: card.side_view_url },
+                { label: '背面', url: card.back_view_url },
+              ].map(({ label, url }) => (
+                <div key={label} className="space-y-0.5">
+                  <span className="text-[9px] text-muted-foreground">{label}</span>
+                  <div className="aspect-[3/4] bg-muted/50 rounded overflow-hidden">
+                    {url ? (
+                      <img src={url} alt={label} className="w-full h-full object-cover" loading="lazy"
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground/20 text-[10px]">—</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      ))}
+      )})}
       <div className="flex justify-end mt-2">
         <Button variant="ghost" size="sm" className="text-xs gap-1" onClick={startEdit}>
           <Pencil className="w-3 h-3" />编辑
         </Button>
       </div>
+    </div>
+  )
+}
+
+/** Inline three-view generate button with progress bar, shown in character rows */
+function CharacterThreeViewInline({ card, projectId }: { card: any; projectId: string }) {
+  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [stageLabel, setStageLabel] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [doneUrls, setDoneUrls] = useState<Record<string,string>>({})
+
+  const hasImages = card?.front_view_url || card?.side_view_url || card?.back_view_url || doneUrls.front_view_url
+
+  const handleGen = async () => {
+    if (!card?.id) return
+    setLoading(true)
+    setProgress(10)
+    setStageLabel('生成中...')
+    setError(null)
+    try {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+      const stages = [
+        { pct: 25, label: '正在生成角色描述...', ms: 2000 },
+        { pct: 45, label: '正在生成正面视图...', ms: 15000 },
+        { pct: 65, label: '正在生成侧面视图...', ms: 15000 },
+        { pct: 85, label: '正在生成背面视图...', ms: 15000 },
+        { pct: 95, label: '正在上传OSS...', ms: 3000 },
+      ]
+      let stageIdx = 0
+      const timer = setInterval(() => {
+        stageIdx = Math.min(stageIdx + 1, stages.length - 1)
+        setProgress(stages[stageIdx].pct)
+        setStageLabel(stages[stageIdx].label)
+      }, stages[0].ms)
+
+      const resp = await fetch(
+        `${API_BASE_SE}/projects/${projectId}/character-cards/${card.id}/three-view`,
+        { method: 'POST', headers, body: '{}' }
+      )
+      clearInterval(timer)
+      if (!resp.ok) throw new Error((await resp.json()).detail || '生成失败')
+      const result = await resp.json()
+      if (result.front_view_url) doneUrls.front_view_url = result.front_view_url
+      if (result.side_view_url) doneUrls.side_view_url = result.side_view_url
+      if (result.back_view_url) doneUrls.back_view_url = result.back_view_url
+      setDoneUrls({...doneUrls})
+      setProgress(100)
+      setStageLabel('生成完成')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '生成失败')
+      setStageLabel('生成失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <Button size="sm" className="text-xs gap-1" disabled>
+          <Loader2 className="w-3 h-3 animate-spin" />
+          生成中
+        </Button>
+        <div className="w-24 bg-muted rounded-full h-1 overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-violet-500 to-cyan-500 rounded-full transition-all duration-700 ease-out" style={{width:`${progress}%`}} />
+        </div>
+        <span className="text-[8px] text-muted-foreground">{stageLabel}</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1 shrink-0">
+      <Button
+        variant={!!hasImages ? 'outline' : 'default'}
+        size="sm"
+        className="text-xs gap-1"
+        onClick={handleGen}
+        disabled={!card?.id}
+      >
+        <Sparkles className="w-3 h-3" />
+        {hasImages ? '重新生成' : '生成三视图'}
+      </Button>
+      {error && <p className="text-[9px] text-destructive">{error}</p>}
     </div>
   )
 }
