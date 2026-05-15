@@ -6,6 +6,8 @@ import {
   BookOpen, Sparkles, Loader2, AlertCircle, Save, Pencil, RotateCcw,
   ChevronDown, ChevronUp, Clock, FileText, Globe, MapPin, Users, ScrollText,
 } from 'lucide-react'
+
+const API_BASE_SE = process.env.NEXT_PUBLIC_API_URL || '/api/v1'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from '@/components/ui/card'
@@ -373,7 +375,75 @@ function WorldbuildingDisplay({ data, onChange }: { data: any; onChange?: (v: st
 /* Structured characters display                                       */
 /* ------------------------------------------------------------------ */
 
-function CharactersDisplay({ data, onChange }: { data: any; onChange?: (v: string) => void }) {
+function GenerateThreeViewBtn({ characterName, projectId }: { characterName: string; projectId?: string }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const handleClick = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const token = localStorage.getItem('ops-video-tokens')
+      const accessToken = token ? JSON.parse(token).access_token : null
+      // First sync character from story
+      const syncResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/sync`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+      })
+      if (!syncResp.ok) throw new Error('同步角色失败')
+      const syncData = await syncResp.json()
+      const cards = syncData.cards || []
+      const target = cards.find((c: any) => c.name === characterName)
+      if (!target) {
+        // Try to find the card by name in existing cards
+        const listResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards`, {
+          headers: { ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        })
+        const allCards = await listResp.json()
+        const found = allCards.find((c: any) => c.name === characterName)
+        if (!found) throw new Error(`角色 "${characterName}" 未同步到角色卡`)
+        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${found.id}/three-view`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}',
+        })
+        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
+      } else {
+        const genResp = await fetch(`${API_BASE_SE}/projects/${projectId}/character-cards/${target.id}/three-view`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) }, body: '{}',
+        })
+        if (!genResp.ok) throw new Error((await genResp.json()).detail || '生成失败')
+      }
+      setDone(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '生成失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (done) {
+    return <p className="text-[10px] text-emerald-400 pl-10 mt-1">✅ 三视图已生成</p>
+  }
+
+  return (
+    <div className="pl-10 mt-1">
+      <button
+        onClick={handleClick}
+        disabled={loading}
+        className="text-[11px] text-violet-400 hover:text-violet-300 flex items-center gap-1 disabled:opacity-50"
+      >
+        {loading ? (
+          <Loader2 className="w-3 h-3 animate-spin" />
+        ) : (
+          <Sparkles className="w-3 h-3" />
+        )}
+        {loading ? '生成中...' : '生成三视图'}
+      </button>
+      {error && <p className="text-[10px] text-destructive mt-0.5">{error}</p>}
+    </div>
+  )
+}
+
+function CharactersDisplay({ data, onChange, projectId }: { data: any; onChange?: (v: string) => void; projectId: string }) {
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState('')
 
@@ -436,6 +506,7 @@ function CharactersDisplay({ data, onChange }: { data: any; onChange?: (v: strin
           {Boolean(char.arc) && (
             <p className="text-[11px] text-amber-400/80 italic pl-10">弧光: {String(char.arc)}</p>
           )}
+          <GenerateThreeViewBtn characterName={String(char.name || '')} projectId={projectId} />
         </div>
       ))}
       <div className="flex justify-end mt-2">
@@ -707,7 +778,7 @@ export function StoryEditor({ projectId, className }: StoryEditorProps) {
                 icon={<Users className="w-4 h-4 text-muted-foreground" />}
                 defaultOpen={false}
               >
-                <CharactersDisplay data={draft.characters} onChange={(v) => setField('characters', v)} />
+                <CharactersDisplay data={draft.characters} onChange={(v) => setField('characters', v)} projectId={projectId} />
               </CollapsibleSection>
 
               <Separator />
