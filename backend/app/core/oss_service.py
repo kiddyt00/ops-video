@@ -338,7 +338,10 @@ async def test_storage_connection(provider: StorageProvider) -> TestResult:
         if pt in (StorageProviderType.OSS.value, "oss"):
             bucket = service._get_client()
             # List first 1 object to verify credentials
-            result = bucket.list_objects(prefix="", max_keys=1)
+            import inspect
+            sig = inspect.signature(bucket.list_objects)
+            kw = "maxkeys" if "maxkeys" in sig.parameters else "max_keys"
+            result = bucket.list_objects(prefix="", **{kw: 1})
             bucket_name = result.bucket if hasattr(result, "bucket") else provider.bucket
             msg = f"Aliyun OSS connected: bucket={bucket_name}"
 
