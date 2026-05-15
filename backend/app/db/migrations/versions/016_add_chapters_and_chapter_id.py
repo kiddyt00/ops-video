@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID, JSON
 import uuid
 
-revision = "016"
+revision = "016_add_chapters_and_chapter_id"
 down_revision = "015_extend_story_fields"
 
 
