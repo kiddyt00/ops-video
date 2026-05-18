@@ -47,6 +47,12 @@ class Settings(BaseSettings):
         description="Redis connection URL (redis://localhost:6379/0)"
     )
 
+    # Local GPU Service (on-premise 4090)
+    GPU_SERVICE_URL: str = Field(
+        default="http://192.168.24.226:8199",
+        description="On-premise GPU service URL for local generation"
+    )
+
     # Image Generation Provider
     # Options: DASHSCOPE (通义万相), SILICONFLOW (FLUX.1)
     IMAGE_PROVIDER: str = "DASHSCOPE"

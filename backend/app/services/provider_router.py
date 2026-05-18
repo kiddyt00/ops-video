@@ -14,11 +14,13 @@ from ..db.project_crud import project_crud
 from ..providers.base_provider import BaseProvider
 from ..providers.wanx_provider import WanxProvider, wanx_provider
 from ..providers.siliconflow_provider import SiliconFlowProvider, siliconflow_provider
+from ..providers.local_gpu_provider import LocalGPUProvider, local_gpu_provider
 
 # Registry of provider implementations — maps AIModel.provider → class
 PROVIDER_IMPLS: Dict[str, Type[BaseProvider]] = {
     "DashScope": WanxProvider,
     "SiliconFlow": SiliconFlowProvider,
+    "LocalGPU": LocalGPUProvider,
 }
 
 
@@ -141,6 +143,10 @@ class ProviderRouter:
             if api_key == settings.SILICONFLOW_API_KEY and model_name == settings.SILICONFLOW_MODEL:
                 return siliconflow_provider
             return SiliconFlowProvider(api_key=api_key, model=model_name)
+
+        if provider_type == "LocalGPU":
+            model_name = model_name or "sdxl"
+            return LocalGPUProvider(model=model_name)
 
         raise ValueError(f"Unsupported provider type '{provider_type}' for category '{category}'")
 
